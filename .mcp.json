@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "figma-dev-mode-mcp-server": {
+      "type": "http",
+      "url": "http://127.0.0.1:3845/mcp"
+    },
+    "figma-desktop-mcp": {
+      "type": "http",
+      "url": "http://127.0.0.1:33418/"
+    }
+  }
+}
