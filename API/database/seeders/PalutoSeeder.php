@@ -3,19 +3,21 @@
 namespace Database\Seeders;
 
 use App\Models\Item;
+use App\Models\PalutoDish;
+use App\Models\PalutoDishIngredient;
 use App\Models\PalutoStall;
-use App\Models\PalutoStallRecipe;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use Illuminate\Database\Seeder;
 
 /**
- * Demo data for the Paluto feature — enough variety to exercise the admin
- * (Recipes CMS, Paluto Stalls CMS, fee board) and customer list/filter/
- * pagination paths: recipes across categories and both pricing units, stalls
- * across two markets, an inactive recipe (tests the admin status filter and
- * restore action), a stall not accepting orders, and a deactivated fee row.
- * Idempotent (keyed on name/pairing) so it's safe to re-run.
+ * Demo data for Recipes and Paluto — enough variety to exercise the admin
+ * (Recipes CMS, Paluto Stalls CMS, stall menus) and customer paths: catalog
+ * recipes across categories and both pricing units, stalls across two markets,
+ * an inactive recipe (tests the admin status filter and restore action), a stall
+ * not accepting orders, a deactivated dish, and the same dish cooked by two
+ * stalls with different ingredient lists and fees. Idempotent (keyed on
+ * name/stall) so it's safe to re-run.
  *
  * Not wired into DatabaseSeeder::run() — this connects to the shared
  * palengkey_stg staging database, so run it explicitly:
@@ -28,7 +30,7 @@ class PalutoSeeder extends Seeder
         $munozMarketId = 6; // Muñoz Market
         $alabangMarketId = 20; // Alabang Public Market
 
-        $sinigang = $this->seedRecipe(
+        $this->seedRecipe(
             name: 'Sinigang na Bangus',
             description: 'Classic Filipino sour tamarind fish stew, cooked fresh with market-bought bangus and vegetables.',
             categoryId: 2, // Fishes And Seafoods
@@ -43,7 +45,7 @@ class PalutoSeeder extends Seeder
             ],
         );
 
-        $sisig = $this->seedRecipe(
+        $this->seedRecipe(
             name: 'Sizzling Sisig',
             description: 'Chopped pork sizzling plate, cooked to order with onions and a squeeze of calamansi.',
             categoryId: 1, // Poultry And Meats
@@ -55,7 +57,7 @@ class PalutoSeeder extends Seeder
             ],
         );
 
-        $caldereta = $this->seedRecipe(
+        $this->seedRecipe(
             name: 'Beef Caldereta',
             description: 'Rich beef stew simmered with liver spread, carrots, and cabbage.',
             categoryId: 1, // Poultry And Meats
@@ -68,7 +70,7 @@ class PalutoSeeder extends Seeder
             ],
         );
 
-        $grilledBangus = $this->seedRecipe(
+        $this->seedRecipe(
             name: 'Grilled Bangus Belly',
             description: 'Marinated bangus belly grilled to order, served with a squeeze of citrus.',
             categoryId: 2, // Fishes And Seafoods
@@ -81,7 +83,7 @@ class PalutoSeeder extends Seeder
         );
 
         // Seeded inactive on purpose — exercises the admin status filter and restore action.
-        $tinola = $this->seedRecipe(
+        $this->seedRecipe(
             name: 'Chicken Tinola',
             description: 'Ginger chicken soup with green papaya and chili leaves.',
             categoryId: 1, // Poultry And Meats
@@ -121,15 +123,40 @@ class PalutoSeeder extends Seeder
             prepTimeMinutes: 25,
         );
 
-        $this->seedFee($alingNenas, $sinigang, rate: 60.00, minimumFee: 100.00);
-        $this->seedFee($alingNenas, $sisig, rate: 40.00, minimumFee: 80.00);
+        $this->seedDish($alingNenas, 'Sinigang na Bangus', 'kg', 1.0, rate: 60.00, minimumFee: 100.00, ingredients: [
+            ['item' => 'Bangus', 'quantity' => 1.000, 'kind' => 'meat', 'note' => 'Sliced into steaks'],
+            ['item' => 'Kangkong', 'quantity' => 0.250, 'kind' => 'vegetable'],
+            ['item' => 'Sitaw', 'quantity' => 0.150, 'kind' => 'vegetable'],
+            ['item' => 'Tomato', 'quantity' => 0.200, 'kind' => 'vegetable'],
+            ['item' => 'Onion Red', 'quantity' => 0.100, 'kind' => 'spice', 'is_provided' => true],
+        ]);
+        $this->seedDish($alingNenas, 'Sizzling Sisig', 'serving', 2, rate: 40.00, minimumFee: 80.00, ingredients: [
+            ['item' => 'Ground Pork', 'quantity' => 0.500, 'kind' => 'meat'],
+            ['item' => 'Onion Red', 'quantity' => 0.100, 'kind' => 'spice', 'is_provided' => true],
+        ]);
 
-        $this->seedFee($nanayRosas, $sinigang, rate: 55.00, minimumFee: 90.00);
-        // Deactivated — exercises the "offered off" state in the fee board.
-        $this->seedFee($nanayRosas, $sisig, rate: 35.00, minimumFee: 70.00, status: false);
+        // Same dish as Aling Nena's, but this stall's own version — more fish per
+        // kg, no sitaw, and it buys its own onions.
+        $this->seedDish($nanayRosas, 'Sinigang na Bangus', 'kg', 1.0, rate: 55.00, minimumFee: 90.00, ingredients: [
+            ['item' => 'Bangus', 'quantity' => 1.200, 'kind' => 'meat'],
+            ['item' => 'Kangkong', 'quantity' => 0.300, 'kind' => 'vegetable'],
+            ['item' => 'Tomato', 'quantity' => 0.250, 'kind' => 'vegetable'],
+            ['item' => 'Onion Red', 'quantity' => 0.100, 'kind' => 'spice'],
+        ]);
+        // Deactivated — exercises the inactive state on the stall menu.
+        $this->seedDish($nanayRosas, 'Sizzling Sisig', 'serving', 2, rate: 35.00, minimumFee: 70.00, status: false, ingredients: [
+            ['item' => 'Ground Pork', 'quantity' => 0.450, 'kind' => 'meat'],
+        ]);
 
-        $this->seedFee($mangKikos, $caldereta, rate: 70.00, minimumFee: 120.00);
-        $this->seedFee($mangKikos, $grilledBangus, rate: 45.00, minimumFee: 60.00);
+        $this->seedDish($mangKikos, 'Beef Caldereta', 'kg', 1.0, rate: 70.00, minimumFee: 120.00, ingredients: [
+            ['item' => 'Beef Cuts', 'quantity' => 1.000, 'kind' => 'meat'],
+            ['item' => 'Carrots', 'quantity' => 0.200, 'kind' => 'vegetable'],
+            ['item' => 'Cabbage', 'quantity' => 0.150, 'kind' => 'vegetable', 'is_optional' => true],
+        ]);
+        $this->seedDish($mangKikos, 'Grilled Bangus Belly', 'serving', 1, rate: 45.00, minimumFee: 60.00, ingredients: [
+            ['item' => 'Bangus', 'quantity' => 0.400, 'kind' => 'meat'],
+            ['item' => 'Lemon', 'quantity' => 0.050, 'kind' => 'condiment', 'is_provided' => true],
+        ]);
     }
 
     /**
@@ -200,16 +227,52 @@ class PalutoSeeder extends Seeder
         );
     }
 
-    private function seedFee(
+    /**
+     * @param  array<int, array{item: string, quantity: float, kind: string, note?: string, is_optional?: bool, is_provided?: bool}>  $ingredients
+     */
+    private function seedDish(
         PalutoStall $stall,
-        Recipe $recipe,
+        string $name,
+        string $pricingUnit,
+        float $baseQuantity,
         float $rate,
         float $minimumFee,
+        array $ingredients,
         bool $status = true,
     ): void {
-        PalutoStallRecipe::updateOrCreate(
-            ['paluto_stall_id' => $stall->id, 'recipe_id' => $recipe->id],
-            ['rate' => $rate, 'minimum_fee' => $minimumFee, 'status' => $status],
+        $dish = PalutoDish::firstOrCreate(
+            ['paluto_stall_id' => $stall->id, 'name' => $name],
+            [
+                'pricing_unit' => $pricingUnit,
+                'base_quantity' => $baseQuantity,
+                'rate' => $rate,
+                'minimum_fee' => $minimumFee,
+                'status' => $status,
+            ],
         );
+
+        if ($dish->ingredients()->exists()) {
+            return;
+        }
+
+        foreach ($ingredients as $index => $ingredient) {
+            $item = Item::where('name', $ingredient['item'])->first();
+
+            if (! $item) {
+                continue;
+            }
+
+            PalutoDishIngredient::create([
+                'paluto_dish_id' => $dish->id,
+                'item_id' => $item->id,
+                'kind' => $ingredient['kind'],
+                'quantity' => $ingredient['quantity'],
+                'unit_id' => $item->unit_id,
+                'is_optional' => $ingredient['is_optional'] ?? false,
+                'is_provided' => $ingredient['is_provided'] ?? false,
+                'note' => $ingredient['note'] ?? null,
+                'sort_order' => $index,
+            ]);
+        }
     }
 }

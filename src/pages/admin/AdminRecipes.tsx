@@ -96,7 +96,7 @@ export default function AdminRecipes() {
       {recipesPage && recipesPage.data.length === 0 && (
         <EmptyState
           title="No recipes yet."
-          description="Add your first recipe to offer it as a cook-at-stall dish."
+          description="Add your first recipe so customers can follow it and buy its ingredients."
         />
       )}
 

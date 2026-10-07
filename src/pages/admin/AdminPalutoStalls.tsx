@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { Spinner } from "@/components/common/LoadingState";
@@ -39,6 +39,7 @@ const EMPTY_FORM: StallFormState = {
 
 export default function AdminPalutoStalls() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const showToast = useToastStore((state) => state.showToast);
   const [search, setSearch] = useState("");
   const [marketId, setMarketId] = useState<number | undefined>(undefined);
@@ -92,10 +93,11 @@ export default function AdminPalutoStalls() {
         prep_time_minutes: form.prep_time_minutes ? Number(form.prep_time_minutes) : null,
         image: form.image ?? undefined,
       }),
-    onSuccess: () => {
+    onSuccess: (created) => {
       void queryClient.invalidateQueries({ queryKey: ["adminPalutoStalls"] });
-      showToast("Paluto stall created.", "success");
+      showToast("Stall created. Now add the dishes on its menu.", "success");
       closeModals();
+      navigate(`/admin/paluto-stalls/${created.id}/dishes`);
     },
     onError: (error) => {
       showToast(
@@ -211,7 +213,7 @@ export default function AdminPalutoStalls() {
       {data && data.data.length === 0 && (
         <EmptyState
           title="No paluto stalls yet."
-          description="Add a stall to let it name a cooking fee for recipes."
+          description="Add a stall, then build its menu: each dish with its own ingredients and cooking fee."
         />
       )}
 
@@ -257,10 +259,8 @@ export default function AdminPalutoStalls() {
               >
                 {stall.status ? "Active" : "Inactive"}
               </span>
-              <Link to={`/admin/paluto-stalls/${stall.id}/fees`}>
-                <Button variant="secondary" size="sm">
-                  Manage fees
-                </Button>
+              <Link to={`/admin/paluto-stalls/${stall.id}/dishes`}>
+                <Button size="sm">Manage menu ({stall.dishes_count})</Button>
               </Link>
               {stall.status ? (
                 <Button
@@ -392,6 +392,15 @@ export default function AdminPalutoStalls() {
           >
             {editingStall ? "Save changes" : "Add stall"}
           </Button>
+
+          {editingStall && (
+            <Link
+              to={`/admin/paluto-stalls/${editingStall.id}/dishes`}
+              className="text-center text-sm font-medium text-primary"
+            >
+              Manage this stall&apos;s menu and ingredients →
+            </Link>
+          )}
         </div>
       </Modal>
     </div>

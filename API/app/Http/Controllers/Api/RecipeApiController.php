@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\PalutoStallRecipe;
+use App\Models\MarketPriceSnapshot;
 use App\Models\Recipe;
+use App\Support\PriceDisplay;
 use Illuminate\Http\Request;
 
 class RecipeApiController extends Controller
@@ -41,7 +42,12 @@ class RecipeApiController extends Controller
         return response()->json($recipes);
     }
 
-    public function show(Recipe $recipe, Request $request)
+    /**
+     * Recipes are market-independent; passing market_id prices each ingredient at
+     * that market (the same price the cart will charge), with unit_price null for
+     * ingredients the market has no price for.
+     */
+    public function show(Request $request, Recipe $recipe)
     {
         if (! $recipe->status) {
             return response()->json(['message' => 'Recipe unavailable'], 404);
@@ -49,38 +55,14 @@ class RecipeApiController extends Controller
 
         $marketId = $request->query('market_id');
 
-        $recipe->load(['recipeType', 'ingredients.item.unit']);
+        $recipe->load(['recipeType', 'ingredients.item.unit', 'ingredients.unit']);
 
-        $stalls = [];
-
-        if ($marketId) {
-            $stalls = PalutoStallRecipe::where('recipe_id', $recipe->id)
-                ->where('status', true)
-                ->whereHas('stall', function ($q) use ($marketId) {
-                    $q->where('market_id', $marketId)
-                        ->where('status', true)
-                        ->where('is_accepting_orders', true);
-                })
-                ->with('stall')
+        $snapshots = $marketId
+            ? MarketPriceSnapshot::where('market_id', $marketId)
+                ->whereIn('item_id', $recipe->ingredients->pluck('item_id')->unique())
                 ->get()
-                ->map(fn (PalutoStallRecipe $sr) => [
-                    'id' => $sr->paluto_stall_id,
-                    'name' => $sr->stall->name,
-                    'market_id' => $sr->stall->market_id,
-                    'description' => $sr->stall->description,
-                    'image' => $sr->stall->image_full_url,
-                    'contact_phone' => $sr->stall->contact_phone,
-                    'is_accepting_orders' => $sr->stall->is_accepting_orders,
-                    'prep_time_minutes' => $sr->stall->prep_time_minutes,
-                    'rate' => $sr->rate,
-                    'minimum_fee' => $sr->minimum_fee,
-                    // Which of this recipe's ingredients this stall already
-                    // includes (spices/condiments/garnish, etc.) — those are
-                    // skipped when this stall cooks the order, never charged twice.
-                    'provided_ingredient_ids' => $sr->provided_ingredient_ids ?? [],
-                ])
-                ->values();
-        }
+                ->keyBy('item_id')
+            : collect();
 
         return response()->json([
             'id' => $recipe->id,
@@ -92,20 +74,25 @@ class RecipeApiController extends Controller
             'recipe_type' => $recipe->recipeType?->name,
             'pricing_unit' => $recipe->pricing_unit,
             'base_quantity' => $recipe->base_quantity,
-            'ingredients' => $recipe->ingredients->map(fn ($ingredient) => [
-                'id' => $ingredient->id,
-                'item_id' => $ingredient->item_id,
-                'name' => $ingredient->item?->name,
-                'image' => $ingredient->item?->image_full_url,
-                'kind' => $ingredient->kind,
-                'quantity' => $ingredient->quantity,
-                'unit' => $ingredient->unit?->short_name ?? $ingredient->item?->unit?->short_name,
-                'is_optional' => $ingredient->is_optional,
-                'note' => $ingredient->note,
-            ]),
-            // Only populated when market_id is passed — stalls in that market that
-            // currently cook this recipe, with their live rate/minimum fee.
-            'stalls' => $stalls,
+            'market_id' => $marketId ? (int) $marketId : null,
+            'ingredients' => $recipe->ingredients->map(function ($ingredient) use ($snapshots) {
+                $snapshot = $snapshots[$ingredient->item_id] ?? null;
+
+                return [
+                    'id' => $ingredient->id,
+                    'item_id' => $ingredient->item_id,
+                    'name' => $ingredient->item?->name,
+                    'image' => $ingredient->item?->image_full_url,
+                    'kind' => $ingredient->kind,
+                    'quantity' => $ingredient->quantity,
+                    'unit' => $ingredient->unit?->short_name ?? $ingredient->item?->unit?->short_name,
+                    'is_optional' => $ingredient->is_optional,
+                    'note' => $ingredient->note,
+                    'unit_price' => $snapshot
+                        ? number_format(PriceDisplay::markedUp($snapshot->price), 2, '.', '')
+                        : null,
+                ];
+            }),
         ]);
     }
 }

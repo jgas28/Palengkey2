@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import Input from "@/components/ui/Input";
-import Button from "@/components/ui/Button";
+import PkField from "@/components/pk/PkField";
 import {
   confirmAccountDeletion,
   requestAccountDeletion,
@@ -58,13 +57,13 @@ export default function DeleteAccountForm() {
 
   if (step === "verify") {
     return (
-      <form onSubmit={handleConfirm} className="flex flex-col gap-4">
-        <h1 className="font-display text-xl font-bold text-text">Confirm deletion</h1>
-        <p className="text-sm text-text-muted">
+      <form onSubmit={handleConfirm} noValidate style={{ display: "grid", gap: 14 }}>
+        <h2>Confirm deletion</h2>
+        <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
           Enter the 6-digit code we sent you to permanently delete your account.
         </p>
 
-        <Input
+        <PkField
           label="6-digit code"
           inputMode="numeric"
           maxLength={6}
@@ -73,22 +72,21 @@ export default function DeleteAccountForm() {
           error={otpError}
         />
 
-        <Button variant="danger" type="submit" fullWidth loading={deleting}>
-          Permanently delete my account
-        </Button>
-        <Button variant="ghost" type="button" onClick={() => setStep("warn")} disabled={deleting}>
+        <button type="submit" className="btn primary" style={{ background: "#b82f2f" }} disabled={deleting}>
+          {deleting ? "Deleting…" : "Permanently delete my account"}
+        </button>
+        <button type="button" className="btn outline" onClick={() => setStep("warn")} disabled={deleting}>
           Back
-        </Button>
+        </button>
       </form>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="font-display text-xl font-bold text-text">Delete account</h1>
-
-      <div className="flex flex-col gap-2 rounded-card border border-status-cancelled/30 bg-status-cancelled/5 p-4 text-sm text-text">
-        <p className="font-semibold text-status-cancelled">This can&apos;t be undone.</p>
+    <div style={{ display: "grid", gap: 14 }}>
+      <div className="checkout-cutoff" style={{ margin: 0 }}>
+        <div style={{ display: "grid", gap: 6, fontSize: 11, lineHeight: 1.6 }}>
+        <strong>This can&apos;t be undone.</strong>
         <p>
           Your name, email, phone, saved addresses, and ID documents will be permanently
           removed. Your order history is kept for tax/financial records, but won&apos;t be
@@ -97,28 +95,19 @@ export default function DeleteAccountForm() {
         <p>
           Your email and phone number will be locked from re-registration for 120 days.
         </p>
+        </div>
       </div>
 
-      <p className="text-sm text-text-muted">
+      <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
         We&apos;ll send a confirmation code before anything is deleted.
       </p>
 
-      <Button
-        variant="solid"
-        loading={requesting === "email"}
-        disabled={requesting !== null}
-        onClick={() => void requestCode("email")}
-      >
-        Send code via email
-      </Button>
-      <Button
-        variant="secondary"
-        loading={requesting === "sms"}
-        disabled={requesting !== null}
-        onClick={() => void requestCode("sms")}
-      >
-        Send code via SMS
-      </Button>
+      <button type="button" className="btn primary" disabled={requesting !== null} onClick={() => void requestCode("email")}>
+        {requesting === "email" ? "Sending…" : "Send code via email"}
+      </button>
+      <button type="button" className="btn outline" disabled={requesting !== null} onClick={() => void requestCode("sms")}>
+        {requesting === "sms" ? "Sending…" : "Send code via SMS"}
+      </button>
     </div>
   );
 }

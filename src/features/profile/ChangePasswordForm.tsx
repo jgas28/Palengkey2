@@ -1,8 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import Input from "@/components/ui/Input";
-import Button from "@/components/ui/Button";
+import PkField from "@/components/pk/PkField";
 import { changePassword } from "@/services/api/profile";
 import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
@@ -58,13 +57,9 @@ export default function ChangePasswordForm() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="mx-auto flex w-full max-w-2xl flex-col gap-4"
-    >
-      <h1 className="text-lg font-bold text-text">Change password</h1>
+    <form onSubmit={handleSubmit} noValidate style={{ display: "grid", gap: 14 }}>
 
-      <Input
+      <PkField
         label="Current password"
         type="password"
         autoComplete="current-password"
@@ -72,7 +67,7 @@ export default function ChangePasswordForm() {
         onChange={(event) => setCurrentPassword(event.target.value)}
         error={errors.currentPassword}
       />
-      <Input
+      <PkField
         label="New password"
         type="password"
         autoComplete="new-password"
@@ -80,7 +75,7 @@ export default function ChangePasswordForm() {
         onChange={(event) => setPassword(event.target.value)}
         error={errors.password}
       />
-      <Input
+      <PkField
         label="Confirm new password"
         type="password"
         autoComplete="new-password"
@@ -89,9 +84,9 @@ export default function ChangePasswordForm() {
         error={errors.passwordConfirmation}
       />
 
-      <Button variant="solid" type="submit" fullWidth loading={changeMutation.isPending}>
+      <button type="submit" className="btn primary" disabled={changeMutation.isPending}>
         Change password
-      </Button>
+      </button>
     </form>
   );
 }

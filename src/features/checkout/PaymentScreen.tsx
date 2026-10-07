@@ -1,7 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import Button from "@/components/ui/Button";
-import { Spinner } from "@/components/common/LoadingState";
+import Icon from "@/components/pk/Icon";
 import { isFailedPaymentStatus, usePaymentStatus } from "@/features/checkout/usePaymentStatus";
 import type { Order } from "@/types/order";
 
@@ -44,29 +43,35 @@ export default function PaymentScreen({
     return () => clearTimeout(timeout);
   }, [order?.payment_status, isTerminalFailure]);
 
-  return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-4 px-6 py-8 text-center">
-      <h1 className="text-lg font-semibold">{title}</h1>
+  const failed = isTerminalFailure || timedOut;
 
-      {isTerminalFailure || timedOut ? (
-        <>
-          <p className="text-sm text-status-cancelled">
-            {timedOut ? timeoutMessage : failureMessage}
-          </p>
-          <Button variant="solid" onClick={() => navigate("/cart")}>
-            Back to cart
-          </Button>
-        </>
-      ) : (
-        <>
-          {renderPending(order)}
-          <div className="flex items-center gap-2 text-sm text-text-muted">
-            <Spinner className="h-4 w-4" />
-            Waiting for payment confirmation…
-          </div>
-          <p className="text-xs text-text-muted">{expiryHint}</p>
-        </>
-      )}
-    </div>
+  return (
+    <main className="inner-page account-bg">
+      <section className="confirmation shell">
+        <span style={failed ? { background: "#dc2626", boxShadow: "0 0 0 12px #fde8e8" } : { background: "var(--teal)", boxShadow: "0 0 0 12px var(--teal-pale)" }}>
+          <Icon name={failed ? "x" : "clock"} size={38} />
+        </span>
+        <p className="kicker">{failed ? "Payment not completed" : "Awaiting payment"}</p>
+        <h1>{title}</h1>
+        {failed ? (
+          <>
+            <p>{timedOut ? timeoutMessage : failureMessage}</p>
+            <button type="button" className="btn primary" onClick={() => navigate("/cart")}>
+              Back to basket <Icon name="arrow" />
+            </button>
+          </>
+        ) : (
+          <>
+            <div style={{ display: "grid", placeItems: "center", gridTemplateColumns: "1fr" }}>
+              {renderPending(order)}
+            </div>
+            <p>Waiting for payment confirmation… {expiryHint}</p>
+          </>
+        )}
+        <button type="button" onClick={() => navigate("/orders")}>
+          View my orders
+        </button>
+      </section>
+    </main>
   );
 }

@@ -1,10 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import Drawer from "@/components/ui/Drawer";
-import Button from "@/components/ui/Button";
-import { Spinner } from "@/components/common/LoadingState";
-import EmptyState from "@/components/common/EmptyState";
-import ErrorState from "@/components/common/ErrorState";
+import Icon from "@/components/pk/Icon";
+import PkSheet from "@/components/pk/PkSheet";
 import AddressForm from "@/features/addresses/AddressForm";
 import { listAddresses } from "@/services/api/addresses";
 import type { Address } from "@/types/address";
@@ -16,6 +13,7 @@ export interface AddressPickerDrawerProps {
   onSelect: (address: Address) => void;
 }
 
+/** Checkout's "where should we deliver?" picker, on the design's address sheet. */
 export default function AddressPickerDrawer({
   isOpen,
   onClose,
@@ -24,12 +22,7 @@ export default function AddressPickerDrawer({
 }: AddressPickerDrawerProps) {
   const [showForm, setShowForm] = useState(false);
 
-  const {
-    data: addresses,
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery({
+  const { data: addresses = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["addresses"],
     queryFn: listAddresses,
     enabled: isOpen,
@@ -40,100 +33,80 @@ export default function AddressPickerDrawer({
     onClose();
   }
 
-  function handleSaved(address: Address) {
+  function close() {
     setShowForm(false);
-    handleSelect(address);
+    onClose();
   }
 
   return (
-    <Drawer
+    <PkSheet
       isOpen={isOpen}
-      onClose={() => {
-        setShowForm(false);
-        onClose();
-      }}
-      side="bottom"
-      title={showForm ? "New address" : "Delivery address"}
+      onClose={close}
+      kicker={showForm ? "New delivery location" : "Delivery address"}
+      title={showForm ? "Add an address" : "Where should we deliver?"}
     >
       {showForm ? (
-        <AddressForm onSaved={handleSaved} />
+        <AddressForm
+          onSaved={(address) => {
+            setShowForm(false);
+            handleSelect(address);
+          }}
+        />
       ) : (
-        <div className="flex flex-col gap-3">
-          {isLoading && (
-            <div className="flex justify-center py-6">
-              <Spinner />
-            </div>
-          )}
-
-          {isError && <ErrorState onRetry={() => void refetch()} />}
-
-          {!isLoading && !isError && addresses?.length === 0 && (
-            <EmptyState
-              icon={<span className="text-5xl">📍</span>}
-              title="No saved addresses yet."
-            />
-          )}
-
-          {!isLoading && !isError && addresses && addresses.length > 0 && (
-            <ul className="flex flex-col gap-2">
-              {addresses.map((address) => {
-                const isSelected = address.id === selectedAddressId;
-                return (
-                  <li key={address.id}>
-                    <button
-                      type="button"
-                      onClick={() => handleSelect(address)}
-                      className={`flex w-full items-start justify-between gap-3 rounded-card border p-3.5 text-left transition-colors ${
-                        isSelected
-                          ? "border-primary bg-primary-50"
-                          : "border-border bg-surface md:hover:border-primary-200"
-                      }`}
-                    >
-                      <span className="flex flex-col items-start gap-0.5">
-                        <span className="font-semibold text-text">
-                          {address.label}
-                          {address.is_default && (
-                            <span className="ml-2 rounded-pill bg-primary-100 px-2 py-0.5 text-[10px] font-semibold text-primary-700">
-                              Default
-                            </span>
-                          )}
-                        </span>
-                        <span className="text-sm text-text-muted">{address.address}</span>
-                        <span className="text-xs text-text-muted">
-                          {address.contact_name} · {address.contact_phone}
-                        </span>
-                      </span>
-                      {isSelected && (
-                        <span
-                          aria-hidden="true"
-                          className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary-500 text-white"
-                        >
-                          <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M20 6 9 17l-5-5" />
-                          </svg>
-                        </span>
-                      )}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-
-          <Button variant="secondary" onClick={() => setShowForm(true)}>
-            Add new address
-          </Button>
-        </div>
+        <>
+          <div className="market-options">
+            {isLoading && <p style={{ color: "var(--muted)", fontSize: 11 }}>Loading addresses…</p>}
+            {isError && (
+              <button type="button" onClick={() => void refetch()}>
+                <span>
+                  <Icon name="x" />
+                </span>
+                <div>
+                  <strong>Couldn&apos;t load addresses</strong>
+                  <p>Tap to try again.</p>
+                </div>
+              </button>
+            )}
+            {!isLoading && !isError && addresses.length === 0 && (
+              <p style={{ color: "var(--muted)", fontSize: 11 }}>No saved addresses yet.</p>
+            )}
+            {addresses.map((address) => {
+              const selected = address.id === selectedAddressId;
+              return (
+                <button
+                  type="button"
+                  className={selected ? "selected" : ""}
+                  key={address.id}
+                  onClick={() => handleSelect(address)}
+                >
+                  <span>
+                    <Icon name="truck" />
+                  </span>
+                  <div>
+                    <strong>
+                      {address.label}
+                      {address.is_default ? " · Default" : ""}
+                    </strong>
+                    <p>{address.address}</p>
+                    <small>
+                      {address.contact_name} · {address.contact_phone}
+                    </small>
+                  </div>
+                  <i>{selected ? <Icon name="check" size={16} /> : <Icon name="chevron" size={16} />}</i>
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            className="btn outline"
+            style={{ width: "100%", marginTop: 16 }}
+            onClick={() => setShowForm(true)}
+          >
+            <Icon name="plus" /> Add new address
+          </button>
+        </>
       )}
-    </Drawer>
+    </PkSheet>
   );
 }

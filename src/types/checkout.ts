@@ -6,10 +6,19 @@ export interface DeliveryFeeResponse {
   eta_min: number;
   eta_max: number;
   market_name?: string;
+  market_latitude?: number;
+  market_longitude?: number;
   debug?: string;
 }
 
-export type CheckoutPaymentMethod = "cod" | "qrph" | "bpi";
+export type CheckoutPaymentMethod =
+  | "cod"
+  | "qrph"
+  | "bpi"
+  | "card"
+  | "gcash"
+  | "maya"
+  | "ubp";
 
 export interface CheckoutPayload {
   address_id: number;
@@ -27,6 +36,13 @@ export interface CheckoutSuccessResponse {
   order: Order;
   qrph: { qr_url: string; reference: string | null; status: string | null } | null;
   bpi: { redirect_url: string; reference: string | null; status: string | null } | null;
+  /** Card, GCash, Maya, UnionBank — pay on PayMongo's hosted checkout page. */
+  payment_redirect?: {
+    method: CheckoutPaymentMethod;
+    redirect_url: string;
+    reference: string | null;
+    status: string | null;
+  } | null;
 }
 
 /** Mirrors CheckoutController::orderLaterSlots() exactly. */

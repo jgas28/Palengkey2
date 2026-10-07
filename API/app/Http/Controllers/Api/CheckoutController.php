@@ -10,13 +10,14 @@ use App\Models\ItemPrice;
 use App\Models\Market;
 use App\Models\MarketPriceSnapshot;
 use App\Models\Order;
+use App\Models\PalutoDish;
 use App\Models\PalutoStall;
-use App\Models\PalutoStallRecipe;
 use App\Models\Setting;
 use App\Models\Voucher;
 use App\Models\VoucherUsage;
 use App\Services\InvoiceSeriesService;
 use App\Services\PayMongoService;
+use App\Support\BulkPricing;
 use App\Support\PriceDisplay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -75,7 +76,7 @@ class CheckoutController extends Controller
     {
         $data = $request->validate([
             'address_id' => 'required|exists:customer_addresses,id',
-            'payment_method' => 'required|in:cod,paymongo,qrph,card,bpi',
+            'payment_method' => 'required|in:cod,paymongo,'.implode(',', Order::CASHLESS_METHODS),
             'item_ids' => 'required_without:recipe_bundle_ids|array',
             'item_ids.*' => 'exists:cart_items,id',
             'recipe_bundle_ids' => 'nullable|array',
@@ -91,10 +92,11 @@ class CheckoutController extends Controller
         $selectedBundleIds = collect($data['recipe_bundle_ids'] ?? [])->map(fn ($id) => (int) $id)->values();
         $isQrphPayment = $data['payment_method'] === 'qrph';
         $isBpiPayment = $data['payment_method'] === 'bpi';
-        // Both qrph and bpi are redirect/QR-first flows: the order starts as
+        $isHostedCheckout = array_key_exists($data['payment_method'], Order::CHECKOUT_SESSION_METHODS);
+        // Every online method is redirect/QR-first: the order starts as
         // pending_payment and the cart isn't cleared until the payment record
         // is actually created below.
-        $isCashlessPayment = $isQrphPayment || $isBpiPayment;
+        $isCashlessPayment = in_array($data['payment_method'], Order::CASHLESS_METHODS, true);
 
         // Cash on Delivery no longer requires ID verification before the first order.
 
@@ -107,7 +109,7 @@ class CheckoutController extends Controller
 
             $selectedItems = CartItem::where('cart_id', $cart->id)
                 ->whereIn('id', $selectedItemIds)
-                ->with(['item.unit', 'market'])
+                ->with(['item.unit', 'item.category', 'market'])
                 ->lockForUpdate()
                 ->get();
 
@@ -179,6 +181,19 @@ class CheckoutController extends Controller
             $validatedItems = [];
             $isReservation = false;
 
+            // Bulk tier: decided on exactly the lines being checked out.
+            $bulk = BulkPricing::evaluate($selectedItems->map(function (CartItem $cartItem) {
+                $itemQty = max(1, (int) ($cartItem->item_quantity ?? 1));
+
+                return [
+                    'item' => $cartItem->item,
+                    'weight_kg' => $this->isWeightUnit($cartItem->item?->unit)
+                        ? (float) ($cartItem->weight_kg ?: ($cartItem->quantity / $itemQty)) * $itemQty
+                        : 0,
+                ];
+            }));
+            $bulkDiscount = 0;
+
             foreach ($selectedItems as $cartItem) {
                 // Past-cutoff items are allowed, but become order-later requests —
                 // they skip the live-availability check below since the market may
@@ -213,10 +228,21 @@ class CheckoutController extends Controller
                         ->value('price')
                     ?? $cartItem->price;
 
-                $price = number_format(PriceDisplay::markedUp($effectivePrice), 2, '.', '');
+                $isBulk = $bulk[$cartItem->item_id]['qualifies'] ?? false;
+                $regularPrice = number_format(PriceDisplay::markedUp($effectivePrice), 2, '.', '');
+                $price = $isBulk
+                    ? number_format(BulkPricing::unitPrice($effectivePrice), 2, '.', '')
+                    : $regularPrice;
                 $priceEach = $hasWeightSelection
                     ? $this->priceForWeight($unit, (float) $price, $weightKg)
                     : (float) $price;
+
+                if ($isBulk) {
+                    $regularEach = $hasWeightSelection
+                        ? $this->priceForWeight($unit, (float) $regularPrice, $weightKg)
+                        : (float) $regularPrice;
+                    $bulkDiscount += ($regularEach - $priceEach) * $itemQty;
+                }
                 $qty = $hasWeightSelection
                     ? $this->orderQuantityForWeight($unit, $weightKg, $itemQty)
                     : $itemQty;
@@ -231,15 +257,22 @@ class CheckoutController extends Controller
                     'quantity' => $qty,
                     'price' => $price,
                     'price_at_purchase' => $price,
+                    'is_bulk' => $isBulk,
+                    'regular_price' => $isBulk ? $regularPrice : null,
                     'subtotal' => $itemSubtotal,
                     'customer_note' => $cartItem->customer_note,
                 ];
             }
 
-            // Paluto: rebuild each selected recipe bundle's ingredient lines from live
-            // prices (same snapshot pattern as the loop above), re-verify the stall still
-            // cooks the recipe and is accepting orders, and recompute the cooking fee from
-            // the live rate/minimum_fee — never trust the cart's cached preview values.
+            // BULK-FREESHIP: min(delivery fee, cap), taken off delivery before any
+            // customer voucher so the two together never exceed the fee.
+            $bulkDeliverySubsidy = BulkPricing::deliverySubsidy($bulk, $deliveryFeeTotal);
+
+            // Paluto: rebuild each selected bundle's ingredient lines from live prices
+            // (same snapshot pattern as the loop above), re-verify the stall's dish is
+            // still on its menu and the stall is accepting orders, and recompute the
+            // cooking fee from the dish's live rate/minimum_fee — never trust the cart's
+            // cached preview values.
             $validatedBundles = [];
             $palutoCookingFee = 0;
             $palutoStallId = null;
@@ -282,7 +315,6 @@ class CheckoutController extends Controller
                 $subtotal += $bundleIngredientsSubtotal;
 
                 $stall = null;
-                $stallRecipe = null;
                 $cookingFee = 0;
                 $rateAtPurchase = null;
 
@@ -295,23 +327,26 @@ class CheckoutController extends Controller
                         abort(422, "The stall for \"{$bundle->recipe_name}\" is no longer accepting orders.");
                     }
 
-                    $stallRecipe = PalutoStallRecipe::where('paluto_stall_id', $stall->id)
-                        ->where('recipe_id', $bundle->recipe_id)
-                        ->lockForUpdate()
-                        ->first();
+                    $dish = $bundle->paluto_dish_id
+                        ? PalutoDish::where('id', $bundle->paluto_dish_id)
+                            ->where('paluto_stall_id', $stall->id)
+                            ->lockForUpdate()
+                            ->first()
+                        : null;
 
-                    if (! $stallRecipe || ! $stallRecipe->status) {
-                        abort(422, "The stall no longer cooks \"{$bundle->recipe_name}\".");
+                    if (! $dish || ! $dish->status) {
+                        abort(422, "{$stall->name} no longer cooks \"{$bundle->recipe_name}\". Please remove it from your cart.");
                     }
 
-                    $rateAtPurchase = (float) $stallRecipe->rate;
-                    $cookingFee = round(max($rateAtPurchase * (float) $bundle->quantity, (float) ($stallRecipe->minimum_fee ?? 0)), 2);
+                    $rateAtPurchase = (float) $dish->rate;
+                    $cookingFee = $dish->cookingFeeFor((float) $bundle->quantity);
                     $palutoCookingFee += $cookingFee;
                     $palutoStallId = $stall->id;
                 }
 
                 $validatedBundles[] = [
                     'recipe_id' => $bundle->recipe_id,
+                    'paluto_dish_id' => $bundle->paluto_dish_id,
                     'recipe_name' => $bundle->recipe_name,
                     'paluto_stall_id' => $stall?->id,
                     'stall_name' => $stall?->name,
@@ -345,11 +380,11 @@ class CheckoutController extends Controller
                     throw ValidationException::withMessages(['voucher_code' => $blockReason]);
                 }
 
-                $voucherDiscount = $voucher->calculateTotalDiscount($subtotal, $serviceFee, $deliveryFeeTotal);
+                $voucherDiscount = $voucher->calculateTotalDiscount($subtotal, $serviceFee, $deliveryFeeTotal - $bulkDeliverySubsidy);
                 $appliedVoucher = $voucher;
             }
 
-            $grandTotal = max(0, round($subtotal + $deliveryFeeTotal + $serviceFee + $palutoCookingFee - $voucherDiscount, 2));
+            $grandTotal = max(0, round($subtotal + $deliveryFeeTotal + $serviceFee + $palutoCookingFee - $voucherDiscount - $bulkDeliverySubsidy, 2));
 
             $scheduledDeliveryTime = null;
             $deliverySlot = null;
@@ -392,6 +427,8 @@ class CheckoutController extends Controller
                 'voucher_discount' => $voucherDiscount,
                 'voucher_code' => $appliedVoucher?->code,
                 'voucher_id' => $appliedVoucher?->id,
+                'bulk_discount' => round($bulkDiscount, 2),
+                'bulk_delivery_subsidy' => $bulkDeliverySubsidy,
                 'total_amount' => $grandTotal,
                 'distance_meters' => round($distanceKm * 1000),
 
@@ -412,6 +449,7 @@ class CheckoutController extends Controller
             foreach ($validatedBundles as $bundleData) {
                 $orderBundle = $order->recipeBundles()->create([
                     'recipe_id' => $bundleData['recipe_id'],
+                    'paluto_dish_id' => $bundleData['paluto_dish_id'],
                     'recipe_name' => $bundleData['recipe_name'],
                     'paluto_stall_id' => $bundleData['paluto_stall_id'],
                     'stall_name' => $bundleData['stall_name'],
@@ -498,6 +536,39 @@ class CheckoutController extends Controller
             $bpi = ['redirect_url' => $cashless->redirect_url, 'reference' => $cashless->reference, 'status' => $cashless->status];
         }
 
+        // Card, GCash, Maya, UnionBank: PayMongo-hosted checkout page.
+        $paymentRedirect = null;
+        if ($isHostedCheckout) {
+            $label = Order::paymentMethodLabel($data['payment_method']);
+
+            try {
+                $cashless = app(PayMongoService::class)->createCheckoutSessionPayment(
+                    $order,
+                    $data['payment_method'],
+                    route('api.payment.return', $order),
+                    route('api.payment.return', ['order' => $order, 'cancelled' => 1]),
+                );
+            } catch (\Throwable $e) {
+                \Log::error("Failed to create {$label} payment for order ".$order->order_number, ['message' => $e->getMessage()]);
+                $cashless = null;
+            }
+
+            if (! $cashless || ! $cashless->redirect_url) {
+                $this->removeUnpaidCashlessOrder($order);
+
+                return response()->json(['message' => "{$label} payment could not be started. Please try again or choose another payment method."], 422);
+            }
+
+            $this->clearSelectedCart($selectedItemIds, $selectedBundleIds);
+
+            $paymentRedirect = [
+                'method' => $data['payment_method'],
+                'redirect_url' => $cashless->redirect_url,
+                'reference' => $cashless->reference,
+                'status' => $cashless->status,
+            ];
+        }
+
         return response()->json([
             'message' => $order->is_reservation
                 ? 'Order later request placed successfully. Delivery is scheduled for '.($order->scheduled_delivery_time ? $order->scheduled_delivery_time->format('M d, h:i A') : 'the selected time').'.'
@@ -505,6 +576,7 @@ class CheckoutController extends Controller
             'order' => $order->fresh(['items', 'recipeBundles', 'cashlessPayment']),
             'qrph' => $qrph,
             'bpi' => $bpi,
+            'payment_redirect' => $paymentRedirect,
             ...$customer->verificationFlags(),
         ], 201);
     }
@@ -597,6 +669,9 @@ class CheckoutController extends Controller
             'eta_min' => $etaMin,
             'eta_max' => $etaMax,
             'market_name' => $market->name,
+            // For the checkout map (market → delivery address).
+            'market_latitude' => (float) $market->latitude,
+            'market_longitude' => (float) $market->longitude,
         ]);
     }
 

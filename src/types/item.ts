@@ -10,6 +10,12 @@ export interface ItemSummary {
   is_muslim_friendly: boolean;
   cutoff_time: string | null;
   is_cutoff: boolean;
+  /** Bulk tier — kg of this item that unlocks bulk_price; null when not bulk-eligible. */
+  bulk_min_kg: number | null;
+  /** Wholesale per-unit price once bulk_min_kg is reached. */
+  bulk_price: number | null;
+  /** Max delivery covered by BULK-FREESHIP when bulk is reached. */
+  bulk_delivery_subsidy_cap: number | null;
 }
 
 export interface ItemDetail {
@@ -26,4 +32,10 @@ export interface ItemDetail {
   price_at: string | null;
   cutoff_time: string | null;
   is_cutoff: boolean;
+  /** Bulk tier — kg of this item that unlocks bulk_price; null when not bulk-eligible. */
+  bulk_min_kg: number | null;
+  /** Wholesale per-unit price once bulk_min_kg is reached. */
+  bulk_price: number | null;
+  /** Max delivery covered by BULK-FREESHIP when bulk is reached. */
+  bulk_delivery_subsidy_cap: number | null;
 }

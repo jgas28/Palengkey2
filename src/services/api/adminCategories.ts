@@ -23,12 +23,15 @@ export async function listAdminCategoriesPage(
   return data;
 }
 
+/** Empty string = no bulk pricing for this category. */
 export async function createAdminCategory(
   name: string,
   image?: File,
+  bulkMinKg = "",
 ): Promise<AdminCategory> {
   const form = new FormData();
   form.append("name", name);
+  form.append("bulk_min_kg", bulkMinKg);
   if (image) form.append("image", image);
 
   const { data } = await adminApiClient.post<AdminCategory>(
@@ -42,9 +45,11 @@ export async function updateAdminCategory(
   categoryId: number,
   name: string,
   image?: File,
+  bulkMinKg = "",
 ): Promise<AdminCategory> {
   const form = new FormData();
   form.append("name", name);
+  form.append("bulk_min_kg", bulkMinKg);
   if (image) form.append("image", image);
 
   const { data } = await adminApiClient.post<AdminCategory>(

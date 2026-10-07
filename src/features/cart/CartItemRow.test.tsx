@@ -45,8 +45,8 @@ describe("CartItemRow", () => {
     renderWithClient(<CartItemRow item={item} selected onToggleSelect={vi.fn()} />);
 
     expect(screen.getByText("Tomato")).toBeInTheDocument();
-    expect(screen.getByText("500 g each")).toBeInTheDocument();
-    expect(screen.getByText('"Please choose ripe ones."')).toBeInTheDocument();
+    expect(screen.getByText(/500 g each/)).toBeInTheDocument();
+    expect(screen.getByText("Note: Please choose ripe ones.")).toBeInTheDocument();
     expect(screen.getAllByText(/240/).length).toBeGreaterThan(0);
   });
 

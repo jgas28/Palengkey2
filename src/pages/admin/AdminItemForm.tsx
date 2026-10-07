@@ -76,6 +76,7 @@ export default function AdminItemForm() {
   const [categoryId, setCategoryId] = useState<number | "">(item?.category_id ?? "");
   const [typeId, setTypeId] = useState<number | "">(item?.type_id ?? "");
   const [unitId, setUnitId] = useState<number | "">(item?.unit_id ?? "");
+  const [bulkMinKg, setBulkMinKg] = useState("");
   const [price, setPrice] = useState(item?.market?.price?.toString() ?? "");
   const [isAvailable, setIsAvailable] = useState(item?.market?.is_available ?? true);
   const [cutoffTime, setCutoffTime] = useState(item?.market?.cutoff_time ?? "");
@@ -89,6 +90,7 @@ export default function AdminItemForm() {
     setCategoryId(item.category_id);
     setTypeId(item.type_id ?? "");
     setUnitId(item.unit_id);
+    setBulkMinKg(item.bulk_min_kg ? String(Number(item.bulk_min_kg)) : "");
     setPrice(item.market?.price?.toString() ?? "");
     setIsAvailable(item.market?.is_available ?? true);
     setCutoffTime(item.market?.cutoff_time ?? "");
@@ -104,6 +106,7 @@ export default function AdminItemForm() {
         category_id: Number(categoryId),
         type_id: typeId ? Number(typeId) : undefined,
         unit_id: Number(unitId),
+        bulk_min_kg: bulkMinKg ? Number(bulkMinKg) : null,
         price: Number(price),
         is_available: isAvailable,
         cutoff_time: cutoffTime || undefined,
@@ -135,6 +138,7 @@ export default function AdminItemForm() {
         category_id: Number(categoryId),
         type_id: typeId ? Number(typeId) : undefined,
         unit_id: Number(unitId),
+        bulk_min_kg: bulkMinKg ? Number(bulkMinKg) : null,
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["adminItems"] });
@@ -357,6 +361,21 @@ export default function AdminItemForm() {
             </select>
           </label>
         </div>
+
+        <Input
+          label="Bulk order minimum (kg) — optional override"
+          type="number"
+          min="0"
+          step="0.25"
+          value={bulkMinKg}
+          onChange={(e) => setBulkMinKg(e.target.value)}
+          placeholder={
+            item?.category_bulk_min_kg
+              ? `Category default: ${Number(item.category_bulk_min_kg)} kg`
+              : "Uses the category's bulk minimum"
+          }
+          helperText="Only for items sold by weight. Leave blank to use the category's bulk minimum."
+        />
 
         {!isEditing && (
           <label className="flex flex-col gap-1.5 text-sm font-medium text-text">

@@ -25,6 +25,7 @@ export default function AdminCategories() {
   const [editing, setEditing] = useState<AdminCategory | null>(null);
   const [name, setName] = useState("");
   const [image, setImage] = useState<File | null>(null);
+  const [bulkMinKg, setBulkMinKg] = useState("");
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["adminCategories", search, statusFilter, page],
@@ -37,7 +38,7 @@ export default function AdminCategories() {
   });
 
   const createMutation = useMutation({
-    mutationFn: () => createAdminCategory(name, image ?? undefined),
+    mutationFn: () => createAdminCategory(name, image ?? undefined, bulkMinKg),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["adminCategories"] });
       showToast("Category created.", "success");
@@ -52,7 +53,8 @@ export default function AdminCategories() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: () => updateAdminCategory(editing!.id, name, image ?? undefined),
+    mutationFn: () =>
+      updateAdminCategory(editing!.id, name, image ?? undefined, bulkMinKg),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["adminCategories"] });
       showToast("Category updated.", "success");
@@ -92,6 +94,7 @@ export default function AdminCategories() {
     setEditing(null);
     setName("");
     setImage(null);
+    setBulkMinKg("");
     setFormOpen(true);
   }
 
@@ -99,6 +102,7 @@ export default function AdminCategories() {
     setEditing(category);
     setName(category.name);
     setImage(null);
+    setBulkMinKg(category.bulk_min_kg ? String(Number(category.bulk_min_kg)) : "");
     setFormOpen(true);
   }
 
@@ -180,6 +184,11 @@ export default function AdminCategories() {
                 {category.active_items_count} active item
                 {category.active_items_count === 1 ? "" : "s"}
               </span>
+              <span className="text-xs font-medium text-[#B26A00]">
+                {category.bulk_min_kg
+                  ? `Bulk at ${Number(category.bulk_min_kg)} kg+`
+                  : "No bulk pricing"}
+              </span>
               <div className="flex flex-wrap gap-2 text-xs">
                 <button
                   type="button"
@@ -244,6 +253,17 @@ export default function AdminCategories() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
+          />
+
+          <Input
+            label="Bulk order minimum (kg)"
+            type="number"
+            min="0"
+            step="0.25"
+            value={bulkMinKg}
+            onChange={(e) => setBulkMinKg(e.target.value)}
+            placeholder="e.g. 6 for meat, 10 for vegetables"
+            helperText="One item at this weight or more gets the wholesale price + delivery subsidy. Leave blank for no bulk pricing. Items can override this."
           />
 
           <label className="flex flex-col gap-1.5 text-sm font-medium text-text">

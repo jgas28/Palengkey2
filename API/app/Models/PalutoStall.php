@@ -32,16 +32,9 @@ class PalutoStall extends Model
         return $this->belongsTo(Market::class);
     }
 
-    public function stallRecipes()
+    public function dishes()
     {
-        return $this->hasMany(PalutoStallRecipe::class);
-    }
-
-    public function recipes()
-    {
-        return $this->belongsToMany(Recipe::class, 'paluto_stall_recipes')
-            ->withPivot(['rate', 'minimum_fee', 'status'])
-            ->withTimestamps();
+        return $this->hasMany(PalutoDish::class)->orderBy('sort_order')->orderBy('name');
     }
 
     public function getImageFullUrlAttribute(): ?string

@@ -5,6 +5,8 @@ export interface AdminCategory {
   image_url: string;
   status: boolean;
   active_items_count: number;
+  /** Bulk tier threshold (kg) for items in this category; null = no bulk pricing. */
+  bulk_min_kg: string | null;
 }
 
 export interface AdminCategoryPage {

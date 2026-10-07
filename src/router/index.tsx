@@ -12,8 +12,9 @@ import LoadingState from "@/components/common/LoadingState";
 const Global = lazy(() => import("@/pages/Global"));
 const Home = lazy(() => import("@/pages/Home"));
 const ProductDetail = lazy(() => import("@/pages/ProductDetail"));
-const Categories = lazy(() => import("@/pages/Categories"));
 const Paluto = lazy(() => import("@/pages/Paluto"));
+const PalutoStallMenu = lazy(() => import("@/pages/paluto/PalutoStallMenu"));
+const Recipes = lazy(() => import("@/pages/Recipes"));
 const Cart = lazy(() => import("@/pages/Cart"));
 const Vouchers = lazy(() => import("@/pages/Vouchers"));
 const Orders = lazy(() => import("@/pages/Orders"));
@@ -80,7 +81,8 @@ const AdminRecipes = lazy(() => import("@/pages/admin/AdminRecipes"));
 const AdminRecipeForm = lazy(() => import("@/pages/admin/AdminRecipeForm"));
 const AdminRecipeTypes = lazy(() => import("@/pages/admin/AdminRecipeTypes"));
 const AdminPalutoStalls = lazy(() => import("@/pages/admin/AdminPalutoStalls"));
-const AdminPalutoStallFees = lazy(() => import("@/pages/admin/AdminPalutoStallFees"));
+const AdminPalutoDishes = lazy(() => import("@/pages/admin/AdminPalutoDishes"));
+const AdminPalutoDishForm = lazy(() => import("@/pages/admin/AdminPalutoDishForm"));
 
 export default function AppRouter() {
   return (
@@ -94,8 +96,10 @@ export default function AppRouter() {
           <Route index element={<Global />} />
           <Route path="shop" element={<Home />} />
           <Route path="product/:itemId" element={<ProductDetail />} />
-          <Route path="categories" element={<Categories />} />
+          <Route path="categories" element={<Navigate to="/shop" replace />} />
           <Route path="paluto" element={<Paluto />} />
+          <Route path="paluto/stalls/:stallId" element={<PalutoStallMenu />} />
+          <Route path="recipes" element={<Recipes />} />
           {/* Guest-accessible — the cart itself works signed-out (device-id keyed on
               the backend); only checkout requires an account. */}
           <Route path="cart" element={<Cart />} />
@@ -126,6 +130,7 @@ export default function AppRouter() {
             />
             <Route path="checkout/qrph/:orderId" element={<QrphPayment />} />
             <Route path="checkout/bpi/:orderId" element={<BpiPayment />} />
+            <Route path="checkout/pay/:orderId" element={<BpiPayment />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
@@ -156,7 +161,12 @@ export default function AppRouter() {
             <Route path="recipes/:recipeId/edit" element={<AdminRecipeForm />} />
             <Route path="recipe-types" element={<AdminRecipeTypes />} />
             <Route path="paluto-stalls" element={<AdminPalutoStalls />} />
-            <Route path="paluto-stalls/:stallId/fees" element={<AdminPalutoStallFees />} />
+            <Route path="paluto-stalls/:stallId/dishes" element={<AdminPalutoDishes />} />
+            <Route path="paluto-stalls/:stallId/dishes/new" element={<AdminPalutoDishForm />} />
+            <Route
+              path="paluto-stalls/:stallId/dishes/:dishId/edit"
+              element={<AdminPalutoDishForm />}
+            />
             <Route path="orders" element={<AdminOrders />} />
             <Route path="orders/:orderId" element={<AdminOrderDetail />} />
             <Route path="riders" element={<AdminRiders />} />

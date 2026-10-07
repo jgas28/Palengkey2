@@ -49,12 +49,18 @@
         <tr><td>Delivery fee</td><td style="text-align:right">₱{{ number_format((float) $order->delivery_fee, 2) }}</td></tr>
         <tr><td>VAT</td><td style="text-align:right">₱{{ number_format((float) $order->vat, 2) }}</td></tr>
         <tr><td>Service fee</td><td style="text-align:right">₱{{ number_format((float) $order->service_fee, 2) }}</td></tr>
+        @if ((float) ($order->bulk_delivery_subsidy ?? 0) > 0)
+            <tr><td>Bulk delivery subsidy ({{ \App\Support\BulkPricing::VOUCHER_CODE }})</td><td style="text-align:right">-₱{{ number_format((float) $order->bulk_delivery_subsidy, 2) }}</td></tr>
+        @endif
         @if ((float) $order->voucher_discount > 0)
             <tr><td>Voucher discount ({{ $order->voucher_code }})</td><td style="text-align:right">-₱{{ number_format((float) $order->voucher_discount, 2) }}</td></tr>
+        @endif
+        @if ((float) ($order->bulk_discount ?? 0) > 0)
+            <tr><td colspan="2" style="color:#2E7D32">Bulk wholesale savings already in item prices: ₱{{ number_format((float) $order->bulk_discount, 2) }}</td></tr>
         @endif
         <tr><td>Total</td><td style="text-align:right">₱{{ number_format((float) $order->total_amount, 2) }}</td></tr>
     </table>
 
-    <p class="muted" style="margin-top: 24px;">Payment method: {{ strtoupper($order->payment_method) }} — {{ ucfirst($order->payment_status) }}</p>
+    <p class="muted" style="margin-top: 24px;">Payment method: {{ \App\Models\Order::paymentMethodLabel($order->payment_method) }} — {{ ucfirst($order->payment_status) }}</p>
 </body>
 </html>

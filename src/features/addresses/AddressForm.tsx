@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import Input from "@/components/ui/Input";
-import Button from "@/components/ui/Button";
+import Icon from "@/components/pk/Icon";
+import PkField from "@/components/pk/PkField";
 import AddressMapPicker from "@/features/addresses/AddressMapPicker";
 import { createAddress, updateAddress } from "@/services/api/addresses";
 import { getCurrentCoordinates } from "@/utils/geolocation";
@@ -94,66 +94,67 @@ export default function AddressForm({ existingAddress, onSaved }: AddressFormPro
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <Input
-        label="Label"
-        placeholder="Home, Office, etc."
-        value={label}
-        onChange={(event) => setLabel(event.target.value)}
-        error={errors.label}
-      />
-      <Input
-        label="Contact name"
-        value={contactName}
-        onChange={(event) => setContactName(event.target.value)}
-        error={errors.contactName}
-      />
-      <Input
-        label="Contact phone"
-        type="tel"
-        value={contactPhone}
-        onChange={(event) => setContactPhone(event.target.value)}
-        error={errors.contactPhone}
-      />
-      <Input
-        label="Address"
-        placeholder="House/unit no., street, barangay, city"
-        value={address}
-        onChange={(event) => setAddress(event.target.value)}
-        error={errors.address}
-      />
-
-      <div className="flex flex-col gap-1.5">
-        <span className="flex items-center gap-2 text-sm font-medium text-text">
-          Pin your location
-          {coords && <span className="text-xs font-normal text-primary">Location set ✓</span>}
-        </span>
-        <AddressMapPicker
-          lat={coords?.lat ?? 0}
-          lng={coords?.lng ?? 0}
-          onChange={handleMapChange}
+    <form onSubmit={handleSubmit} noValidate>
+      <div className="address-form">
+        <PkField
+          label="Address label"
+          placeholder="Home, Office, or another label"
+          value={label}
+          onChange={(event) => setLabel(event.target.value)}
+          error={errors.label}
         />
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          loading={locating}
-          onClick={() => void handleUseLocation()}
-          className="self-start"
-        >
-          Use my current location
-        </Button>
-        {errors.coords && (
-          <p className="text-sm text-status-cancelled">{errors.coords}</p>
-        )}
-        <p className="text-xs text-text-muted">
-          Tap or drag the pin to set exactly where we should deliver.
-        </p>
+        <PkField
+          label="Address"
+          placeholder="House/unit, street, barangay, city"
+          value={address}
+          onChange={(event) => setAddress(event.target.value)}
+          error={errors.address}
+        />
+        <div>
+          <PkField
+            label="Contact name"
+            placeholder="Full name"
+            value={contactName}
+            onChange={(event) => setContactName(event.target.value)}
+            error={errors.contactName}
+          />
+          <PkField
+            label="Contact phone"
+            type="tel"
+            placeholder="09XX XXX XXXX"
+            value={contactPhone}
+            onChange={(event) => setContactPhone(event.target.value)}
+            error={errors.contactPhone}
+          />
+        </div>
       </div>
 
-      <Button variant="solid" type="submit" fullWidth loading={saveMutation.isPending}>
-        Save address
-      </Button>
+      <div style={{ display: "grid", gap: 8, marginBottom: 20 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 8, color: "#465456", fontSize: 9, fontWeight: 700 }}>
+          Pin your exact location
+          {coords && <span style={{ color: "var(--teal)" }}>Location set ✓</span>}
+        </span>
+        <div style={{ overflow: "hidden", borderRadius: 14 }}>
+          <AddressMapPicker lat={coords?.lat ?? 0} lng={coords?.lng ?? 0} onChange={handleMapChange} />
+        </div>
+        <button
+          type="button"
+          className="btn outline"
+          style={{ justifySelf: "start", height: 36, fontSize: 10 }}
+          disabled={locating}
+          onClick={() => void handleUseLocation()}
+        >
+          <Icon name="truck" size={15} /> {locating ? "Locating…" : "Use my current location"}
+        </button>
+        {errors.coords && <small style={{ color: "#dc2626", fontSize: 10 }}>{errors.coords}</small>}
+        <small style={{ color: "var(--muted)", fontSize: 9 }}>
+          Tap or drag the pin to set exactly where we should deliver.
+        </small>
+      </div>
+
+      <button type="submit" className="btn primary" style={{ width: "100%" }} disabled={saveMutation.isPending}>
+        {saveMutation.isPending ? "Saving…" : "Save address"} <Icon name="check" />
+      </button>
     </form>
   );
 }

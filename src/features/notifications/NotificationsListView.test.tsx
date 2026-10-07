@@ -58,7 +58,7 @@ describe("NotificationsListView", () => {
     });
     renderView();
 
-    expect(await screen.findByText("No notifications yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No notifications yet")).toBeInTheDocument();
   });
 
   it("marks an unread notification as read and navigates to its order on tap", async () => {

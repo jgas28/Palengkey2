@@ -15,6 +15,7 @@ class OrderRecipeBundle extends Model
     protected $fillable = [
         'order_id',
         'recipe_id',
+        'paluto_dish_id',
         'recipe_name',
         'paluto_stall_id',
         'stall_name',
@@ -42,6 +43,11 @@ class OrderRecipeBundle extends Model
     public function recipe()
     {
         return $this->belongsTo(Recipe::class);
+    }
+
+    public function dish()
+    {
+        return $this->belongsTo(PalutoDish::class, 'paluto_dish_id');
     }
 
     public function stall()

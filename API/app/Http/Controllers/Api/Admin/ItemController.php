@@ -64,6 +64,7 @@ class ItemController extends Controller
             'category_id' => 'required|exists:categories,id,status,1',
             'type_id' => 'nullable|exists:types,id,status,1',
             'unit_id' => 'required|exists:units,id,status,1',
+            'bulk_min_kg' => 'nullable|numeric|min:0.001|max:9999',
             'price' => 'required|numeric|min:0',
             'is_available' => 'boolean',
             'cutoff_time' => 'nullable|date_format:H:i',
@@ -92,6 +93,7 @@ class ItemController extends Controller
                     'category_id' => $data['category_id'],
                     'type_id' => $data['type_id'] ?? null,
                     'unit_id' => $data['unit_id'],
+                    'bulk_min_kg' => $data['bulk_min_kg'] ?? null,
                 ]);
 
                 AuditLogger::log('created', $item, $item->id, null, $item->toArray());
@@ -132,6 +134,8 @@ class ItemController extends Controller
             'category_id' => 'sometimes|required|exists:categories,id,status,1',
             'type_id' => 'nullable|exists:types,id,status,1',
             'unit_id' => 'sometimes|required|exists:units,id,status,1',
+            // Overrides the category's bulk threshold; blank = use the category's.
+            'bulk_min_kg' => 'nullable|numeric|min:0.001|max:9999',
         ]);
 
         $item->update($data);
@@ -226,6 +230,8 @@ class ItemController extends Controller
             'type' => $item->type?->name,
             'unit_id' => $item->unit_id,
             'unit' => $item->unit?->name,
+            'bulk_min_kg' => $item->bulk_min_kg,
+            'category_bulk_min_kg' => $item->category?->bulk_min_kg,
             'images' => $item->images->map(fn ($image) => [
                 'id' => $image->id,
                 'url' => $image->image_url,

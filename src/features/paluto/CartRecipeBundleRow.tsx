@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { X } from "lucide-react";
+import Icon from "@/components/pk/Icon";
 import { removeRecipeBundle } from "@/services/api/paluto";
 import { cartQueryKey } from "@/features/cart/useCart";
 import { useToastStore } from "@/stores/toastStore";
@@ -12,94 +12,54 @@ export interface CartRecipeBundleRowProps {
   onToggleSelect: () => void;
 }
 
-export default function CartRecipeBundleRow({
-  bundle,
-  selected,
-  onToggleSelect,
-}: CartRecipeBundleRowProps) {
+/** A Paluto dish or Buy Raw recipe in the basket, as a design .cart-line. */
+export default function CartRecipeBundleRow({ bundle, selected, onToggleSelect }: CartRecipeBundleRowProps) {
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
 
   const removeMutation = useMutation({
     mutationFn: () => removeRecipeBundle(bundle.id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: cartQueryKey });
-    },
-    onError: (error) => {
-      showToast(
-        error instanceof Error ? error.message : "Could not remove recipe.",
-        "error",
-      );
-    },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: cartQueryKey }),
+    onError: (error) =>
+      showToast(error instanceof Error ? error.message : "Could not remove.", "error"),
   });
 
   const cookingFee = Number(bundle.cooking_fee);
+  const quantityLabel = `${Number(bundle.quantity)} ${bundle.pricing_unit === "kg" ? "kg" : "serving(s)"}`;
 
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-[#DDE9EA] bg-white p-4">
-      <div className="flex gap-4">
+    <article className="cart-line" style={selected ? undefined : { opacity: 0.6 }}>
+      <label className="cart-thumb" style={{ position: "relative", overflow: "hidden", cursor: "pointer" }}>
+        {bundle.image ? <img src={bundle.image} alt="" /> : <Icon name="sparkle" />}
         <input
           type="checkbox"
           checked={selected}
           onChange={onToggleSelect}
-          aria-label={`Select ${bundle.recipe_name}`}
-          className="mt-1 h-5 w-5 shrink-0 self-start accent-[#0097A7]"
+          aria-label={`Include ${bundle.recipe_name} in this order`}
+          style={{ position: "absolute", left: 4, top: 4, width: 16, height: 16, accentColor: "var(--teal)" }}
         />
-
-        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-[#F7FAFA]">
-          {bundle.image && (
-            <img
-              src={bundle.image}
-              alt={bundle.recipe_name}
-              className="h-full w-full object-cover"
-            />
-          )}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="truncate font-semibold leading-tight text-[#203238]">
-              {bundle.recipe_name}
-            </h3>
-            <button
-              type="button"
-              onClick={() => removeMutation.mutate()}
-              disabled={removeMutation.isPending}
-              aria-label={`Remove ${bundle.recipe_name}`}
-              className="shrink-0 p-1 text-[#66777C] transition-colors hover:text-[#F05A47] disabled:opacity-50"
-            >
-              <X size={16} aria-hidden="true" />
-            </button>
-          </div>
-
-          <p className="mt-0.5 text-xs text-[#66777C]">
-            {bundle.quantity} {bundle.pricing_unit === "kg" ? "kg" : "serving(s)"}
-          </p>
-
-          <p className="text-xs font-semibold text-[#0097A7]">
-            {bundle.stall_name ? `Paluto at ${bundle.stall_name}` : "Ingredients only"}
-          </p>
-
-          <div className="mt-2 flex items-center justify-between">
-            <span className="text-xs text-[#66777C]">
-              {cookingFee > 0 ? `+${formatPeso(cookingFee)} cooking fee` : ""}
-            </span>
-            <span className="font-bold text-[#203238]">
-              {formatPeso(Number(bundle.subtotal))}
-            </span>
-          </div>
-        </div>
+      </label>
+      <div className="cart-info">
+        <p className="eyebrow">
+          {bundle.stall_name ? `Paluto · ${bundle.stall_name}` : "Recipe ingredients"}
+        </p>
+        <h3>{bundle.recipe_name}</h3>
+        <small>
+          {quantityLabel}
+          {cookingFee > 0 ? ` · includes ${formatPeso(cookingFee)} cooking fee` : ""}
+        </small>
+        {bundle.ingredients.length > 0 && (
+          <small>
+            {bundle.stall_name ? "We'll buy: " : "Ingredients: "}
+            {bundle.ingredients.map((ingredient) => ingredient.name).join(", ")}
+          </small>
+        )}
+        <button type="button" disabled={removeMutation.isPending} onClick={() => removeMutation.mutate()}>
+          Remove
+        </button>
       </div>
-
-      {bundle.ingredients.length > 0 && (
-        <ul className="ml-[5.75rem] flex flex-col gap-0.5 border-l border-[#DDE9EA] pl-3 text-xs text-[#66777C]">
-          {bundle.ingredients.map((ingredient) => (
-            <li key={ingredient.id}>
-              {ingredient.name} × {ingredient.item_quantity} {ingredient.unit}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+      <span />
+      <strong>{formatPeso(Number(bundle.subtotal))}</strong>
+    </article>
   );
 }

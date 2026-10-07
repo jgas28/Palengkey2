@@ -15,6 +15,9 @@ class OrderController extends Controller
 
     private const BPI_PAYMENT_TIMEOUT_MINUTES = 15;
 
+    /** Card/GCash/Maya/UnionBank hosted checkout — more time for OTPs and 3-D Secure. */
+    private const HOSTED_CHECKOUT_TIMEOUT_MINUTES = 30;
+
     public function myOrders(Request $request)
     {
         $customer = $request->user();
@@ -144,14 +147,17 @@ class OrderController extends Controller
     {
         $staleOrders = Order::where('customer_id', $customerId)
             ->where('status', 'pending_payment')
-            ->whereIn('payment_method', ['qrph', 'qr_ph', 'qr ph', 'qr-ph', 'bpi'])
+            ->whereIn('payment_method', ['qr_ph', 'qr ph', 'qr-ph', ...Order::CASHLESS_METHODS])
             ->where('payment_status', 'pending')
             ->get();
 
         foreach ($staleOrders as $order) {
-            $timeoutMinutes = strtolower((string) $order->payment_method) === 'bpi'
-                ? self::BPI_PAYMENT_TIMEOUT_MINUTES
-                : self::QRPH_PAYMENT_TIMEOUT_MINUTES;
+            $method = strtolower((string) $order->payment_method);
+            $timeoutMinutes = match (true) {
+                $method === 'bpi' => self::BPI_PAYMENT_TIMEOUT_MINUTES,
+                array_key_exists($method, Order::CHECKOUT_SESSION_METHODS) => self::HOSTED_CHECKOUT_TIMEOUT_MINUTES,
+                default => self::QRPH_PAYMENT_TIMEOUT_MINUTES,
+            };
 
             if ($order->created_at->gt(now()->subMinutes($timeoutMinutes))) {
                 continue;
@@ -169,7 +175,9 @@ class OrderController extends Controller
                     return;
                 }
 
-                $label = strtolower((string) $lockedOrder->payment_method) === 'bpi' ? 'BPI' : 'QR Ph';
+                $label = Order::paymentMethodLabel(
+                    str_starts_with(strtolower((string) $lockedOrder->payment_method), 'qr') ? 'qrph' : $lockedOrder->payment_method
+                );
 
                 $lockedOrder->update([
                     'status' => 'cancelled',

@@ -11,7 +11,15 @@ export interface OrderItem {
   customer_note: string | null;
 }
 
-export type PaymentMethod = "cod" | "qrph" | "bpi" | "paymongo" | "card";
+export type PaymentMethod =
+  | "cod"
+  | "qrph"
+  | "bpi"
+  | "paymongo"
+  | "card"
+  | "gcash"
+  | "maya"
+  | "ubp";
 export type PaymentStatus = "pending" | "paid" | "expired" | "failed";
 
 export interface CashlessPayment {
@@ -75,6 +83,10 @@ export interface Order {
   vat: number | string;
   service_fee: number | string;
   voucher_discount: number | string;
+  /** Saved by wholesale bulk pricing (already reflected in item prices). */
+  bulk_discount?: number | string;
+  /** BULK-FREESHIP delivery subsidy taken off the total. */
+  bulk_delivery_subsidy?: number | string;
   voucher_code: string | null;
   total_amount: number | string;
   distance_meters: number | null;

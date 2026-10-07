@@ -19,6 +19,10 @@ class SettingController extends Controller
         'service_fee_max_amount' => ['label' => 'Service Fee Maximum Amount (₱)', 'default' => 100, 'group' => 'Pricing', 'type' => 'number'],
         'service_fee_fixed_amount' => ['label' => 'Fixed Service Fee (₱) — Orders Below Minimum', 'default' => 20, 'group' => 'Pricing', 'type' => 'number'],
 
+        'bulk_pricing_enabled' => ['label' => 'Bulk Pricing On (1 = on, 0 = off)', 'default' => 1, 'group' => 'Bulk Orders', 'type' => 'number'],
+        'bulk_discount_percent' => ['label' => 'Bulk Vendor Cost Adjustment (%) — markup kept', 'default' => 5, 'group' => 'Bulk Orders', 'type' => 'number'],
+        'bulk_delivery_subsidy_cap' => ['label' => 'Bulk Delivery Subsidy Cap (₱) — BULK-FREESHIP', 'default' => 49, 'group' => 'Bulk Orders', 'type' => 'number'],
+
         'minimum_order_amount' => ['label' => 'Minimum Order Amount (₱)', 'default' => 500, 'group' => 'Orders', 'type' => 'number'],
         'order_operational_start_time' => ['label' => 'Order Operational Start Time', 'default' => '05:00', 'group' => 'Orders', 'type' => 'time'],
         'order_cutoff_time' => ['label' => 'Default Order Cutoff Time', 'default' => '17:00', 'group' => 'Orders', 'type' => 'time'],

@@ -9,16 +9,27 @@ use App\Models\CartRecipeBundle;
 use App\Models\Item;
 use App\Models\Market;
 use App\Models\MarketPriceSnapshot;
-use App\Models\PalutoStall;
-use App\Models\PalutoStallRecipe;
+use App\Models\PalutoDish;
+use App\Models\PalutoDishIngredient;
 use App\Models\Recipe;
+use App\Models\RecipeIngredient;
+use App\Support\BulkPricing;
 use App\Support\PriceDisplay;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class CartController extends Controller
 {
+    private const CART_RELATIONS = [
+        'items.item.unit',
+        'recipeBundles.recipe',
+        'recipeBundles.dish',
+        'recipeBundles.stall',
+        'recipeBundles.items.item.unit',
+    ];
+
     /**
      * A cart belongs to an authenticated customer, or — for a signed-out
      * visitor — to the frontend's stable per-install device id (sent as the
@@ -65,6 +76,7 @@ class CartController extends Controller
             'items.item.type',
             'items.item.category',
             'recipeBundles.recipe',
+            'recipeBundles.dish',
             'recipeBundles.stall',
             'recipeBundles.items.item.unit',
         ]);
@@ -240,9 +252,9 @@ class CartController extends Controller
     }
 
     /**
-     * Adds a recipe to the cart as one bundle: the scaled ingredient lines (tagged with
-     * cart_recipe_bundle_id) plus, if a cooking stall was picked, a live cooking-fee
-     * snapshot. Passing no paluto_stall_id adds the ingredients only (no cooking fee).
+     * Buy Raw: adds a catalog recipe's ingredients to the cart as one bundle (tagged
+     * cart_recipe_bundle_id), scaled to the requested quantity. No stall, no cooking
+     * fee — cooked orders go through addPalutoDish() from a stall's own menu.
      */
     public function addRecipe(Request $request)
     {
@@ -250,139 +262,153 @@ class CartController extends Controller
             'recipe_id' => 'required|exists:recipes,id,status,1',
             'market_id' => 'required|exists:markets,id',
             'quantity' => 'required|numeric|min:0.1|max:100',
-            'paluto_stall_id' => 'nullable|exists:paluto_stalls,id,status,1',
             'customer_note' => 'nullable|string|max:500',
-            // Buy Raw only — which ingredients the customer unchecked. Ignored
-            // when a stall is chosen; that exclusion set is computed from the
-            // stall's own provided_ingredient_ids instead, never from the client.
+            // Which ingredients the customer unchecked.
             'excluded_ingredient_ids' => 'nullable|array',
             'excluded_ingredient_ids.*' => 'integer',
         ]);
 
         return DB::transaction(function () use ($request, $data) {
             $recipe = Recipe::with('ingredients.item.unit')->findOrFail($data['recipe_id']);
+            $excludedIds = collect($data['excluded_ingredient_ids'] ?? []);
+            $quantity = round((float) $data['quantity'], 3);
 
-            $stall = null;
-            $stallRecipe = null;
+            return $this->addIngredientBundle(
+                $request,
+                ingredients: $recipe->ingredients->reject(fn ($ingredient) => $excludedIds->contains($ingredient->id)),
+                marketId: (int) $data['market_id'],
+                scale: $quantity / max(0.001, (float) $recipe->base_quantity),
+                customerNote: $data['customer_note'] ?? null,
+                bundleAttributes: [
+                    'recipe_id' => $recipe->id,
+                    'recipe_name' => $recipe->name,
+                    'quantity' => $quantity,
+                    'pricing_unit' => $recipe->pricing_unit,
+                    'cooking_fee' => 0,
+                ],
+            );
+        });
+    }
 
-            if (! empty($data['paluto_stall_id'])) {
-                $stall = PalutoStall::where('id', $data['paluto_stall_id'])
-                    ->where('market_id', $data['market_id'])
-                    ->where('status', true)
-                    ->where('is_accepting_orders', true)
-                    ->first();
+    /**
+     * Cook for Me: adds one dish from a stall's menu as a bundle — the dish's own
+     * ingredient list, priced at the stall's market, minus what the stall provides
+     * itself — plus the stall's live cooking fee.
+     */
+    public function addPalutoDish(Request $request)
+    {
+        $data = $request->validate([
+            'paluto_dish_id' => 'required|exists:paluto_dishes,id,status,1',
+            'quantity' => 'required|numeric|min:0.1|max:100',
+            'customer_note' => 'nullable|string|max:500',
+        ]);
 
-                if (! $stall) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'This stall is not accepting orders in this market right now.',
-                    ], 422);
-                }
+        return DB::transaction(function () use ($request, $data) {
+            $dish = PalutoDish::with(['stall', 'ingredients.item.unit'])->findOrFail($data['paluto_dish_id']);
+            $stall = $dish->stall;
 
-                $stallRecipe = PalutoStallRecipe::where('paluto_stall_id', $stall->id)
-                    ->where('recipe_id', $recipe->id)
-                    ->where('status', true)
-                    ->first();
-
-                if (! $stallRecipe) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'This stall does not cook this recipe.',
-                    ], 422);
-                }
+            if (! $stall->status || ! $stall->is_accepting_orders) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "{$stall->name} is not accepting orders right now.",
+                ], 422);
             }
 
             $quantity = round((float) $data['quantity'], 3);
-            $scale = $quantity / max(0.001, (float) $recipe->base_quantity);
 
-            // Cook for Me: the stall's own provided list, never the client's.
-            // Buy Raw: whatever the customer unchecked.
-            $excludedIngredientIds = $stallRecipe
-                ? collect($stallRecipe->provided_ingredient_ids ?? [])
-                : collect($data['excluded_ingredient_ids'] ?? []);
-
-            $itemIds = $recipe->ingredients->pluck('item_id')->unique();
-            $snapshots = MarketPriceSnapshot::where('market_id', $data['market_id'])
-                ->whereIn('item_id', $itemIds)
-                ->lockForUpdate()
-                ->get()
-                ->keyBy('item_id');
-
-            foreach ($recipe->ingredients as $ingredient) {
-                if ($excludedIngredientIds->contains($ingredient->id)) {
-                    continue;
-                }
-                if (! $ingredient->is_optional && ! isset($snapshots[$ingredient->item_id])) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => "{$ingredient->item->name} is not available in this market right now.",
-                    ], 422);
-                }
-            }
-
-            $rateAtPurchase = null;
-            $cookingFee = 0;
-
-            if ($stallRecipe) {
-                $rateAtPurchase = (float) $stallRecipe->rate;
-                $cookingFee = round(max($rateAtPurchase * $quantity, (float) ($stallRecipe->minimum_fee ?? 0)), 2);
-            }
-
-            $cart = $this->resolveCart($request);
-            $cart->refresh();
-
-            $bundle = CartRecipeBundle::create([
-                'cart_id' => $cart->id,
-                'recipe_id' => $recipe->id,
-                'recipe_name' => $recipe->name,
-                'paluto_stall_id' => $stall?->id,
-                'stall_name' => $stall?->name,
-                'quantity' => $quantity,
-                'pricing_unit' => $recipe->pricing_unit,
-                'rate_at_purchase' => $rateAtPurchase,
-                'cooking_fee' => $cookingFee,
-            ]);
-
-            $customerNote = isset($data['customer_note']) && trim($data['customer_note']) !== ''
-                ? trim(htmlspecialchars($data['customer_note']))
-                : null;
-
-            foreach ($recipe->ingredients as $ingredient) {
-                // Excluded by the customer (Buy Raw) or already provided by the
-                // chosen stall (Cook for Me) — not added to the cart either way.
-                if ($excludedIngredientIds->contains($ingredient->id)) {
-                    continue;
-                }
-
-                $snapshot = $snapshots[$ingredient->item_id] ?? null;
-
-                // Unavailable optional ingredient — silently skipped, per is_optional semantics.
-                if (! $snapshot) {
-                    continue;
-                }
-
-                $unit = $ingredient->item?->unit;
-                $hasWeightSelection = $this->isWeightUnit($unit);
-                $scaledQty = round((float) $ingredient->quantity * $scale, 3);
-
-                CartItem::create([
-                    'cart_id' => $cart->id,
-                    'cart_recipe_bundle_id' => $bundle->id,
-                    'item_id' => $ingredient->item_id,
-                    'quantity' => max(0.001, $scaledQty),
-                    'item_quantity' => 1,
-                    'price' => number_format((float) $snapshot->price, 2, '.', ''),
-                    'market_id' => $data['market_id'],
-                    'weight_kg' => $hasWeightSelection ? max(0.001, $scaledQty) : null,
-                    'customer_note' => $customerNote,
-                ]);
-            }
-
-            return response()->json([
-                'success' => true,
-                'data' => $this->formatCart($cart->fresh(['items.item.unit', 'recipeBundles.recipe', 'recipeBundles.stall', 'recipeBundles.items.item.unit']), asArray: true),
-            ], 201);
+            return $this->addIngredientBundle(
+                $request,
+                ingredients: $dish->ingredients->reject(fn ($ingredient) => $ingredient->is_provided),
+                marketId: $stall->market_id,
+                scale: $quantity / max(0.001, (float) $dish->base_quantity),
+                customerNote: $data['customer_note'] ?? null,
+                bundleAttributes: [
+                    'paluto_dish_id' => $dish->id,
+                    'recipe_name' => $dish->name,
+                    'paluto_stall_id' => $stall->id,
+                    'stall_name' => $stall->name,
+                    'quantity' => $quantity,
+                    'pricing_unit' => $dish->pricing_unit,
+                    'rate_at_purchase' => $dish->rate,
+                    'cooking_fee' => $dish->cookingFeeFor($quantity),
+                ],
+            );
         });
+    }
+
+    /**
+     * Shared by Buy Raw and Cook for Me: prices each ingredient line at the market,
+     * fails if a required one isn't sold there, then creates the bundle and its
+     * scaled cart lines. Optional ingredients with no market price are skipped.
+     *
+     * @param  Collection<int, RecipeIngredient|PalutoDishIngredient>  $ingredients
+     */
+    private function addIngredientBundle(
+        Request $request,
+        Collection $ingredients,
+        int $marketId,
+        float $scale,
+        ?string $customerNote,
+        array $bundleAttributes,
+    ) {
+        $snapshots = MarketPriceSnapshot::where('market_id', $marketId)
+            ->whereIn('item_id', $ingredients->pluck('item_id')->unique())
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('item_id');
+
+        foreach ($ingredients as $ingredient) {
+            if (! $ingredient->is_optional && ! isset($snapshots[$ingredient->item_id])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "{$ingredient->item->name} is not available in this market right now.",
+                ], 422);
+            }
+        }
+
+        if ($ingredients->every(fn ($ingredient) => ! isset($snapshots[$ingredient->item_id]))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'None of these ingredients are available in this market right now.',
+            ], 422);
+        }
+
+        $cart = $this->resolveCart($request);
+        $cart->refresh();
+
+        $bundle = CartRecipeBundle::create(['cart_id' => $cart->id] + $bundleAttributes);
+
+        $customerNote = $customerNote !== null && trim($customerNote) !== ''
+            ? trim(htmlspecialchars($customerNote))
+            : null;
+
+        foreach ($ingredients as $ingredient) {
+            $snapshot = $snapshots[$ingredient->item_id] ?? null;
+
+            if (! $snapshot) {
+                continue;
+            }
+
+            $hasWeightSelection = $this->isWeightUnit($ingredient->item?->unit);
+            $scaledQty = round((float) $ingredient->quantity * $scale, 3);
+
+            CartItem::create([
+                'cart_id' => $cart->id,
+                'cart_recipe_bundle_id' => $bundle->id,
+                'item_id' => $ingredient->item_id,
+                'quantity' => max(0.001, $scaledQty),
+                'item_quantity' => 1,
+                'price' => number_format((float) $snapshot->price, 2, '.', ''),
+                'market_id' => $marketId,
+                'weight_kg' => $hasWeightSelection ? max(0.001, $scaledQty) : null,
+                'customer_note' => $customerNote,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->formatCart($cart->fresh(self::CART_RELATIONS), asArray: true),
+        ], 201);
     }
 
     public function removeRecipeBundle(Request $request, CartRecipeBundle $bundle)
@@ -398,7 +424,7 @@ class CartController extends Controller
             $bundle->delete();
         });
 
-        return $this->formatCart($cart->fresh(['items.item.unit', 'recipeBundles.recipe', 'recipeBundles.stall', 'recipeBundles.items.item.unit']));
+        return $this->formatCart($cart->fresh(self::CART_RELATIONS));
     }
 
     public function clear(Request $request)
@@ -430,19 +456,35 @@ class CartController extends Controller
 
         $markets = Market::whereIn('id', $marketIds)->get()->keyBy('id');
 
-        $items = $flatItems->map(function (CartItem $item) use (&$total, $marketItemPivots, $markets) {
+        // Bulk tier — evaluated over the lines in this response (the whole cart, or
+        // just the selection when item_ids is passed), same as checkout will.
+        $flatItems->loadMissing('item.category');
+        $bulk = BulkPricing::evaluate($flatItems->map(fn (CartItem $item) => [
+            'item' => $item->item,
+            'weight_kg' => $this->lineWeightKg($item),
+        ]));
+        $bulkSavings = 0.0;
+
+        $items = $flatItems->map(function (CartItem $item) use (&$total, &$bulkSavings, $marketItemPivots, $markets, $bulk) {
             $itemQty = (int) ($item->item_quantity ?? $item->quantity);
             $unit = $item->item?->unit;
             $hasWeightSelection = $this->isWeightUnit($unit);
             $weightKg = $hasWeightSelection
                 ? (float) ($item->weight_kg ?: ($item->quantity / max($itemQty, 1)))
                 : 1.0;
-            $displayUnitPrice = PriceDisplay::markedUp($item->price);
+            $isBulk = $bulk[$item->item_id]['qualifies'] ?? false;
+            $regularUnitPrice = PriceDisplay::markedUp($item->price);
+            $displayUnitPrice = $isBulk ? BulkPricing::unitPrice($item->price) : $regularUnitPrice;
             $priceEach = $hasWeightSelection
                 ? $this->priceForWeight($unit, $displayUnitPrice, $weightKg)
                 : $displayUnitPrice;
             $subtotal = round($priceEach * $itemQty, 2);
             $total = round((float) $total + $subtotal, 2);
+
+            if ($isBulk) {
+                $regularEach = $hasWeightSelection ? $this->priceForWeight($unit, $regularUnitPrice, $weightKg) : $regularUnitPrice;
+                $bulkSavings = round($bulkSavings + ($regularEach * $itemQty) - $subtotal, 2);
+            }
 
             $pivot = $marketItemPivots[$item->item_id.'-'.$item->market_id] ?? null;
             $market = $markets[$item->market_id] ?? null;
@@ -465,6 +507,9 @@ class CartController extends Controller
                 'subtotal' => number_format($subtotal, 2, '.', ''),
                 'cutoff_time' => $item->item->getCutoffTimeStringForMarketData($pivot, $market),
                 'is_cutoff' => $item->item->isPastCutoffForMarketData($pivot, $market),
+                'is_bulk' => $isBulk,
+                'regular_unit_price' => number_format($regularUnitPrice, 2, '.', ''),
+                'bulk_min_kg' => $bulk[$item->item_id]['threshold_kg'] ?? null,
             ];
         });
 
@@ -503,8 +548,9 @@ class CartController extends Controller
             return [
                 'id' => $bundle->id,
                 'recipe_id' => $bundle->recipe_id,
+                'paluto_dish_id' => $bundle->paluto_dish_id,
                 'recipe_name' => $bundle->recipe_name,
-                'image' => $bundle->recipe?->image_full_url,
+                'image' => $bundle->dish?->image_full_url ?? $bundle->recipe?->image_full_url,
                 'paluto_stall_id' => $bundle->paluto_stall_id,
                 'stall_name' => $bundle->stall_name,
                 'is_accepting_orders' => $bundle->stall?->is_accepting_orders ?? null,
@@ -522,11 +568,38 @@ class CartController extends Controller
         $payload = [
             'items' => $items,
             'recipe_bundles' => $recipeBundles,
+            'bulk' => [
+                'active' => BulkPricing::anyQualifies($bulk),
+                'voucher_code' => BulkPricing::VOUCHER_CODE,
+                'delivery_subsidy_cap' => number_format(BulkPricing::subsidyCap(), 2, '.', ''),
+                'savings' => number_format($bulkSavings, 2, '.', ''),
+                // Every bulk-eligible item in the cart and how close it is.
+                'items' => collect($bulk)->map(fn ($entry, $itemId) => [
+                    'item_id' => $itemId,
+                    'name' => $entry['name'],
+                    'total_kg' => $entry['total_kg'],
+                    'threshold_kg' => $entry['threshold_kg'],
+                    'qualifies' => $entry['qualifies'],
+                ])->values(),
+            ],
             'total' => number_format($total, 2, '.', ''),
             'market_id' => ($flatItems->first()->market_id ?? null) ?? $bundleMarketId,
         ];
 
         return $asArray ? $payload : response()->json($payload);
+    }
+
+    /** Total kg on one cart line (per-piece weight × pieces); 0 for non-weight items. */
+    private function lineWeightKg(CartItem $item): float
+    {
+        if (! $this->isWeightUnit($item->item?->unit)) {
+            return 0.0;
+        }
+
+        $itemQty = max(1, (int) ($item->item_quantity ?? 1));
+        $weightKg = (float) ($item->weight_kg ?: ($item->quantity / $itemQty));
+
+        return round($weightKg * $itemQty, 3);
     }
 
     private function isWeightUnit($unit): bool

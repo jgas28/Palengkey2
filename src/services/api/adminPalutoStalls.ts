@@ -1,9 +1,5 @@
 import { adminApiClient } from "@/services/api/adminClient";
-import type {
-  AdminPalutoStall,
-  AdminPalutoStallListPage,
-  AdminPalutoStallRecipeFee,
-} from "@/types/adminPalutoStall";
+import type { AdminPalutoStall, AdminPalutoStallListPage } from "@/types/adminPalutoStall";
 
 export interface ListAdminPalutoStallsParams {
   search?: string;
@@ -90,35 +86,6 @@ export async function restoreAdminPalutoStall(
 ): Promise<{ message: string; stall: AdminPalutoStall }> {
   const { data } = await adminApiClient.post<{ message: string; stall: AdminPalutoStall }>(
     `/admin/paluto-stalls/${stallId}/restore`,
-  );
-  return data;
-}
-
-export async function getAdminPalutoStallFees(
-  stallId: number,
-): Promise<AdminPalutoStallRecipeFee[]> {
-  const { data } = await adminApiClient.get<AdminPalutoStallRecipeFee[]>(
-    `/admin/paluto-stalls/${stallId}/recipes`,
-  );
-  return data;
-}
-
-export interface PalutoStallRecipeFeeUpdate {
-  recipe_id: number;
-  offered: boolean;
-  rate: number | null;
-  minimum_fee: number | null;
-  status: boolean;
-  provided_ingredient_ids: number[];
-}
-
-export async function updateAdminPalutoStallFees(
-  stallId: number,
-  rows: PalutoStallRecipeFeeUpdate[],
-): Promise<AdminPalutoStallRecipeFee[]> {
-  const { data } = await adminApiClient.post<AdminPalutoStallRecipeFee[]>(
-    `/admin/paluto-stalls/${stallId}/recipes`,
-    { rows },
   );
   return data;
 }

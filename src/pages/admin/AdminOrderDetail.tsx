@@ -16,7 +16,45 @@ import {
   updateAdminOrderStatus,
 } from "@/services/api/adminOrders";
 import { useToastStore } from "@/stores/toastStore";
-import type { AdminOrderStatus, CookingStatus } from "@/types/adminOrder";
+import type {
+  AdminOrderItem,
+  AdminOrderRecipeBundle,
+  AdminOrderStatus,
+  CookingStatus,
+} from "@/types/adminOrder";
+import { paymentMethodLabel } from "@/features/orders/paymentMethods";
+
+/** Trims a decimal quantity like "1.200" to "1.2". */
+function formatQty(value: string): string {
+  return Number(Number(value).toFixed(3)).toString();
+}
+
+/** The shopper's buy list for one recipe bundle — exactly the lines to purchase at the market. */
+function BundleBuyList({ items }: { items: AdminOrderItem[] }) {
+  if (items.length === 0) {
+    return <p className="text-xs text-text-muted">Nothing to buy — the stall supplies everything.</p>;
+  }
+
+  return (
+    <ul className="flex flex-col divide-y divide-border rounded-lg bg-background px-3">
+      {items.map((item) => (
+        <li key={item.id} className="flex items-center justify-between gap-3 py-1.5 text-sm">
+          <span className="text-text">
+            <span className="font-semibold">
+              {formatQty(item.quantity)}
+              {item.unit_name && ` ${item.unit_name}`}
+            </span>{" "}
+            {item.item_name}
+            {item.customer_note && (
+              <span className="block text-xs text-text-muted">Note: {item.customer_note}</span>
+            )}
+          </span>
+          <span className="shrink-0 text-text-muted">₱{item.subtotal}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 const COOKING_FORWARD_TRANSITION: Partial<Record<CookingStatus, { status: CookingStatus; label: string }>> = {
   pending: { status: "preparing", label: "Start preparing" },
@@ -160,6 +198,13 @@ export default function AdminOrderDetail() {
   const forward = FORWARD_TRANSITION[order.status];
   const back = BACK_TRANSITION[order.status];
   const canAssignRider = ASSIGNABLE_STATUSES.includes(order.status);
+
+  // Recipe/dish ingredient lines belong under their bundle's buy list, not the flat item list.
+  const standaloneItems = order.items.filter((item) => item.order_recipe_bundle_id === null);
+  const stallBundles = order.recipeBundles.filter((bundle) => bundle.paluto_stall_id !== null);
+  const rawBundles = order.recipeBundles.filter((bundle) => bundle.paluto_stall_id === null);
+  const itemsForBundle = (bundle: AdminOrderRecipeBundle) =>
+    order.items.filter((item) => item.order_recipe_bundle_id === bundle.id);
   const canCancel = !CANCEL_BLOCKED.includes(order.status);
 
   return (
@@ -202,8 +247,13 @@ export default function AdminOrderDetail() {
 
       <div className="rounded-card border border-border p-4">
         <h2 className="mb-2 text-sm font-semibold text-text">Items</h2>
+        {standaloneItems.length === 0 && (
+          <p className="text-sm text-text-muted">
+            No separate items — see the buy lists below.
+          </p>
+        )}
         <ul className="flex flex-col divide-y divide-border">
-          {order.items.map((item) => (
+          {standaloneItems.map((item) => (
             <li key={item.id} className="flex items-center justify-between py-2 text-sm">
               <div>
                 <p className="text-text">
@@ -235,6 +285,18 @@ export default function AdminOrderDetail() {
             <span>VAT</span>
             <span>₱{order.vat}</span>
           </div>
+          {Number(order.bulk_delivery_subsidy ?? 0) > 0 && (
+            <div className="flex justify-between text-status-delivered">
+              <span>Bulk delivery subsidy (BULK-FREESHIP-49)</span>
+              <span>-₱{order.bulk_delivery_subsidy}</span>
+            </div>
+          )}
+          {Number(order.bulk_discount ?? 0) > 0 && (
+            <div className="flex justify-between text-text-muted">
+              <span>Bulk wholesale savings (in item prices)</span>
+              <span>₱{order.bulk_discount}</span>
+            </div>
+          )}
           {Number(order.voucher_discount) > 0 && (
             <div className="flex justify-between text-status-delivered">
               <span>Voucher {order.voucher_code && `(${order.voucher_code})`}</span>
@@ -247,7 +309,7 @@ export default function AdminOrderDetail() {
           </div>
         </div>
         <p className="mt-2 text-xs text-text-muted">
-          {order.payment_method.toUpperCase()} · {order.payment_status}
+          {paymentMethodLabel(order.payment_method)} · {order.payment_status}
           {order.payment_reference && ` · Ref: ${order.payment_reference}`}
         </p>
         {order.cashless_payment && (
@@ -260,49 +322,75 @@ export default function AdminOrderDetail() {
         )}
       </div>
 
-      {order.recipeBundles.filter((bundle) => bundle.paluto_stall_id !== null).length > 0 && (
+      {stallBundles.length > 0 && (
         <div className="rounded-card border border-border p-4">
-          <h2 className="mb-2 text-sm font-semibold text-text">Paluto orders</h2>
+          <h2 className="text-sm font-semibold text-text">Paluto — buy for the stall</h2>
+          <p className="mb-3 text-xs text-text-muted">
+            Buy these at the market and hand them to the stall to cook. Items the stall
+            supplies itself aren&apos;t listed.
+          </p>
           <ul className="flex flex-col gap-3">
-            {order.recipeBundles
-              .filter((bundle) => bundle.paluto_stall_id !== null)
-              .map((bundle) => {
-                const forwardCooking = COOKING_FORWARD_TRANSITION[bundle.cooking_status];
-                const isPending =
-                  cookingStatusMutation.isPending &&
-                  cookingStatusMutation.variables?.bundleId === bundle.id;
-                return (
-                  <li key={bundle.id} className="rounded-lg border border-border p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-medium text-text">{bundle.recipe_name}</p>
-                        <p className="text-xs text-text-muted">
-                          {bundle.stall_name} · {bundle.quantity} {bundle.pricing_unit}
-                        </p>
-                      </div>
-                      <span className="text-xs font-semibold text-primary">
-                        {COOKING_STATUS_LABELS[bundle.cooking_status]}
-                      </span>
+            {stallBundles.map((bundle) => {
+              const forwardCooking = COOKING_FORWARD_TRANSITION[bundle.cooking_status];
+              const isPending =
+                cookingStatusMutation.isPending &&
+                cookingStatusMutation.variables?.bundleId === bundle.id;
+              return (
+                <li key={bundle.id} className="flex flex-col gap-2 rounded-lg border border-border p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium text-text">
+                        {bundle.recipe_name} · {formatQty(bundle.quantity)} {bundle.pricing_unit}
+                      </p>
+                      <p className="text-xs text-text-muted">
+                        Deliver to {bundle.stall_name}
+                        {bundle.stall?.contact_phone && ` · ${bundle.stall.contact_phone}`}
+                        {" · "}cooking fee ₱{bundle.cooking_fee}
+                      </p>
                     </div>
-                    {forwardCooking && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="mt-2"
-                        loading={isPending}
-                        onClick={() =>
-                          cookingStatusMutation.mutate({
-                            bundleId: bundle.id,
-                            status: forwardCooking.status,
-                          })
-                        }
-                      >
-                        {forwardCooking.label}
-                      </Button>
-                    )}
-                  </li>
-                );
-              })}
+                    <span className="shrink-0 text-xs font-semibold text-primary">
+                      {COOKING_STATUS_LABELS[bundle.cooking_status]}
+                    </span>
+                  </div>
+                  <BundleBuyList items={itemsForBundle(bundle)} />
+                  {forwardCooking && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="self-start"
+                      loading={isPending}
+                      onClick={() =>
+                        cookingStatusMutation.mutate({
+                          bundleId: bundle.id,
+                          status: forwardCooking.status,
+                        })
+                      }
+                    >
+                      {forwardCooking.label}
+                    </Button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {rawBundles.length > 0 && (
+        <div className="rounded-card border border-border p-4">
+          <h2 className="text-sm font-semibold text-text">Recipe ingredients</h2>
+          <p className="mb-3 text-xs text-text-muted">
+            Raw ingredients for the customer to cook — deliver with the rest of the order.
+          </p>
+          <ul className="flex flex-col gap-3">
+            {rawBundles.map((bundle) => (
+              <li key={bundle.id} className="flex flex-col gap-2 rounded-lg border border-border p-3">
+                <p className="text-sm font-medium text-text">
+                  {bundle.recipe_name} · {formatQty(bundle.quantity)} {bundle.pricing_unit}
+                </p>
+                <BundleBuyList items={itemsForBundle(bundle)} />
+              </li>
+            ))}
           </ul>
         </div>
       )}

@@ -380,6 +380,103 @@ class PayMongoService
         return $cashless;
     }
 
+    /**
+     * Card, GCash, Maya and UnionBank go through a PayMongo-hosted checkout page:
+     * card details and wallet/bank logins never touch our servers. The session's
+     * payment intent id is stored as the reference, so the webhook and the
+     * return-page sync handle these exactly like BPI/QR Ph.
+     */
+    public function createCheckoutSessionPayment(
+        Order $order,
+        string $method,
+        string $successUrl,
+        string $cancelUrl,
+    ): ?CashlessPayment {
+        $payMongoType = Order::CHECKOUT_SESSION_METHODS[$method] ?? null;
+
+        if (! $payMongoType) {
+            return null;
+        }
+
+        $order->loadMissing('customer');
+
+        try {
+            $response = Http::withBasicAuth($this->secretKey, '')
+                ->post($this->apiUrl.'/checkout_sessions', [
+                    'data' => [
+                        'attributes' => [
+                            'line_items' => [[
+                                'name' => "Palengkey order {$order->order_number}",
+                                'amount' => (int) round($order->total_amount * 100),
+                                'currency' => 'PHP',
+                                'quantity' => 1,
+                            ]],
+                            'payment_method_types' => [$payMongoType],
+                            'description' => "Order {$order->order_number} - Palengkey",
+                            'reference_number' => $order->order_number,
+                            'success_url' => $successUrl,
+                            'cancel_url' => $cancelUrl,
+                            'send_email_receipt' => false,
+                            'show_description' => true,
+                            'show_line_items' => false,
+                            'billing' => array_filter([
+                                'name' => $order->contact_name,
+                                'email' => $order->customer->email ?? null,
+                                'phone' => $order->contact_phone,
+                            ]),
+                            'metadata' => $this->normalizeMetadata([
+                                'order_id' => $order->id,
+                                'order_number' => $order->order_number,
+                            ]),
+                        ],
+                    ],
+                ]);
+
+            if ($response->failed()) {
+                Log::error('PayMongo checkout session error:', (array) $response->json());
+
+                return null;
+            }
+
+            $session = $response->json()['data'] ?? null;
+        } catch (\Exception $e) {
+            Log::error('PayMongo checkout session exception:', ['message' => $e->getMessage()]);
+
+            return null;
+        }
+
+        $attributes = $session['attributes'] ?? [];
+        $paymentIntentId = $attributes['payment_intent']['id'] ?? null;
+        $checkoutUrl = $attributes['checkout_url'] ?? null;
+
+        if (! $paymentIntentId || ! $checkoutUrl) {
+            Log::error('PayMongo checkout session missing payment intent or URL', ['session_id' => $session['id'] ?? null]);
+
+            return null;
+        }
+
+        $cashless = CashlessPayment::updateOrCreate(
+            ['order_id' => $order->id, 'provider' => 'paymongo', 'method' => $method],
+            [
+                'reference' => $paymentIntentId,
+                'redirect_url' => $checkoutUrl,
+                'amount' => $order->total_amount,
+                'currency' => 'PHP',
+                'status' => 'pending',
+                'raw_response' => ['checkout_session' => $session],
+            ]
+        );
+
+        $order->forceFill([
+            'payment_method' => $method,
+            'payment_status' => 'pending',
+            'payment_reference' => $paymentIntentId,
+            'cashless_payment_id' => $cashless->id,
+        ])->save();
+
+        return $cashless;
+    }
+
     public function getPaymentIntent($paymentIntentId)
     {
         try {

@@ -1,21 +1,35 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
-import Button from "@/components/ui/Button";
-import PriceDisplay from "@/components/ui/PriceDisplay";
-import { Spinner } from "@/components/common/LoadingState";
-import ErrorState from "@/components/common/ErrorState";
-import OrderStatusBadge from "@/features/orders/OrderStatusBadge";
-import OrderStatusTimeline from "@/features/orders/OrderStatusTimeline";
-import CookingStatusTimeline from "@/features/orders/CookingStatusTimeline";
-import RiderTrackingCard from "@/features/orders/RiderTrackingCard";
+import Icon from "@/components/pk/Icon";
+import { getRiderLocation } from "@/services/api/riderTracking";
+import { calculateDistanceKm } from "@/utils/distance";
+import { formatPeso } from "@/utils/currency";
 import FeedbackModal from "@/features/orders/FeedbackModal";
 import { cancelOrder, downloadInvoice, getOrder } from "@/services/api/orders";
 import { openSupportForOrder } from "@/services/api/support";
 import { getOrderFeedback } from "@/services/api/feedback";
-import { isOrderCancellable, normalizeOrderStatus } from "@/features/orders/orderStatus";
+import {
+  ORDER_STATUS_LABELS,
+  ORDER_STATUS_STEPS,
+  isOrderCancellable,
+  normalizeOrderStatus,
+  statusClass,
+  statusStyle,
+} from "@/features/orders/orderStatus";
 import { useToastStore } from "@/stores/toastStore";
+import { paymentMethodLabel } from "@/features/orders/paymentMethods";
 
+const COOKING_LABELS: Record<string, string> = {
+  pending: "Order placed",
+  preparing: "Preparing",
+  cooking: "Cooking",
+  ready_for_pickup: "Ready for pickup",
+  out_for_delivery: "Out for delivery",
+  delivered: "Delivered",
+};
+
+/** The design's order tracking page, on the live order (polled until delivered/cancelled). */
 export default function OrderDetailView() {
   const { orderId } = useParams<{ orderId: string }>();
   const id = Number(orderId);
@@ -95,169 +109,286 @@ export default function OrderDetailView() {
     }
   }
 
+  const isRiderLive = order ? normalizeOrderStatus(order.status) === "out_for_delivery" : false;
+  const { data: riderLocation } = useQuery({
+    queryKey: ["riderLocation", id],
+    queryFn: () => getRiderLocation(id),
+    refetchInterval: 8000,
+    enabled: isRiderLive && Boolean(order?.rider),
+  });
+  const riderDistance =
+    riderLocation && order
+      ? `About ${calculateDistanceKm(riderLocation.latitude, riderLocation.longitude, order.latitude, order.longitude).toFixed(1)} km away`
+      : (order?.rider?.phone ?? "");
+
   function handleCancel() {
     if (window.confirm("Cancel this order?")) {
       cancelMutation.mutate();
     }
   }
 
-  if (isLoading) {
+  if (isLoading || isError || !order) {
     return (
-      <div className="flex justify-center py-8">
-        <Spinner />
-      </div>
+      <main className="inner-page account-bg">
+        <div className="shell page-title">
+          <h1>{isLoading ? "Loading your order…" : "Something went wrong"}</h1>
+          {!isLoading && (
+            <button type="button" className="btn primary" onClick={() => void refetch()}>
+              Try again
+            </button>
+          )}
+        </div>
+      </main>
     );
   }
 
-  if (isError || !order) {
-    return <ErrorState onRetry={() => void refetch()} />;
-  }
+  const canonical = normalizeOrderStatus(order.status);
+  const currentIndex = canonical === "pending_payment" ? -1 : ORDER_STATUS_STEPS.indexOf(canonical);
+  const isCancelled = canonical === "cancelled";
+  const isOutForDelivery = canonical === "out_for_delivery";
+  const headline = isCancelled
+    ? "Order cancelled"
+    : canonical === "pending_payment"
+      ? "Waiting for your payment"
+      : canonical === "delivered"
+        ? "Order delivered"
+        : canonical === "out_for_delivery"
+          ? "Your order is on the way"
+          : canonical === "preparing_items"
+            ? "Your shopper is at the market"
+            : "We got your order";
+  const subline = isCancelled
+    ? (order.cancellation_reason ?? "This order was cancelled.")
+    : canonical === "delivered"
+      ? "This market run was completed successfully."
+      : order.is_reservation && order.scheduled_delivery_time
+        ? `Scheduled for ${new Date(order.scheduled_delivery_time).toLocaleString("en-PH")}`
+        : "We'll keep this page updated as your order moves along.";
+  const STEP_DETAIL: Record<string, string> = {
+    order_received: "We received your market list.",
+    order_confirmed: "Your order was confirmed.",
+    preparing_items: "Fresh items are being selected now.",
+    out_for_delivery: "Your rider is bringing the order to you.",
+    delivered: "Order received at your doorstep.",
+  };
+  const palutoBundles = order.recipeBundles.filter((bundle) => bundle.paluto_stall_id !== null);
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-5">
-      <div className="flex items-start justify-between gap-2">
+    <main className="inner-page account-bg">
+      <div className="shell tracking-head">
+        <button type="button" onClick={() => navigate("/orders")}>
+          <Icon name="arrow" size={17} /> All orders
+        </button>
         <div>
-          <h1 className="text-lg font-bold text-text">Order #{order.order_number}</h1>
-          <p className="text-xs text-text-muted">
-            {new Date(order.received_at ?? order.created_at).toLocaleString("en-PH")}
-          </p>
+          <p className="kicker">Order {order.order_number}</p>
+          <h1>{headline}</h1>
+          <p>{subline}</p>
         </div>
-        <OrderStatusBadge status={order.status} />
+        <span className={`status ${statusClass(order.status)}`} style={statusStyle(order.status)}>
+          {ORDER_STATUS_LABELS[canonical]}
+        </span>
       </div>
 
-      <OrderStatusTimeline status={order.status} />
-
-      {normalizeOrderStatus(order.status) === "cancelled" && order.cancellation_reason && (
-        <p className="rounded-card bg-status-cancelled/10 p-3.5 text-sm font-medium text-status-cancelled">
-          Reason: {order.cancellation_reason}
-        </p>
-      )}
-
-      {isDelivered && order.delivery_photo && (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-semibold text-text">Proof of delivery</h2>
-          <img
-            src={order.delivery_photo}
-            alt="Delivery proof"
-            className="w-full rounded-card object-cover shadow-soft"
-          />
-        </section>
-      )}
-
-      <RiderTrackingCard order={order} />
-
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold text-text">Items</h2>
-        <ul className="flex flex-col divide-y divide-border rounded-card border border-border bg-surface px-4 shadow-soft">
-          {order.items.map((item, index) => (
-            <li key={index} className="flex items-center justify-between py-3 text-sm">
-              <span className="text-text">
-                {item.item_name}{" "}
-                <span className="text-text-muted">
-                  × {item.quantity} {item.unit_name}
+      <div className="shell tracking-layout">
+        <section className="tracking-main">
+          <div className="tracking-map">
+            <span className="road road-one"></span>
+            <span className="road road-two"></span>
+            <span className="road road-three"></span>
+            <div className="map-market">
+              <Icon name="bag" />
+              <small>Market</small>
+            </div>
+            <div className="map-route">
+              <i></i>
+              <i></i>
+              <i></i>
+              <i></i>
+              <i></i>
+              <i></i>
+            </div>
+            <div className="map-home">
+              <Icon name="truck" />
+              <small>Your home</small>
+            </div>
+            <div className="eta-card">
+              <small>{canonical === "delivered" ? "Delivered" : "Status"}</small>
+              <strong>{ORDER_STATUS_LABELS[canonical]}</strong>
+              {order.distance_meters ? (
+                <span>
+                  <Icon name="truck" size={14} /> {(order.distance_meters / 1000).toFixed(1)} km from the market
                 </span>
-              </span>
-              <PriceDisplay amount={Number(item.subtotal)} size="sm" />
-            </li>
-          ))}
-        </ul>
-      </section>
+              ) : null}
+            </div>
+          </div>
 
-      {order.recipeBundles.filter((bundle) => bundle.paluto_stall_id !== null).length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold text-text">Paluto orders</h2>
-          {order.recipeBundles
-            .filter((bundle) => bundle.paluto_stall_id !== null)
-            .map((bundle) => (
-              <div
-                key={bundle.id}
-                className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-soft"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-semibold text-text">{bundle.recipe_name}</p>
-                    <p className="text-xs text-text-muted">
-                      Cooked by {bundle.stall_name} · {bundle.quantity} {bundle.pricing_unit}
-                    </p>
-                  </div>
-                  <PriceDisplay amount={Number(bundle.cooking_fee)} size="sm" />
+          {order.rider && (
+            <article className="rider-card">
+              <span>{order.rider.name.charAt(0).toUpperCase()}</span>
+              <div>
+                <small>{isOutForDelivery ? "Your rider is on the way" : "Your rider"}</small>
+                <strong>{order.rider.name}</strong>
+                <p>{riderDistance}</p>
+              </div>
+              <a className="btn" href={`tel:${order.rider.phone}`} style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 11px", color: "var(--teal-dark)", background: "var(--teal-pale)", borderRadius: 9, fontSize: 9, fontWeight: 700 }}>
+                <Icon name="message" size={17} /> Call rider
+              </a>
+            </article>
+          )}
+
+          {canonical === "delivered" && order.delivery_photo && (
+            <article className="tracking-items">
+              <div className="tracking-section-title">
+                <h2>Proof of delivery</h2>
+              </div>
+              <img src={order.delivery_photo} alt="Delivery proof" style={{ height: "auto" }} />
+            </article>
+          )}
+
+          <article className="tracking-items">
+            <div className="tracking-section-title">
+              <h2>Order items</h2>
+              <span>
+                {order.items.length} item{order.items.length === 1 ? "" : "s"}
+              </span>
+            </div>
+            {order.items.map((item, index) => (
+              <div className="tracked-item" key={index}>
+                <span>
+                  <Icon name="leaf" />
+                </span>
+                <div>
+                  <strong>{item.item_name}</strong>
+                  <small>
+                    {Number(item.quantity)} {item.unit_name}
+                  </small>
                 </div>
-                <CookingStatusTimeline status={bundle.cooking_status} />
+                <b>{formatPeso(Number(item.subtotal))}</b>
               </div>
             ))}
+            {palutoBundles.map((bundle) => (
+              <div className="tracked-item" key={`bundle-${bundle.id}`}>
+                <span>
+                  <Icon name="sparkle" />
+                </span>
+                <div>
+                  <strong>
+                    {bundle.recipe_name} · cooked by {bundle.stall_name}
+                  </strong>
+                  <small>
+                    {Number(bundle.quantity)} {bundle.pricing_unit} · {COOKING_LABELS[bundle.cooking_status] ?? bundle.cooking_status}
+                  </small>
+                </div>
+                <b>{formatPeso(Number(bundle.cooking_fee))} fee</b>
+              </div>
+            ))}
+            <div className="tracking-totals">
+              <p>
+                <span>Subtotal</span>
+                <strong>{formatPeso(Number(order.subtotal))}</strong>
+              </p>
+              <p>
+                <span>Service fee</span>
+                <strong>{formatPeso(Number(order.service_fee))}</strong>
+              </p>
+              <p>
+                <span>Delivery fee (incl. VAT)</span>
+                <strong>{formatPeso(Number(order.delivery_fee) + Number(order.vat ?? 0))}</strong>
+              </p>
+              {Number(order.bulk_delivery_subsidy ?? 0) > 0 && (
+                <p>
+                  <span>Bulk delivery subsidy (BULK-FREESHIP-49)</span>
+                  <strong>-{formatPeso(Number(order.bulk_delivery_subsidy))}</strong>
+                </p>
+              )}
+              {Number(order.voucher_discount) > 0 && (
+                <p>
+                  <span>Voucher discount{order.voucher_code ? ` (${order.voucher_code})` : ""}</span>
+                  <strong>-{formatPeso(Number(order.voucher_discount))}</strong>
+                </p>
+              )}
+              {Number(order.bulk_discount ?? 0) > 0 && (
+                <p>
+                  <span>Bulk wholesale savings (in item prices)</span>
+                  <strong>{formatPeso(Number(order.bulk_discount))}</strong>
+                </p>
+              )}
+              <p>
+                <span>
+                  Total · {paymentMethodLabel(order.payment_method)} · {order.payment_status}
+                </span>
+                <strong>{formatPeso(Number(order.total_amount))}</strong>
+              </p>
+            </div>
+          </article>
         </section>
-      )}
 
-      <section className="flex flex-col gap-1 rounded-card border border-border bg-surface p-4 shadow-soft">
-        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-text">
-          <span aria-hidden="true">📍</span> Delivery address
-        </h2>
-        <p className="text-sm text-text-muted">{order.delivery_address}</p>
-        <p className="text-sm text-text-muted">
-          {order.contact_name} · {order.contact_phone}
-        </p>
-      </section>
-
-      <section className="flex flex-col gap-2 rounded-card bg-surface p-4 shadow-soft">
-        <div className="flex justify-between text-sm">
-          <span className="text-text-muted">Subtotal</span>
-          <PriceDisplay amount={Number(order.subtotal)} size="sm" />
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-text-muted">Delivery fee</span>
-          <PriceDisplay amount={Number(order.delivery_fee)} size="sm" />
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-text-muted">Service fee</span>
-          <PriceDisplay amount={Number(order.service_fee)} size="sm" />
-        </div>
-        {Number(order.voucher_discount) > 0 && (
-          <div className="flex justify-between text-sm text-status-delivered">
-            <span>Voucher discount</span>
-            <PriceDisplay amount={-Number(order.voucher_discount)} size="sm" />
+        <aside className="tracking-timeline">
+          <h2>Order progress</h2>
+          {isCancelled ? (
+            <div className="done">
+              <span style={{ background: "#dc2626" }}>
+                <Icon name="x" size={14} />
+              </span>
+              <section>
+                <strong>Cancelled</strong>
+                <p>{order.cancellation_reason ?? "This order was cancelled."}</p>
+              </section>
+            </div>
+          ) : (
+            ORDER_STATUS_STEPS.map((step, index) => {
+              const done = index <= currentIndex;
+              const current = index === currentIndex;
+              return (
+                <div className={`${done ? "done" : ""} ${current ? "current" : ""}`} key={step}>
+                  <span>{done ? <Icon name="check" size={14} /> : ""}</span>
+                  <section>
+                    <strong>{ORDER_STATUS_LABELS[step]}</strong>
+                    <p>{STEP_DETAIL[step]}</p>
+                    <small>{current ? "In progress" : done ? "Done" : "Up next"}</small>
+                  </section>
+                </div>
+              );
+            })
+          )}
+          <div className="delivery-address">
+            <Icon name="truck" />
+            <div>
+              <small>Delivering to</small>
+              <strong>
+                {order.contact_name} · {order.contact_phone}
+              </strong>
+              <p>{order.delivery_address}</p>
+            </div>
           </div>
-        )}
-        <div className="flex justify-between border-t border-primary-100 pt-2 text-base font-bold text-text">
-          <span>Total</span>
-          <PriceDisplay amount={Number(order.total_amount)} size="lg" />
-        </div>
-        <p className="text-xs text-text-muted">
-          Payment: {order.payment_method.toUpperCase()} · {order.payment_status}
-        </p>
-      </section>
-
-      <div className="flex flex-col gap-2">
-        {isDelivered && (
-          <Button variant="secondary" onClick={() => setFeedbackOpen(true)}>
-            {feedback ? `Update your rating (${feedback.rating}★)` : "Rate this order"}
-          </Button>
-        )}
-
-        <Button
-          variant="secondary"
-          loading={supportMutation.isPending}
-          onClick={() => supportMutation.mutate()}
-        >
-          Get help with this order
-        </Button>
-
-        <Button variant="secondary" loading={downloading} onClick={handleDownloadInvoice}>
-          Download invoice
-        </Button>
-
-        {isOrderCancellable(order.status, order.payment_method) && (
-          <Button
-            variant="danger"
-            loading={cancelMutation.isPending}
-            onClick={handleCancel}
+          <button
+            type="button"
+            className="btn support-order"
+            disabled={supportMutation.isPending}
+            onClick={() => supportMutation.mutate()}
           >
-            Cancel order
-          </Button>
-        )}
-
-        <Button variant="ghost" onClick={() => navigate("/orders")}>
-          Back to orders
-        </Button>
+            Need help with this order?
+          </button>
+          {isDelivered && (
+            <button type="button" className="btn support-order" onClick={() => setFeedbackOpen(true)}>
+              {feedback ? `Update your rating (${feedback.rating}★)` : "Rate this order"}
+            </button>
+          )}
+          <button type="button" className="btn support-order" disabled={downloading} onClick={handleDownloadInvoice}>
+            {downloading ? "Downloading…" : "Download invoice"}
+          </button>
+          {isOrderCancellable(order.status, order.payment_method) && (
+            <button
+              type="button"
+              className="btn support-order"
+              style={{ color: "#b42318", background: "#fde8e8" }}
+              disabled={cancelMutation.isPending}
+              onClick={handleCancel}
+            >
+              Cancel order
+            </button>
+          )}
+        </aside>
       </div>
 
       <FeedbackModal
@@ -266,6 +397,6 @@ export default function OrderDetailView() {
         orderId={id}
         existingFeedback={feedback ?? null}
       />
-    </div>
+    </main>
   );
 }

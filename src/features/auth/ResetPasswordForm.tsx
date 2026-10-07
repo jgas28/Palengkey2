@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import Input from "@/components/ui/Input";
-import Button from "@/components/ui/Button";
+import PkField from "@/components/pk/PkField";
+import AuthShell from "@/features/auth/AuthShell";
 import { resetPassword } from "@/services/api/auth";
 import { useToastStore } from "@/stores/toastStore";
 
@@ -53,52 +53,50 @@ export default function ResetPasswordForm() {
   }
 
   return (
-    <div className="flex min-h-full items-center justify-center bg-[#F7FAFA] px-6 py-12">
-      <div className="w-full max-w-sm rounded-2xl border border-[#DDE9EA] bg-white p-6 shadow-sm">
-        <img src="/assets/name.png" alt="Palengkey" className="mb-5 h-9 w-auto" />
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <h1 className="font-display text-2xl font-bold text-[#203238]">
-            Enter new password
-          </h1>
-
-          <Input
-            label="Email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            error={errors.email}
-          />
-          <Input
-            label="6-digit code"
-            inputMode="numeric"
-            maxLength={6}
-            value={otp}
-            onChange={(event) => setOtp(event.target.value.replace(/\D/g, ""))}
-            error={errors.otp}
-          />
-          <Input
-            label="New password"
-            type="password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            error={errors.password}
-          />
-          <Input
-            label="Confirm new password"
-            type="password"
-            autoComplete="new-password"
-            value={passwordConfirmation}
-            onChange={(event) => setPasswordConfirmation(event.target.value)}
-            error={errors.passwordConfirmation}
-          />
-
-          <Button variant="solid" type="submit" fullWidth loading={submitting}>
-            Reset password
-          </Button>
-        </form>
-      </div>
-    </div>
+    <AuthShell>
+      <p className="kicker">Almost done</p>
+      <h1>Enter a new password</h1>
+      <p>Use the 6-digit code we sent you.</p>
+      <form onSubmit={handleSubmit} noValidate style={{ marginTop: 18 }}>
+        <PkField
+          label="Email address"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          error={errors.email}
+        />
+        <PkField
+          label="6-digit code"
+          inputMode="numeric"
+          maxLength={6}
+          value={otp}
+          onChange={(event) => setOtp(event.target.value.replace(/\D/g, ""))}
+          error={errors.otp}
+        />
+        <PkField
+          label="New password"
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          error={errors.password}
+        />
+        <PkField
+          label="Confirm new password"
+          type="password"
+          autoComplete="new-password"
+          value={passwordConfirmation}
+          onChange={(event) => setPasswordConfirmation(event.target.value)}
+          error={errors.passwordConfirmation}
+        />
+        <button type="submit" className="btn primary auth-submit" disabled={submitting}>
+          {submitting ? "Saving…" : "Reset password"}
+        </button>
+      </form>
+      <button type="button" className="guest" style={{ marginTop: 16 }} onClick={() => navigate("/login")}>
+        ← Back to log in
+      </button>
+    </AuthShell>
   );
 }

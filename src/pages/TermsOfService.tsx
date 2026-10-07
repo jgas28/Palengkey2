@@ -1,6 +1,4 @@
-import InfoPageHeader from "@/components/layout/InfoPageHeader";
-import InfoSection from "@/components/layout/InfoSection";
-import Footer from "@/components/layout/Footer";
+import PkInfoPage from "@/components/pk/PkInfoPage";
 
 const sections = [
   {
@@ -35,37 +33,15 @@ const sections = [
 
 export default function TermsOfService() {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-      <InfoPageHeader
-        icon={
-          <svg
-            className="h-6 w-6"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-        }
-        title="Terms of Service"
-        description="By using Palengkey, you agree to these terms and conditions."
-      />
-
-      <div className="flex flex-col gap-3">
-        {sections.map((section) => (
-          <InfoSection key={section.title} title={section.title}>
-            {section.body}
-          </InfoSection>
-        ))}
-      </div>
-
-      <Footer />
-    </div>
+    <PkInfoPage
+      kicker="Terms of service"
+      title="The fine print, kept simple."
+      description="The terms that apply when you shop with Palengkey."
+      sections={sections.map((section) => ({
+        id: section.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        title: section.title,
+        body: section.body,
+      }))}
+    />
   );
 }

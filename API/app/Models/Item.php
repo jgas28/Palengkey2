@@ -14,6 +14,7 @@ class Item extends Model
         'category_id',
         'type_id',
         'unit_id',
+        'bulk_min_kg',
         'status',
         'cutoff_time',
         'cutoff_timezone',
@@ -23,6 +24,7 @@ class Item extends Model
     {
         return [
             'status' => 'boolean',
+            'bulk_min_kg' => 'decimal:3',
             'cutoff_time' => 'datetime:H:i',
         ];
     }

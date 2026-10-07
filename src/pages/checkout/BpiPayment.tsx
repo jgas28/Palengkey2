@@ -1,5 +1,5 @@
-import BpiPaymentScreen from "@/features/checkout/BpiPaymentScreen";
+import RedirectPaymentScreen from "@/features/checkout/RedirectPaymentScreen";
 
 export default function BpiPayment() {
-  return <BpiPaymentScreen />;
+  return <RedirectPaymentScreen />;
 }

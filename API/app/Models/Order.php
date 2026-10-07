@@ -6,6 +6,30 @@ use Illuminate\Database\Eloquent\Model;
 
 class Order extends Model
 {
+    /**
+     * Paid on a PayMongo-hosted checkout page — key is our payment_method value,
+     * value is the PayMongo checkout `payment_method_types` entry.
+     */
+    public const CHECKOUT_SESSION_METHODS = [
+        'card' => 'card',
+        'gcash' => 'gcash',
+        'maya' => 'paymaya',
+        'ubp' => 'dob_ubp',
+    ];
+
+    /** Every method that's paid online before the order is confirmed. */
+    public const CASHLESS_METHODS = ['qrph', 'bpi', 'card', 'gcash', 'maya', 'ubp'];
+
+    public const PAYMENT_METHOD_LABELS = [
+        'cod' => 'Cash on Delivery',
+        'qrph' => 'QR Ph',
+        'bpi' => 'BPI',
+        'card' => 'Visa / Mastercard',
+        'gcash' => 'GCash',
+        'maya' => 'Maya',
+        'ubp' => 'UnionBank',
+    ];
+
     protected $fillable = [
         'order_number',
         'invoice_series_number',
@@ -20,6 +44,8 @@ class Order extends Model
         'voucher_discount',
         'voucher_code',
         'voucher_id',
+        'bulk_discount',
+        'bulk_delivery_subsidy',
         'total_amount',
         'distance_meters',
 
@@ -121,9 +147,14 @@ class Order extends Model
         return $this->hasOne(OrderFeedback::class);
     }
 
+    public static function paymentMethodLabel(?string $method): string
+    {
+        return self::PAYMENT_METHOD_LABELS[strtolower((string) $method)] ?? strtoupper((string) $method);
+    }
+
     /**
-     * Cancellable while newly placed, or while still awaiting a redirect-based
-     * cashless payment (BPI online banking, QR Ph) the customer wants to abandon.
+     * Cancellable while newly placed, or while still awaiting an online payment
+     * (QR Ph, BPI, card, GCash, Maya, UnionBank) the customer wants to abandon.
      */
     public function isCustomerCancellable(): bool
     {
@@ -132,6 +163,6 @@ class Order extends Model
         }
 
         return $this->status === 'pending_payment'
-            && in_array($this->payment_method, ['bpi', 'qrph'], true);
+            && in_array($this->payment_method, self::CASHLESS_METHODS, true);
     }
 }

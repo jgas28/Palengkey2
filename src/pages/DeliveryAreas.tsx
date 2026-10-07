@@ -1,123 +1,79 @@
 import { useQuery } from "@tanstack/react-query";
-import InfoPageHeader from "@/components/layout/InfoPageHeader";
-import Footer from "@/components/layout/Footer";
-import EmptyState from "@/components/common/EmptyState";
-import ErrorState from "@/components/common/ErrorState";
-import { Spinner } from "@/components/common/LoadingState";
+import Icon, { type IconName } from "@/components/pk/Icon";
 import { getDeliveryAreas } from "@/services/api/content";
 
-const pinIcon = (
-  <svg
-    className="h-6 w-6"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    viewBox="0 0 24 24"
-    aria-hidden="true"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-    />
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-    />
-  </svg>
-);
+const SECTIONS: { id: string; title: string; icon: IconName; text: string }[] = [
+  {
+    id: "timing",
+    title: "Timing and cutoff",
+    icon: "clock",
+    text: "Each market has a same-day order cutoff. After it, your items are scheduled for the next market run and you pick a delivery slot at checkout. Live progress appears on your order page.",
+  },
+  {
+    id: "fees",
+    title: "How delivery fees work",
+    icon: "truck",
+    text: "Fees are based on the distance from your market to your address. Your exact delivery fee appears at checkout before you confirm — no hidden charges. Bulk orders get up to ₱49 of delivery covered.",
+  },
+  {
+    id: "freshness",
+    title: "Our freshness guarantee",
+    icon: "leaf",
+    text: "If an item arrives damaged or below quality expectations, message Support with a photo within 30 minutes of delivery. Eligible items can be replaced or refunded after review.",
+  },
+];
 
+/** The design's Delivery information page, with the real served / coming-soon areas. */
 export default function DeliveryAreas() {
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["deliveryAreas"],
-    queryFn: getDeliveryAreas,
-  });
+  const { data, isLoading } = useQuery({ queryKey: ["deliveryAreas"], queryFn: getDeliveryAreas });
+
+  const areasText = isLoading
+    ? "Loading delivery areas…"
+    : data && data.available.length > 0
+      ? `We currently deliver to ${data.available.join(", ")}.${data.coming_soon.length ? ` Coming soon: ${data.coming_soon.join(", ")}.` : ""} Availability depends on your selected market and delivery address.`
+      : "Delivery areas depend on your selected market and address — enter your address at checkout to confirm.";
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-      <InfoPageHeader
-        icon={pinIcon}
-        title="Delivery Areas"
-        description="We currently serve selected cities and municipalities near partner markets."
-      />
-
-      {isLoading && (
-        <div className="flex justify-center py-8">
-          <Spinner />
+    <main className="inner-page account-bg">
+      <section className="delivery-hero">
+        <div className="shell">
+          <p className="kicker">Delivery information</p>
+          <h1>From the palengke to your doorstep.</h1>
+          <p>Everything you need to know about areas, timing, fees, and freshness.</p>
         </div>
-      )}
-
-      {isError && <ErrorState onRetry={() => void refetch()} />}
-
-      {data && data.available.length === 0 && data.coming_soon.length === 0 && (
-        <EmptyState
-          icon={<span className="text-5xl">🗺️</span>}
-          title="No delivery areas yet."
-          description="Check back soon — we're expanding to new areas."
-        />
-      )}
-
-      {data && (data.available.length > 0 || data.coming_soon.length > 0) && (
-        <div className="flex flex-col gap-6">
-          {data.available.length > 0 && (
-            <section>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
-                Available Now
-              </h2>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {data.available.map((area) => (
-                  <div
-                    key={area}
-                    className="flex items-center justify-between gap-3 rounded-card border border-border bg-surface p-4 shadow-soft"
-                  >
-                    <span className="truncate text-sm font-medium text-text">{area}</span>
-                    <span className="flex items-center gap-1.5 rounded-pill bg-status-delivered/10 px-2.5 py-1 text-xs font-semibold text-status-delivered">
-                      <span
-                        className="h-1.5 w-1.5 rounded-full bg-status-delivered"
-                        aria-hidden="true"
-                      />
-                      Available
-                    </span>
-                  </div>
-                ))}
+      </section>
+      <section className="section shell delivery-content">
+        <aside>
+          <a href="#areas">Delivery areas</a>
+          {SECTIONS.map((section) => (
+            <a href={`#${section.id}`} key={section.id}>
+              {section.title}
+            </a>
+          ))}
+        </aside>
+        <div>
+          <article id="areas">
+            <span>
+              <Icon name="truck" />
+            </span>
+            <div>
+              <h2>Where we deliver</h2>
+              <p>{areasText}</p>
+            </div>
+          </article>
+          {SECTIONS.map((section) => (
+            <article id={section.id} key={section.id}>
+              <span>
+                <Icon name={section.icon} />
+              </span>
+              <div>
+                <h2>{section.title}</h2>
+                <p>{section.text}</p>
               </div>
-            </section>
-          )}
-
-          {data.coming_soon.length > 0 && (
-            <section>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
-                Coming Soon
-              </h2>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {data.coming_soon.map((area) => (
-                  <div
-                    key={area}
-                    className="flex items-center justify-between gap-3 rounded-card border border-border bg-surface p-4 shadow-soft opacity-90"
-                  >
-                    <span className="truncate text-sm font-medium text-text">{area}</span>
-                    <span className="flex items-center gap-1.5 rounded-pill bg-accent-100 px-2.5 py-1 text-xs font-semibold text-accent-700">
-                      <span
-                        className="h-1.5 w-1.5 rounded-full bg-accent-500"
-                        aria-hidden="true"
-                      />
-                      Coming Soon
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          <p className="flex items-start gap-2 rounded-card border border-accent-200 bg-accent-50 p-4 text-sm text-accent-700">
-            <span aria-hidden="true">ℹ️</span>
-            Coverage may change based on market availability and rider capacity.
-          </p>
+            </article>
+          ))}
         </div>
-      )}
-
-      <Footer />
-    </div>
+      </section>
+    </main>
   );
 }

@@ -1,6 +1,4 @@
-import InfoPageHeader from "@/components/layout/InfoPageHeader";
-import InfoSection from "@/components/layout/InfoSection";
-import Footer from "@/components/layout/Footer";
+import PkInfoPage from "@/components/pk/PkInfoPage";
 
 const sections = [
   {
@@ -31,37 +29,15 @@ const sections = [
 
 export default function PrivacyPolicy() {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-      <InfoPageHeader
-        icon={
-          <svg
-            className="h-6 w-6"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-            />
-          </svg>
-        }
-        title="Privacy Policy"
-        description="Your privacy matters to us. This page explains how we collect and use your data."
-      />
-
-      <div className="flex flex-col gap-3">
-        {sections.map((section) => (
-          <InfoSection key={section.title} title={section.title}>
-            {section.body}
-          </InfoSection>
-        ))}
-      </div>
-
-      <Footer />
-    </div>
+    <PkInfoPage
+      kicker="Privacy policy"
+      title="Your privacy matters to us."
+      description="How we collect, use, and protect your personal data."
+      sections={sections.map((section) => ({
+        id: section.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        title: section.title,
+        body: section.body,
+      }))}
+    />
   );
 }

@@ -23,6 +23,9 @@ export interface AdminItem {
   type: string | null;
   unit_id: number;
   unit: string | null;
+  /** Per-item bulk threshold override (kg); null = use the category's. */
+  bulk_min_kg: string | null;
+  category_bulk_min_kg: string | null;
   images: AdminItemImage[];
   market: AdminItemMarketListing | null;
 }

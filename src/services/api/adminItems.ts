@@ -39,6 +39,8 @@ export interface CreateAdminItemPayload {
   category_id: number;
   type_id?: number;
   unit_id: number;
+  /** Empty/undefined = use the category's bulk threshold. */
+  bulk_min_kg?: number | null;
   price: number;
   is_available: boolean;
   cutoff_time?: string;
@@ -55,6 +57,7 @@ export async function createAdminItem(
   form.append("category_id", String(payload.category_id));
   if (payload.type_id) form.append("type_id", String(payload.type_id));
   form.append("unit_id", String(payload.unit_id));
+  if (payload.bulk_min_kg) form.append("bulk_min_kg", String(payload.bulk_min_kg));
   form.append("price", String(payload.price));
   form.append("is_available", payload.is_available ? "1" : "0");
   if (payload.cutoff_time) form.append("cutoff_time", payload.cutoff_time);
@@ -70,6 +73,8 @@ export interface UpdateAdminItemPayload {
   category_id?: number;
   type_id?: number;
   unit_id?: number;
+  /** null clears the override (falls back to the category's threshold). */
+  bulk_min_kg?: number | null;
 }
 
 export async function updateAdminItem(

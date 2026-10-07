@@ -1,9 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import Button from "@/components/ui/Button";
-import { Spinner } from "@/components/common/LoadingState";
-import EmptyState from "@/components/common/EmptyState";
-import ErrorState from "@/components/common/ErrorState";
+import Icon, { type IconName } from "@/components/pk/Icon";
 import {
   clearAllNotifications,
   listNotifications,
@@ -76,75 +73,76 @@ export default function NotificationsListView() {
   const notifications = data?.notifications ?? [];
   const hasUnread = notifications.some((notification) => !notification.is_read);
 
+  function iconFor(notification: Notification): IconName {
+    const type = `${notification.type} ${notification.order_status ?? ""}`.toLowerCase();
+    if (type.includes("deliver") || type.includes("rider")) return "truck";
+    if (type.includes("promo") || type.includes("voucher") || type.includes("deal")) return "sparkle";
+    if (type.includes("payment")) return "shield";
+    return "bag";
+  }
+
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
-      <h1 className="text-lg font-bold text-text">Notifications</h1>
-
-      {isLoading && (
-        <div className="flex justify-center py-8">
-          <Spinner />
+    <main className="inner-page account-bg">
+      <div className="shell page-title page-title-action">
+        <div>
+          <p className="kicker">Updates</p>
+          <h1>Notifications</h1>
+          <p>Order activity, account updates, and fresh deals.</p>
         </div>
-      )}
-
-      {isError && <ErrorState onRetry={() => void refetch()} />}
-
-      {!isLoading && !isError && notifications.length === 0 && (
-        <EmptyState
-          icon={<span className="text-5xl">🔔</span>}
-          title="No notifications yet."
-        />
-      )}
-
-      {!isLoading && !isError && notifications.length > 0 && (
-        <>
-          <div className="flex flex-col gap-2">
-            {notifications.map((notification) => (
-              <button
-                key={notification.id}
-                type="button"
-                onClick={() => handleOpen(notification)}
-                className={`flex flex-col items-start gap-1 rounded-card border p-3.5 text-left shadow-soft transition-colors ${
-                  notification.is_read
-                    ? "border-border bg-surface"
-                    : "border-primary-100 bg-primary-50"
-                }`}
-              >
-                <div className="flex w-full items-center justify-between gap-2">
-                  <span className="text-sm font-semibold text-text">
-                    {notification.title}
-                  </span>
-                  {!notification.is_read && (
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-accent-500" />
-                  )}
-                </div>
-                <p className="text-sm text-text-muted">{notification.message}</p>
-                <span className="text-xs text-text-muted">
-                  {new Date(notification.created_at).toLocaleString("en-PH")}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <div className="flex gap-2">
+        {notifications.length > 0 && (
+          <div style={{ display: "flex", gap: 8 }}>
             {hasUnread && (
-              <Button
-                variant="secondary"
-                loading={markAllMutation.isPending}
-                onClick={() => markAllMutation.mutate()}
-              >
+              <button type="button" className="mark-read" disabled={markAllMutation.isPending} onClick={() => markAllMutation.mutate()}>
                 Mark all as read
-              </Button>
+              </button>
             )}
-            <Button
-              variant="ghost"
-              loading={clearMutation.isPending}
-              onClick={handleClearAll}
-            >
+            <button type="button" className="mark-read" style={{ color: "#b13c3c" }} disabled={clearMutation.isPending} onClick={handleClearAll}>
               Clear all
-            </Button>
+            </button>
           </div>
-        </>
-      )}
-    </div>
+        )}
+      </div>
+      <section className="shell notification-list">
+        {isLoading ? (
+          <div className="empty" style={{ margin: 18 }}>
+            <Icon name="bell" size={34} />
+            <h3>Loading notifications…</h3>
+          </div>
+        ) : isError ? (
+          <div className="empty" style={{ margin: 18 }}>
+            <Icon name="x" size={34} />
+            <h3>Something went wrong</h3>
+            <button type="button" className="btn primary" onClick={() => void refetch()}>
+              Try again
+            </button>
+          </div>
+        ) : notifications.length === 0 ? (
+          <div className="empty" style={{ margin: 18 }}>
+            <Icon name="bell" size={34} />
+            <h3>No notifications yet</h3>
+            <p>Order updates and deals will show up here.</p>
+          </div>
+        ) : (
+          notifications.map((notification) => (
+            <article
+              className={notification.is_read ? "read" : ""}
+              key={notification.id}
+              onClick={() => handleOpen(notification)}
+            >
+              <span>
+                <Icon name={iconFor(notification)} />
+              </span>
+              <div>
+                <h2>{notification.title}</h2>
+                <p>{notification.message}</p>
+                <small>{new Date(notification.created_at).toLocaleString("en-PH")}</small>
+              </div>
+              {!notification.is_read ? <i></i> : <span style={{ width: 0, height: 0, background: "none" }} />}
+              <Icon name="chevron" />
+            </article>
+          ))
+        )}
+      </section>
+    </main>
   );
 }

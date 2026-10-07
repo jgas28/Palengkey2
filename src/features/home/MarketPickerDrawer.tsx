@@ -1,9 +1,7 @@
+import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
-import Drawer from "@/components/ui/Drawer";
-import { Spinner } from "@/components/common/LoadingState";
-import EmptyState from "@/components/common/EmptyState";
-import ErrorState from "@/components/common/ErrorState";
-import MarketsMap from "@/features/home/MarketsMap";
+import Icon from "@/components/pk/Icon";
 import { listMarkets } from "@/services/api/markets";
 import { getCurrentCoordinates } from "@/utils/geolocation";
 import { useMarketStore } from "@/stores/marketStore";
@@ -14,12 +12,14 @@ export interface MarketPickerDrawerProps {
   onClose: () => void;
 }
 
+/** The design's "Select a market" modal (.market-picker), on the real market list. */
 export default function MarketPickerDrawer({ isOpen, onClose }: MarketPickerDrawerProps) {
   const setMarket = useMarketStore((state) => state.setMarket);
   const selectedMarketId = useMarketStore((state) => state.selectedMarket?.id);
+  const [query, setQuery] = useState("");
 
   const {
-    data: markets,
+    data: markets = [],
     isLoading,
     isError,
     refetch,
@@ -32,83 +32,104 @@ export default function MarketPickerDrawer({ isOpen, onClose }: MarketPickerDraw
     enabled: isOpen,
   });
 
+  if (!isOpen) return null;
+
+  const shown = markets.filter((market) =>
+    `${market.name} ${market.address}`.toLowerCase().includes(query.toLowerCase()),
+  );
+
   function handleSelect(market: Market) {
     setMarket(market);
     onClose();
   }
 
-  return (
-    <Drawer isOpen={isOpen} onClose={onClose} side="bottom" title="Choose a market">
-      {isLoading && (
-        <div className="flex justify-center py-8">
-          <Spinner />
+  return createPortal(
+    <div className="market-picker-backdrop" onClick={onClose}>
+      <section
+        className="market-picker"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Select a market"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="picker-head">
+          <div>
+            <p className="kicker">Choose your palengke</p>
+            <h2>Select a market</h2>
+            <p>Availability and delivery time are based on your address.</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close market selector">
+            <Icon name="x" />
+          </button>
         </div>
-      )}
-
-      {isError && <ErrorState onRetry={() => void refetch()} />}
-
-      {!isLoading && !isError && markets?.length === 0 && (
-        <EmptyState
-          icon={<span className="text-5xl">🏪</span>}
-          title="No markets found nearby."
-        />
-      )}
-
-      {!isLoading && !isError && markets && markets.length > 0 && (
-        <div className="mb-3">
-          <MarketsMap
-            markets={markets}
-            selectedMarketId={selectedMarketId}
-            onSelect={handleSelect}
+        <label className="picker-search">
+          <Icon name="search" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search markets or cities..."
+            aria-label="Search markets"
           />
-        </div>
-      )}
-
-      {!isLoading && !isError && markets && markets.length > 0 && (
-        <ul className="flex flex-col gap-2">
-          {markets.map((market) => {
-            const isSelected = market.id === selectedMarketId;
+        </label>
+        <div className="market-options">
+          {isLoading && <p style={{ margin: 0, color: "var(--muted)", fontSize: 11 }}>Loading markets…</p>}
+          {isError && (
+            <button type="button" onClick={() => void refetch()}>
+              <span>
+                <Icon name="x" />
+              </span>
+              <div>
+                <strong>Couldn&apos;t load markets</strong>
+                <p>Tap to try again.</p>
+              </div>
+            </button>
+          )}
+          {!isLoading && !isError && shown.length === 0 && (
+            <p style={{ color: "var(--muted)", fontSize: 11 }}>No markets match your search.</p>
+          )}
+          {shown.map((market) => {
+            const selected = market.id === selectedMarketId;
             return (
-              <li key={market.id}>
-                <button
-                  type="button"
-                  onClick={() => handleSelect(market)}
-                  className={`flex w-full items-start gap-3 rounded-card border p-3.5 text-left transition-colors ${
-                    isSelected
-                      ? "border-primary bg-primary-50"
-                      : "border-border bg-surface md:hover:border-primary-200"
-                  }`}
-                >
-                  <span
-                    aria-hidden="true"
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-lg shadow-soft"
-                  >
-                    🏪
-                  </span>
-                  <span className="flex flex-1 flex-col items-start gap-0.5">
-                    <span className="font-semibold text-text">{market.name}</span>
-                    <span className="text-sm text-text-muted">{market.address}</span>
-                    <span className="flex items-center gap-1.5 pt-0.5 text-xs">
-                      {market.distance !== null && (
-                        <span className="text-text-muted">{market.distance} km away</span>
-                      )}
-                      <span
-                        className={`rounded-pill px-2 py-0.5 font-semibold ${
-                          market.has_items
-                            ? "bg-status-delivered/15 text-status-delivered"
-                            : "bg-background text-text-muted"
-                        }`}
-                      >
-                        {market.has_items ? "Open today" : "No items today"}
-                      </span>
-                    </span>
-                  </span>
-                </button>
-              </li>
+              <button
+                type="button"
+                className={`${selected ? "selected" : ""} ${!market.has_items ? "disabled" : ""}`}
+                disabled={!market.has_items}
+                onClick={() => handleSelect(market)}
+                key={market.id}
+              >
+                <span>
+                  <Icon name="bag" />
+                </span>
+                <div>
+                  <strong>{market.name}</strong>
+                  <p>{market.address}</p>
+                  <small>
+                    {market.distance !== null ? `${market.distance} km away · ` : ""}
+                    {market.has_items ? "Open today" : "No items today"}
+                  </small>
+                </div>
+                {market.has_items ? (
+                  <i>
+                    {selected ? <Icon name="check" size={16} /> : <Icon name="chevron" size={16} />}
+                  </i>
+                ) : (
+                  <b>Coming soon</b>
+                )}
+              </button>
             );
           })}
-        </ul>
-      )}
-    </Drawer>
+        </div>
+        <div className="picker-note">
+          <Icon name="truck" />
+          <span>
+            <strong>Market-to-door delivery</strong>
+            <small>
+              Your order is shopped and delivered from one market to keep everything fresh.
+            </small>
+          </span>
+        </div>
+      </section>
+    </div>,
+    document.body,
   );
 }

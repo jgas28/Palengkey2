@@ -20,6 +20,7 @@ class PalutoStallController extends Controller
 
         $query = PalutoStall::query()
             ->with('market')
+            ->withCount('dishes')
             ->when($search !== '', fn (Builder $q) => $q->where('name', 'like', "%{$search}%"))
             ->when($marketId, fn (Builder $q) => $q->where('market_id', $marketId))
             ->when($status !== null, fn (Builder $q) => $q->where('status', (int) $status))
@@ -137,6 +138,7 @@ class PalutoStallController extends Controller
             'status' => $stall->status,
             'is_accepting_orders' => $stall->is_accepting_orders,
             'prep_time_minutes' => $stall->prep_time_minutes,
+            'dishes_count' => $stall->dishes_count ?? $stall->dishes()->count(),
             'created_at' => $stall->created_at,
         ];
     }

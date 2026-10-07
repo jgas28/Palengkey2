@@ -7,11 +7,11 @@ use Illuminate\Support\Facades\Storage;
 
 class Category extends Model
 {
-    protected $fillable = ['name', 'image', 'status'];
+    protected $fillable = ['name', 'image', 'status', 'bulk_min_kg'];
 
     protected function casts(): array
     {
-        return ['status' => 'boolean'];
+        return ['status' => 'boolean', 'bulk_min_kg' => 'decimal:3'];
     }
 
     public function items()

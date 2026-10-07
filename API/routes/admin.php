@@ -18,8 +18,8 @@ use App\Http\Controllers\Api\Admin\LookupController;
 use App\Http\Controllers\Api\Admin\MarketController;
 use App\Http\Controllers\Api\Admin\MarketItemController;
 use App\Http\Controllers\Api\Admin\OrderController;
+use App\Http\Controllers\Api\Admin\PalutoDishController;
 use App\Http\Controllers\Api\Admin\PalutoStallController;
-use App\Http\Controllers\Api\Admin\PalutoStallRecipeController;
 use App\Http\Controllers\Api\Admin\PopupAdController;
 use App\Http\Controllers\Api\Admin\PushBlastController;
 use App\Http\Controllers\Api\Admin\RecipeController;
@@ -108,8 +108,14 @@ Route::prefix('admin')->group(function () {
             Route::delete('/paluto-stalls/{stall}', [PalutoStallController::class, 'destroy']);
             Route::post('/paluto-stalls/{stall}/restore', [PalutoStallController::class, 'restore']);
 
-            Route::get('/paluto-stalls/{stall}/recipes', [PalutoStallRecipeController::class, 'index']);
-            Route::post('/paluto-stalls/{stall}/recipes', [PalutoStallRecipeController::class, 'store']);
+            Route::get('/paluto-stalls/{stall}/dishes', [PalutoDishController::class, 'index']);
+            Route::post('/paluto-stalls/{stall}/dishes', [PalutoDishController::class, 'store']);
+            Route::get('/paluto-stalls/{stall}/market-prices', [PalutoDishController::class, 'marketPrices']);
+            Route::get('/paluto-dishes/{dish}', [PalutoDishController::class, 'show']);
+            Route::post('/paluto-dishes/{dish}', [PalutoDishController::class, 'update']);
+            Route::put('/paluto-dishes/{dish}/ingredients', [PalutoDishController::class, 'updateIngredients']);
+            Route::delete('/paluto-dishes/{dish}', [PalutoDishController::class, 'destroy']);
+            Route::post('/paluto-dishes/{dish}/restore', [PalutoDishController::class, 'restore']);
         });
 
         Route::middleware('admin.role:super_admin')->group(function () {

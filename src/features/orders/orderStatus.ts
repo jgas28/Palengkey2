@@ -1,3 +1,4 @@
+import { CASHLESS_PAYMENT_METHODS } from "@/features/orders/paymentMethods";
 export type CanonicalOrderStatus =
   | "order_received"
   | "order_confirmed"
@@ -54,9 +55,7 @@ export const ORDER_STATUS_LABELS: Record<CanonicalOrderStatus, string> = {
 /** Mirrors Order::isCustomerCancellable() on the backend exactly. */
 export function isOrderCancellable(status: string, paymentMethod: string): boolean {
   if (status === "order_received" || status === "pending") return true;
-  return (
-    status === "pending_payment" && (paymentMethod === "bpi" || paymentMethod === "qrph")
-  );
+  return status === "pending_payment" && CASHLESS_PAYMENT_METHODS.includes(paymentMethod);
 }
 
 /** A "Cook for Me" bundle's kitchen progress — separate from the whole
@@ -98,3 +97,18 @@ export const ORDER_STATUS_COLOR_CLASS: Record<CanonicalOrderStatus, string> = {
   cancelled: "bg-gradient-status-cancelled",
   pending_payment: "bg-text-muted",
 };
+
+/** Pill colour for the design's .status chip. */
+export function statusClass(status: string): string {
+  const canonical = normalizeOrderStatus(status);
+  if (canonical === "delivered") return "delivered";
+  return "confirmed";
+}
+
+export function statusStyle(status: string) {
+  return normalizeOrderStatus(status) === "cancelled"
+    ? { color: "#b42318", background: "#fde8e8" }
+    : normalizeOrderStatus(status) === "pending_payment"
+      ? { color: "#8f5d08", background: "var(--amber-pale)" }
+      : undefined;
+}

@@ -1,177 +1,166 @@
+import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { ChevronLeft, HelpCircle, Mail, MessageCircle } from "lucide-react";
-import { Spinner } from "@/components/common/LoadingState";
-import EmptyState from "@/components/common/EmptyState";
-import ErrorState from "@/components/common/ErrorState";
-import { getSupportOverview, openSupportForOrder } from "@/services/api/support";
+import Icon from "@/components/pk/Icon";
+import { FAQS } from "@/features/support/faqs";
+import { getSupportOverview, openSupportForOrder, sendSupportMessage } from "@/services/api/support";
 import { useToastStore } from "@/stores/toastStore";
-import type { SupportableOrder } from "@/types/support";
 
+/** The design's Help & Support page — FAQs, your conversations, and "create a ticket" for an order. */
 export default function SupportListView() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
+  const [orderNumber, setOrderNumber] = useState("");
+  const [message, setMessage] = useState("");
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["support"],
     queryFn: getSupportOverview,
   });
 
-  const openMutation = useMutation({
-    mutationFn: (order: SupportableOrder) => openSupportForOrder(order.order_number),
+  const ticketMutation = useMutation({
+    mutationFn: async () => {
+      const thread = await openSupportForOrder(orderNumber);
+      if (message.trim()) await sendSupportMessage(thread.id, message.trim());
+      return thread;
+    },
     onSuccess: (thread) => {
       void queryClient.invalidateQueries({ queryKey: ["support"] });
       navigate(`/support/${thread.id}`);
     },
-    onError: (error) => {
-      showToast(
-        error instanceof Error ? error.message : "Could not start a conversation.",
-        "error",
-      );
-    },
+    onError: (error) =>
+      showToast(error instanceof Error ? error.message : "Could not start a conversation.", "error"),
   });
 
-  const ordersWithoutThread = data?.orders.filter((order) => !order.supportThread) ?? [];
+  function handleTicket(event: FormEvent) {
+    event.preventDefault();
+    if (!orderNumber) {
+      showToast("Choose the order you need help with.", "error");
+      return;
+    }
+    ticketMutation.mutate();
+  }
+
+  const threads = data?.threads ?? [];
+  const orders = data?.orders ?? [];
 
   return (
-    <div className="-mx-4 -mt-4 min-h-full bg-[#F7FAFA] pb-10 md:-mx-6">
-      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-30 border-b border-[#DDE9EA] bg-white lg:top-[calc(5rem+env(safe-area-inset-top))]">
-        <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-4 sm:px-6">
-          <Link
-            to="/profile"
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#DDE9EA] bg-[#F7FAFA] text-[#66777C] transition-colors hover:text-[#203238]"
-          >
-            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-          </Link>
-          <div>
-            <h1 className="font-display text-lg font-bold text-[#203238]">Help &amp; Support</h1>
-            <p className="text-xs text-[#66777C]">We&apos;re here to help you</p>
-          </div>
+    <main className="inner-page account-bg">
+      <section className="support-hero">
+        <div className="shell">
+          <p className="kicker">We’re here to help</p>
+          <h1>Kumusta? How can we help?</h1>
+          <p>Find a quick answer or send a message to our customer care team.</p>
         </div>
-      </div>
+      </section>
 
-      <div className="mx-auto max-w-2xl space-y-5 px-4 py-5 sm:px-6">
-        {/* Contact options */}
-        <div className="grid grid-cols-3 gap-3">
-          <a
-            href="#conversations"
-            className="flex flex-col items-center gap-2 rounded-2xl border border-[#DDE9EA] bg-white p-4 text-center transition-all hover:shadow-md active:scale-[0.98]"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#E8F7F7] text-[#0097A7]">
-              <MessageCircle className="h-5 w-5" aria-hidden="true" />
-            </div>
-            <span className="text-sm font-semibold leading-tight text-[#203238]">
-              Message Us
-            </span>
-            <span className="text-[10px] leading-tight text-[#66777C]">Per-order chat</span>
-          </a>
-          <a
-            href="mailto:contact@palengkey.ph"
-            className="flex flex-col items-center gap-2 rounded-2xl border border-[#DDE9EA] bg-white p-4 text-center transition-all hover:shadow-md active:scale-[0.98]"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#E8F7EE] text-[#159447]">
-              <Mail className="h-5 w-5" aria-hidden="true" />
-            </div>
-            <span className="text-sm font-semibold leading-tight text-[#203238]">Email Us</span>
-            <span className="text-[10px] leading-tight text-[#66777C]">
-              contact@palengkey.ph
-            </span>
-          </a>
-          <Link
-            to="/faq"
-            className="flex flex-col items-center gap-2 rounded-2xl border border-[#DDE9EA] bg-white p-4 text-center transition-all hover:shadow-md active:scale-[0.98]"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F3EFFE] text-[#7C3AED]">
-              <HelpCircle className="h-5 w-5" aria-hidden="true" />
-            </div>
-            <span className="text-sm font-semibold leading-tight text-[#203238]">
-              Help Center
-            </span>
-            <span className="text-[10px] leading-tight text-[#66777C]">FAQs</span>
-          </Link>
-        </div>
+      <div className="shell support-layout">
+        <section>
+          <p className="kicker">Frequently asked questions</p>
+          <h2>Quick answers</h2>
+          {FAQS.slice(0, 6).map((faq) => (
+            <details key={faq.question}>
+              <summary>
+                {faq.question}
+                <Icon name="plus" />
+              </summary>
+              <p>{faq.answer}</p>
+            </details>
+          ))}
+          <p style={{ marginTop: 16, fontSize: 11 }}>
+            <Link to="/faq" style={{ color: "var(--teal-dark)", fontWeight: 700 }}>
+              See all FAQs →
+            </Link>
+          </p>
 
-        {isLoading && (
-          <div className="flex justify-center py-8">
-            <Spinner />
-          </div>
-        )}
-
-        {isError && <ErrorState onRetry={() => void refetch()} />}
-
-        {data && (
-          <div id="conversations" className="space-y-5">
-            {data.threads.length === 0 && ordersWithoutThread.length === 0 && (
-              <EmptyState
-                icon={<MessageCircle size={40} aria-hidden="true" />}
-                title="No support conversations yet."
-                description="Once you have an order, you can reach out here if you need help."
-              />
-            )}
-
-            {data.threads.length > 0 && (
-              <div className="overflow-hidden rounded-2xl border border-[#DDE9EA] bg-white shadow-sm">
-                <div className="border-b border-[#DDE9EA] px-5 py-4">
-                  <h2 className="font-display font-bold text-[#203238]">
-                    Your conversations
-                  </h2>
-                </div>
-                <div className="divide-y divide-[#DDE9EA]">
-                  {data.threads.map((thread) => (
-                    <button
-                      key={thread.id}
-                      type="button"
-                      onClick={() => navigate(`/support/${thread.id}`)}
-                      className="flex w-full items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-[#F7FAFA]"
-                    >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#E8F7F7] text-[#0097A7]">
-                        <MessageCircle size={18} aria-hidden="true" />
-                      </span>
-                      <span className="flex min-w-0 flex-col items-start gap-0.5">
-                        <span className="text-sm font-semibold text-[#203238]">
-                          {thread.subject}
-                        </span>
-                        {thread.latestMessage && (
-                          <span className="line-clamp-1 text-sm text-[#66777C]">
-                            {thread.latestMessage.body}
-                          </span>
-                        )}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+          {threads.length > 0 && (
+            <>
+              <h2 style={{ marginTop: 34 }}>Your conversations</h2>
+              <div className="market-options">
+                {threads.map((thread) => (
+                  <button type="button" key={thread.id} onClick={() => navigate(`/support/${thread.id}`)}>
+                    <span>
+                      <Icon name="message" />
+                    </span>
+                    <div>
+                      <strong>{thread.subject}</strong>
+                      <p>{thread.latestMessage?.body ?? "No messages yet"}</p>
+                      <small>{thread.status}</small>
+                    </div>
+                    <i>
+                      <Icon name="chevron" size={16} />
+                    </i>
+                  </button>
+                ))}
               </div>
-            )}
+            </>
+          )}
+        </section>
 
-            {ordersWithoutThread.length > 0 && (
-              <div className="overflow-hidden rounded-2xl border border-[#DDE9EA] bg-white shadow-sm">
-                <div className="border-b border-[#DDE9EA] px-5 py-4">
-                  <h2 className="font-display font-bold text-[#203238]">
-                    Get help with an order
-                  </h2>
-                </div>
-                <div className="divide-y divide-[#DDE9EA]">
-                  {ordersWithoutThread.map((order) => (
-                    <button
-                      key={order.id}
-                      type="button"
-                      disabled={openMutation.isPending}
-                      onClick={() => openMutation.mutate(order)}
-                      className="flex w-full items-center justify-between gap-2 px-5 py-4 text-left text-sm transition-colors hover:bg-[#F7FAFA] disabled:opacity-50"
-                    >
-                      <span className="font-medium text-[#203238]">
-                        Order #{order.order_number}
-                      </span>
-                      <span className="font-semibold text-[#0097A7]">Start conversation</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+        <aside className="support-card">
+          <span>
+            <Icon name="message" />
+          </span>
+          <h2>Chat with customer care</h2>
+          <p>Message our team about a specific order. We usually reply within a few minutes during market hours.</p>
+          {threads[0] ? (
+            <button type="button" className="btn chat-now" onClick={() => navigate(`/support/${threads[0].id}`)}>
+              <Icon name="message" /> Open latest conversation <Icon name="arrow" />
+            </button>
+          ) : (
+            <a className="btn chat-now" href="mailto:contact@palengkey.ph" style={{ display: "flex" }}>
+              <Icon name="message" /> Email contact@palengkey.ph <Icon name="arrow" />
+            </a>
+          )}
+          <div className="support-divider">
+            <span>or create a ticket</span>
           </div>
-        )}
+          {isLoading ? (
+            <p>Loading your orders…</p>
+          ) : isError ? (
+            <button type="button" className="btn primary" onClick={() => void refetch()}>
+              Try again
+            </button>
+          ) : orders.length === 0 ? (
+            <div className="sent-message" style={{ color: "var(--muted)", background: "var(--bg)" }}>
+              <strong>No orders yet</strong>
+              <p>Once you place an order, you can message us about it here.</p>
+            </div>
+          ) : (
+            <form onSubmit={handleTicket}>
+              <label>
+                Order number
+                <select
+                  value={orderNumber}
+                  onChange={(event) => setOrderNumber(event.target.value)}
+                  style={{ width: "100%", padding: 13, border: "1px solid #cfdddd", borderRadius: 10, background: "white" }}
+                >
+                  <option value="">Choose an order</option>
+                  {orders.map((order) => (
+                    <option key={order.id} value={order.order_number}>
+                      {order.order_number}
+                      {order.supportThread ? " · has a conversation" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                How can we help?
+                <textarea
+                  value={message}
+                  maxLength={2000}
+                  onChange={(event) => setMessage(event.target.value)}
+                  placeholder="Tell us what happened..."
+                />
+              </label>
+              <button type="submit" className="btn primary" disabled={ticketMutation.isPending}>
+                {ticketMutation.isPending ? "Sending…" : "Send message"} <Icon name="arrow" />
+              </button>
+            </form>
+          )}
+        </aside>
       </div>
-    </div>
+    </main>
   );
 }

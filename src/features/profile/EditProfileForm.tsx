@@ -1,8 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import Input from "@/components/ui/Input";
-import Button from "@/components/ui/Button";
+import PkField from "@/components/pk/PkField";
 import { updateProfile } from "@/services/api/profile";
 import { refreshCurrentUser } from "@/features/profile/refreshCurrentUser";
 import { useAuthStore } from "@/stores/authStore";
@@ -54,30 +53,26 @@ export default function EditProfileForm() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="mx-auto flex w-full max-w-2xl flex-col gap-4"
-    >
-      <h1 className="text-lg font-bold text-text">Edit profile</h1>
+    <form onSubmit={handleSubmit} noValidate style={{ display: "grid", gap: 14 }}>
 
-      <Input
+      <PkField
         label="First name"
         value={fname}
         onChange={(event) => setFname(event.target.value)}
         error={errors.fname}
       />
-      <Input
+      <PkField
         label="Middle name (optional)"
         value={mname}
         onChange={(event) => setMname(event.target.value)}
       />
-      <Input
+      <PkField
         label="Last name"
         value={lname}
         onChange={(event) => setLname(event.target.value)}
         error={errors.lname}
       />
-      <Input
+      <PkField
         label="Phone"
         type="tel"
         value={phone}
@@ -85,9 +80,9 @@ export default function EditProfileForm() {
         error={errors.phone}
       />
 
-      <Button variant="solid" type="submit" fullWidth loading={updateMutation.isPending}>
-        Save changes
-      </Button>
+      <button type="submit" className="btn primary" disabled={updateMutation.isPending}>
+        {updateMutation.isPending ? "Saving…" : "Save changes"}
+      </button>
     </form>
   );
 }

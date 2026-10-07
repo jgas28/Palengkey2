@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Check } from "lucide-react";
-import { Spinner } from "@/components/common/LoadingState";
+import Icon from "@/components/pk/Icon";
 import AddressPickerDrawer from "@/features/addresses/AddressPickerDrawer";
+import CheckoutRouteMap from "@/features/checkout/CheckoutRouteMap";
 import VoucherListDrawer from "@/features/checkout/VoucherListDrawer";
+import { readPendingVoucher } from "@/features/checkout/pendingVoucher";
 import { useCart, cartQueryKey } from "@/features/cart/useCart";
 import { listAddresses } from "@/services/api/addresses";
 import { getDeliveryFee, checkout } from "@/services/api/checkout";
@@ -29,21 +30,46 @@ const PAYMENT_METHODS: {
   value: CheckoutPaymentMethod;
   label: string;
   hint: string;
-  icon: string;
+  /** Short mark in the design's payment badge. */
+  badge: string;
 }[] = [
   {
     value: "cod",
     label: "Cash on Delivery",
     hint: "Pay in cash when your order arrives",
-    icon: "💵",
+    badge: "COD",
   },
   {
     value: "qrph",
     label: "QR Ph",
     hint: "Scan a QR code to pay instantly",
-    icon: "📱",
+    badge: "QR",
   },
-  { value: "bpi", label: "BPI", hint: "Pay via BPI online banking", icon: "🏦" },
+  {
+    value: "gcash",
+    label: "GCash",
+    hint: "Pay with your GCash wallet",
+    badge: "GC",
+  },
+  {
+    value: "maya",
+    label: "Maya",
+    hint: "Pay with your Maya wallet",
+    badge: "MY",
+  },
+  {
+    value: "card",
+    label: "Visa / Mastercard",
+    hint: "Credit or debit card, secured by PayMongo",
+    badge: "VM",
+  },
+  { value: "bpi", label: "BPI", hint: "Pay via BPI online banking", badge: "BPI" },
+  {
+    value: "ubp",
+    label: "UnionBank",
+    hint: "Pay via UnionBank online banking",
+    badge: "UB",
+  },
 ];
 
 export default function CheckoutForm() {
@@ -76,7 +102,7 @@ export default function CheckoutForm() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [voucherListOpen, setVoucherListOpen] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
-  const [voucherCode, setVoucherCode] = useState("");
+  const [voucherCode, setVoucherCode] = useState(readPendingVoucher);
   const [appliedVoucher, setAppliedVoucher] = useState<VoucherValidation | null>(null);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [orderLaterSlot, setOrderLaterSlot] = useState<string>(
@@ -146,7 +172,15 @@ export default function CheckoutForm() {
   const deliveryVat = calculateDeliveryVat(deliveryFeeGross);
   const deliveryNet = deliveryFeeGross - deliveryVat;
   const serviceFee = settings ? calculateServiceFee(subtotal, settings) : null;
-  const estimatedTotal = subtotal + deliveryFeeGross + (serviceFee ?? 0) - discountAmount;
+  // BULK-FREESHIP: mirrors BulkPricing::deliverySubsidy — min(delivery fee, cap)
+  // when any line being checked out is at the bulk tier. Checkout re-checks it.
+  const bulkActive = selectedItems.some((item) => item.is_bulk);
+  const bulkVoucherCode = cart?.bulk?.voucher_code ?? "BULK-FREESHIP-49";
+  const bulkDeliverySubsidy = bulkActive
+    ? Math.min(deliveryFeeGross, Number(cart?.bulk?.delivery_subsidy_cap ?? 0))
+    : 0;
+  const estimatedTotal =
+    subtotal + deliveryFeeGross + (serviceFee ?? 0) - discountAmount - bulkDeliverySubsidy;
 
   const voucherMutation = useMutation({
     mutationFn: (code: string) =>
@@ -190,9 +224,10 @@ export default function CheckoutForm() {
         return;
       }
 
-      if (response.bpi) {
-        navigate(`/checkout/bpi/${response.order.id}`, {
-          state: { redirectUrl: response.bpi.redirect_url },
+      const redirectUrl = response.payment_redirect?.redirect_url ?? response.bpi?.redirect_url;
+      if (redirectUrl) {
+        navigate(`/checkout/pay/${response.order.id}`, {
+          state: { redirectUrl },
           replace: true,
         });
         return;
@@ -217,354 +252,330 @@ export default function CheckoutForm() {
   const canSubmit = !checkoutMutation.isPending && serviceFee !== null && !deliveryFeeLoading;
 
   return (
-    <div className="mx-auto w-full max-w-5xl">
-      <div className="mb-6 flex items-center gap-2">
-        <Link to="/cart" className="text-[#66777C] hover:text-[#203238]">
-          <ArrowLeft size={20} aria-hidden="true" />
-        </Link>
-        <h1 className="font-display text-2xl font-bold text-[#203238]">Checkout</h1>
+    <main className="inner-page account-bg">
+      <div className="shell page-title compact">
+        <p className="kicker">
+          <Link to="/cart">← Back to basket</Link> · Secure checkout
+        </p>
+        <h1>Complete your order</h1>
       </div>
 
-      {/* Steps */}
-      <div className="mb-6 flex items-center gap-2">
-        {STEPS.map((s, i) => (
-          <div key={s} className="flex items-center gap-2">
-            <div
-              className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
-                i <= stepIndex ? "bg-[#0097A7] text-white" : "bg-[#DDE9EA] text-[#66777C]"
-              }`}
-            >
-              {i + 1}
-            </div>
-            <span
-              className={`hidden text-sm font-medium capitalize sm:block ${
-                step === s ? "text-[#0097A7]" : "text-[#66777C]"
-              }`}
-            >
-              {s}
-            </span>
-            {i < STEPS.length - 1 && <div className="h-0.5 w-8 bg-[#DDE9EA]" />}
+      <div className="shell checkout-progress">
+        {["Details", "Payment", "Confirm"].map((label, index) => (
+          <div className={stepIndex >= index ? "active" : ""} key={label}>
+            <span>{stepIndex > index ? <Icon name="check" size={15} /> : index + 1}</span>
+            <strong>{label}</strong>
           </div>
         ))}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        {/* Form */}
-        <div className="md:col-span-2">
-          <div className="rounded-2xl border border-[#DDE9EA] bg-white p-6">
-            {step === "details" && (
-              <div className="space-y-4">
-                <h2 className="mb-4 font-semibold text-[#203238]">Delivery Details</h2>
+      <div className="shell checkout-layout">
+        <section className="checkout-card">
+          {step === "details" && (
+            <div>
+              <p className="kicker">Delivery details</p>
+              <h2>Where should we deliver?</h2>
 
-                {selectedAddress ? (
-                  <button
-                    type="button"
-                    onClick={() => setPickerOpen(true)}
-                    className="flex w-full items-start justify-between gap-3 rounded-xl border border-[#DDE9EA] p-4 text-left transition-colors hover:border-[#0097A7]"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-[#203238]">
-                        {selectedAddress.label}
-                      </p>
-                      <p className="mt-0.5 text-sm text-[#66777C]">
-                        {selectedAddress.contact_name} · {selectedAddress.contact_phone}
-                      </p>
-                      <p className="mt-0.5 text-sm text-[#66777C]">
-                        {selectedAddress.address}
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-xs font-bold text-[#0097A7]">Change</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setPickerOpen(true)}
-                    className="w-full rounded-xl border-2 border-dashed border-[#DDE9EA] p-4 text-sm font-semibold text-[#0097A7] transition-colors hover:border-[#0097A7]"
-                  >
-                    + Add delivery address
-                  </button>
-                )}
-
-                {hasCutoffItems && (
+              {selectedAddress ? (
+                <div className="address-choice">
+                  <span>
+                    <Icon name="truck" />
+                  </span>
                   <div>
-                    <label className="mb-1.5 block text-sm font-medium text-[#203238]">
-                      Delivery Schedule
-                    </label>
-                    <p className="mb-2 text-xs text-[#66777C]">
-                      Some items are past today&apos;s cutoff — choose tomorrow&apos;s
-                      delivery slot.
-                    </p>
-                    <select
-                      value={orderLaterSlot}
-                      onChange={(event) => setOrderLaterSlot(event.target.value)}
-                      className="w-full rounded-xl border border-[#DDE9EA] bg-white px-4 py-3 text-sm text-[#203238] outline-none focus:border-[#0097A7]"
-                    >
-                      {ORDER_LATER_SLOTS.map((slot) => (
-                        <option key={slot.value} value={slot.value}>
-                          {slot.label}
-                        </option>
-                      ))}
-                    </select>
+                    <strong>
+                      {selectedAddress.label}
+                      {selectedAddress.is_default && (
+                        <small
+                          style={{ marginLeft: 8, padding: "3px 7px", color: "#176b3a", background: "#e7f6ec", borderRadius: 999, fontSize: 8, textTransform: "uppercase" }}
+                        >
+                          Default
+                        </small>
+                      )}
+                    </strong>
+                    <p>{selectedAddress.address}</p>
+                    <small>
+                      {selectedAddress.contact_name} · {selectedAddress.contact_phone}
+                    </small>
                   </div>
+                  <button type="button" onClick={() => setPickerOpen(true)}>
+                    Change
+                  </button>
+                </div>
+              ) : (
+                <div className="address-choice">
+                  <span>
+                    <Icon name="plus" />
+                  </span>
+                  <div>
+                    <strong>No delivery address yet</strong>
+                    <p>Add where we should bring your market goods.</p>
+                  </div>
+                  <button type="button" onClick={() => setPickerOpen(true)}>
+                    Add
+                  </button>
+                </div>
+              )}
+
+              {selectedAddress &&
+                deliveryFee?.market_latitude != null &&
+                deliveryFee.market_longitude != null && (
+                  <CheckoutRouteMap
+                    market={{
+                      lat: Number(deliveryFee.market_latitude),
+                      lng: Number(deliveryFee.market_longitude),
+                      name: deliveryFee.market_name ?? "Market",
+                    }}
+                    destination={{
+                      lat: Number(selectedAddress.latitude),
+                      lng: Number(selectedAddress.longitude),
+                      label: selectedAddress.label,
+                    }}
+                    distanceKm={deliveryFee.distance_km}
+                    etaMin={deliveryFee.eta_min}
+                    etaMax={deliveryFee.eta_max}
+                  />
                 )}
 
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-[#203238]">
-                    Special Instructions{" "}
-                    <span className="font-normal text-[#66777C]">(optional)</span>
-                  </label>
-                  <textarea
-                    value={notes}
-                    onChange={(event) => setNotes(event.target.value)}
-                    maxLength={500}
-                    rows={3}
-                    placeholder="Gate code, landmark, or any delivery notes..."
-                    className="w-full resize-none rounded-xl border border-[#DDE9EA] bg-white px-4 py-3 text-sm text-[#203238] outline-none focus:border-[#0097A7]"
-                  />
+              {hasCutoffItems && (
+                <div className="checkout-cutoff">
+                  <Icon name="clock" />
+                  <div>
+                    <strong>Same-day ordering is closed for some items</strong>
+                    <p>They&apos;re past the market cutoff — choose a delivery slot for the next market run.</p>
+                  </div>
                 </div>
+              )}
 
-                <button
-                  type="button"
-                  disabled={!selectedAddress}
-                  onClick={() => setStep("payment")}
-                  className="w-full rounded-xl bg-[#0097A7] py-3.5 font-bold text-white transition-colors hover:bg-[#006D77] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Continue to Payment
-                </button>
+              <div className="delivery-timing">
+                <strong>When would you like your order?</strong>
+                <div>
+                  {!hasCutoffItems && (
+                    <button type="button" className="active">
+                      <Icon name="truck" />
+                      <span>
+                        <strong>Deliver today</strong>
+                        <small>Shopped and delivered from the market today</small>
+                      </span>
+                    </button>
+                  )}
+                  {hasCutoffItems && (
+                    <button type="button" className="active">
+                      <Icon name="clock" />
+                      <span>
+                        <strong>Order later</strong>
+                        <small>Next available market run</small>
+                      </span>
+                    </button>
+                  )}
+                </div>
               </div>
-            )}
 
-            {step === "payment" && (
-              <div className="space-y-4">
-                <h2 className="mb-4 font-semibold text-[#203238]">Payment Method</h2>
+              {hasCutoffItems && (
+                <div className="slot-picker">
+                  <label>
+                    Delivery date
+                    <select disabled value="next">
+                      <option value="next">Next available day</option>
+                    </select>
+                  </label>
+                  <div>
+                    <strong>Available time slots</strong>
+                    <section>
+                      {ORDER_LATER_SLOTS.map((slot) => (
+                        <button
+                          type="button"
+                          className={orderLaterSlot === slot.value ? "active" : ""}
+                          onClick={() => setOrderLaterSlot(slot.value)}
+                          key={slot.value}
+                        >
+                          {slot.label}
+                        </button>
+                      ))}
+                    </section>
+                  </div>
+                </div>
+              )}
+
+              <label>
+                Delivery instructions
+                <textarea
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  maxLength={500}
+                  placeholder="Landmark, gate color, or instructions for your rider"
+                />
+              </label>
+              <button
+                type="button"
+                className="btn primary next-button"
+                disabled={!selectedAddress}
+                onClick={() => setStep("payment")}
+              >
+                Continue to payment <Icon name="arrow" />
+              </button>
+            </div>
+          )}
+
+          {step === "payment" && (
+            <div>
+              <p className="kicker">Payment</p>
+              <h2>Choose a payment method</h2>
+              <div className="payment-list">
                 {PAYMENT_METHODS.map((method) => (
-                  <label
-                    key={method.value}
-                    className={`flex cursor-pointer items-center gap-4 rounded-xl border-2 p-4 transition-colors ${
-                      paymentMethod === method.value
-                        ? "border-[#0097A7] bg-[#E8F7F7]"
-                        : "border-[#DDE9EA] hover:border-[#0097A7]/50"
-                    }`}
-                  >
+                  <label className={paymentMethod === method.value ? "selected" : ""} key={method.value}>
                     <input
                       type="radio"
                       name="payment"
-                      value={method.value}
                       checked={paymentMethod === method.value}
                       onChange={() => setPaymentMethod(method.value)}
-                      className="sr-only"
                     />
-                    <span className="text-2xl" aria-hidden="true">
-                      {method.icon}
-                    </span>
-                    <span className="flex-1">
-                      <span className="block font-medium text-[#203238]">{method.label}</span>
-                      <span className="block text-xs text-[#66777C]">{method.hint}</span>
-                    </span>
-                    {paymentMethod === method.value && (
-                      <Check size={20} className="text-[#0097A7]" aria-hidden="true" />
-                    )}
+                    <span>{method.badge}</span>
+                    <strong>{method.label}</strong>
+                    <small>{method.hint}</small>
                   </label>
                 ))}
-                <div className="mt-6 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setStep("details")}
-                    className="flex-1 rounded-xl border-2 border-[#DDE9EA] py-3.5 font-bold text-[#66777C] transition-colors hover:border-[#0097A7] hover:text-[#0097A7]"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStep("confirm")}
-                    className="flex-1 rounded-xl bg-[#0097A7] py-3.5 font-bold text-white transition-colors hover:bg-[#006D77]"
-                  >
-                    Review Order
-                  </button>
-                </div>
               </div>
-            )}
-
-            {step === "confirm" && (
-              <div className="space-y-4">
-                <h2 className="mb-4 font-semibold text-[#203238]">Review Your Order</h2>
-                <div className="space-y-2 rounded-xl bg-[#F7FAFA] p-4">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#66777C]">Name</span>
-                    <span className="font-medium text-[#203238]">
-                      {selectedAddress?.contact_name ?? "—"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between gap-3 text-sm">
-                    <span className="shrink-0 text-[#66777C]">Address</span>
-                    <span className="max-w-[60%] text-right font-medium text-[#203238]">
-                      {selectedAddress?.address ?? "—"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#66777C]">Payment</span>
-                    <span className="font-medium text-[#203238]">
-                      {selectedPaymentMethod.label}
-                    </span>
-                  </div>
-                  {hasCutoffItems && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-[#66777C]">Delivery</span>
-                      <span className="font-medium text-[#203238]">
-                        Order Later — {orderLaterLabel}
-                      </span>
-                    </div>
-                  )}
-                  {notes && (
-                    <div className="flex justify-between gap-3 text-sm">
-                      <span className="shrink-0 text-[#66777C]">Notes</span>
-                      <span className="max-w-[60%] text-right font-medium text-[#203238]">
-                        {notes}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-6 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setStep("payment")}
-                    className="flex-1 rounded-xl border-2 border-[#DDE9EA] py-3.5 font-bold text-[#66777C] transition-colors hover:border-[#0097A7] hover:text-[#0097A7]"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!canSubmit}
-                    onClick={() => checkoutMutation.mutate()}
-                    className="flex-1 rounded-xl bg-[#159447] py-3.5 font-bold text-white shadow-sm transition-colors hover:bg-[#087443] disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {checkoutMutation.isPending ? "Placing order…" : "Confirm Order ✓"}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Order Summary */}
-        <div>
-          <div className="sticky top-24 rounded-2xl border border-[#DDE9EA] bg-white p-5">
-            <h3 className="mb-3 font-semibold text-[#203238]">Order Summary</h3>
-            <div className="mb-3 max-h-48 space-y-2 overflow-y-auto">
-              {selectedItems.map((item) => (
-                <div key={item.id} className="flex items-center gap-2 text-sm">
-                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-[#F7FAFA]">
-                    {item.image && (
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="h-full w-full object-cover"
-                      />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-[#203238]">{item.name}</p>
-                    <p className="text-xs text-[#66777C]">×{item.item_quantity}</p>
-                  </div>
-                  <span className="shrink-0 font-medium text-[#203238]">
-                    {formatPeso(Number(item.subtotal))}
-                  </span>
-                </div>
-              ))}
-              {selectedBundles.map((bundle) => (
-                <div key={`bundle-${bundle.id}`} className="flex items-center gap-2 text-sm">
-                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-[#F7FAFA]">
-                    {bundle.image && (
-                      <img
-                        src={bundle.image}
-                        alt={bundle.recipe_name}
-                        className="h-full w-full object-cover"
-                      />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-[#203238]">{bundle.recipe_name}</p>
-                    <p className="truncate text-xs text-[#66777C]">
-                      {bundle.stall_name ? `Paluto at ${bundle.stall_name}` : "Ingredients only"}
-                    </p>
-                  </div>
-                  <span className="shrink-0 font-medium text-[#203238]">
-                    {formatPeso(Number(bundle.subtotal))}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="mb-3 border-t border-[#DDE9EA] pt-3">
-              <div className="flex gap-2">
-                <input
-                  value={voucherCode}
-                  onChange={(event) => setVoucherCode(event.target.value)}
-                  placeholder="Voucher code"
-                  className="h-9 flex-1 rounded-lg border border-[#DDE9EA] px-3 text-xs text-[#203238] outline-none focus:border-[#0097A7]"
-                />
-                <button
-                  type="button"
-                  onClick={() => voucherMutation.mutate(voucherCode)}
-                  disabled={!voucherCode.trim() || voucherMutation.isPending}
-                  className="shrink-0 px-2 text-xs font-bold text-[#0097A7] disabled:opacity-40"
-                >
-                  Apply
+              <div className="step-actions">
+                <button type="button" className="btn outline" onClick={() => setStep("details")}>
+                  Back
+                </button>
+                <button type="button" className="btn primary" onClick={() => setStep("confirm")}>
+                  Review order <Icon name="arrow" />
                 </button>
               </div>
+            </div>
+          )}
+
+          {step === "confirm" && (
+            <div>
+              <p className="kicker">Review and confirm</p>
+              <h2>Everything looks fresh.</h2>
+              <div className="review-block">
+                <div>
+                  <span>Deliver to</span>
+                  <strong>{selectedAddress?.contact_name ?? "—"}</strong>
+                  <p>{selectedAddress?.address ?? "—"}</p>
+                </div>
+                <div>
+                  <span>Payment</span>
+                  <strong>{selectedPaymentMethod.label}</strong>
+                </div>
+                <div>
+                  <span>Delivery</span>
+                  <strong>{hasCutoffItems ? `Next available day, ${orderLaterLabel}` : "Today"}</strong>
+                  {hasCutoffItems && <p>Scheduled Order Later delivery</p>}
+                </div>
+                {notes && (
+                  <div>
+                    <span>Instructions</span>
+                    <p>{notes}</p>
+                  </div>
+                )}
+              </div>
+              <div className="step-actions">
+                <button type="button" className="btn outline" onClick={() => setStep("payment")}>
+                  Back
+                </button>
+                <button
+                  type="button"
+                  className="btn confirm-button"
+                  disabled={!canSubmit}
+                  onClick={() => checkoutMutation.mutate()}
+                >
+                  <Icon name="check" /> {checkoutMutation.isPending ? "Placing order…" : "Confirm order"}
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <aside className="order-summary checkout-summary">
+          <h2>Your order</h2>
+          {selectedItems.map((item) => (
+            <div className="mini-line" key={item.id}>
+              <span>
+                {item.item_quantity}× {item.name}
+                {item.is_bulk ? " · Bulk" : ""}
+              </span>
+              <strong>{formatPeso(Number(item.subtotal))}</strong>
+            </div>
+          ))}
+          {selectedBundles.map((bundle) => (
+            <div className="mini-line" key={`bundle-${bundle.id}`}>
+              <span>
+                {bundle.recipe_name}
+                {bundle.stall_name ? ` · Paluto at ${bundle.stall_name}` : " · Ingredients"}
+              </span>
+              <strong>{formatPeso(Number(bundle.subtotal))}</strong>
+            </div>
+          ))}
+
+          <div style={{ display: "block" }}>
+            <div className="voucher-input" style={{ margin: "6px 0 4px", maxWidth: "none" }}>
+              <Icon name="sparkle" />
+              <input
+                value={voucherCode}
+                onChange={(event) => setVoucherCode(event.target.value)}
+                placeholder="Voucher code"
+                aria-label="Voucher code"
+              />
               <button
                 type="button"
-                onClick={() => setVoucherListOpen(true)}
-                className="mt-1 text-xs font-semibold text-[#0097A7] hover:underline"
+                className="btn primary"
+                style={{ minHeight: 34, padding: "0 12px", fontSize: 10 }}
+                disabled={!voucherCode.trim() || voucherMutation.isPending}
+                onClick={() => voucherMutation.mutate(voucherCode)}
               >
-                Browse available vouchers
+                Apply
               </button>
-              {appliedVoucher && (
-                <p className="mt-1 text-xs font-semibold text-[#159447]">
-                  ✓ {appliedVoucher.code} applied — you save {formatPeso(discountAmount)}
-                </p>
-              )}
             </div>
-
-            <div className="space-y-2 border-t border-[#DDE9EA] pt-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-[#66777C]">Subtotal</span>
-                <span className="text-[#203238]">{formatPeso(subtotal)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#66777C]">Service fee</span>
-                {serviceFee === null ? (
-                  <Spinner className="h-4 w-4" />
-                ) : (
-                  <span className="text-[#203238]">{formatPeso(serviceFee)}</span>
-                )}
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#66777C]">Delivery fee</span>
-                {deliveryFeeLoading ? (
-                  <Spinner className="h-4 w-4" />
-                ) : (
-                  <span className="text-[#203238]">{formatPeso(deliveryNet)}</span>
-                )}
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#66777C]">VAT</span>
-                <span className="text-[#203238]">{formatPeso(deliveryVat)}</span>
-              </div>
-              {discountAmount > 0 && (
-                <div className="flex justify-between text-[#159447]">
-                  <span>Voucher discount</span>
-                  <span>-{formatPeso(discountAmount)}</span>
-                </div>
-              )}
-              <div className="flex justify-between border-t border-[#DDE9EA] pt-2 font-bold">
-                <span className="text-[#203238]">Total</span>
-                <span className="text-lg text-[#203238]">{formatPeso(estimatedTotal)}</span>
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setVoucherListOpen(true)}
+              style={{ padding: 0, color: "var(--teal-dark)", background: "none", border: 0, fontSize: 10, fontWeight: 700 }}
+            >
+              Browse available vouchers
+            </button>
+            {appliedVoucher && (
+              <p style={{ margin: "6px 0 0", color: "#16a34a", fontSize: 10, fontWeight: 700 }}>
+                ✓ {appliedVoucher.code} applied — you save {formatPeso(discountAmount)}
+              </p>
+            )}
           </div>
-        </div>
+          <hr />
+          <div>
+            <span>Subtotal</span>
+            <strong>{formatPeso(subtotal)}</strong>
+          </div>
+          <div>
+            <span>Service fee</span>
+            <strong>{serviceFee === null ? "…" : formatPeso(serviceFee)}</strong>
+          </div>
+          <div>
+            <span>Delivery</span>
+            <strong>{deliveryFeeLoading ? "…" : formatPeso(deliveryNet)}</strong>
+          </div>
+          <div>
+            <span>VAT (delivery)</span>
+            <strong>{formatPeso(deliveryVat)}</strong>
+          </div>
+          {bulkDeliverySubsidy > 0 && (
+            <div style={{ color: "#16a34a" }}>
+              <span>Bulk delivery subsidy ({bulkVoucherCode})</span>
+              <strong>-{formatPeso(bulkDeliverySubsidy)}</strong>
+            </div>
+          )}
+          {discountAmount > 0 && (
+            <div style={{ color: "#16a34a" }}>
+              <span>Voucher discount</span>
+              <strong>-{formatPeso(discountAmount)}</strong>
+            </div>
+          )}
+          <div className="summary-total">
+            <span>Total</span>
+            <strong>{formatPeso(estimatedTotal)}</strong>
+          </div>
+        </aside>
       </div>
 
       <AddressPickerDrawer
@@ -579,6 +590,6 @@ export default function CheckoutForm() {
         onSelect={handleSelectVoucher}
         marketId={marketId ?? undefined}
       />
-    </div>
+    </main>
   );
 }

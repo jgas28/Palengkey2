@@ -8,6 +8,7 @@ import ErrorState from "@/components/common/ErrorState";
 import OrderStatusBadge from "@/features/orders/OrderStatusBadge";
 import { listAdminOrders } from "@/services/api/adminOrders";
 import type { AdminOrderStatus } from "@/types/adminOrder";
+import { paymentMethodLabel } from "@/features/orders/paymentMethods";
 
 const FILTERS: { value: AdminOrderStatus | "all"; label: string }[] = [
   { value: "order_received", label: "New" },
@@ -118,7 +119,7 @@ export default function AdminOrders() {
                 </span>
                 <div className="flex w-full items-center justify-between text-xs text-text-muted">
                   <span>
-                    {order.payment_method.toUpperCase()} · {order.payment_status}
+                    {paymentMethodLabel(order.payment_method)} · {order.payment_status}
                     {order.is_reservation && " · Order later"}
                     {order.rider && ` · Rider: ${order.rider.name}`}
                   </span>

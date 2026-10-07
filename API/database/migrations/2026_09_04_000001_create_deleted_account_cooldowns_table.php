@@ -8,6 +8,12 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Shared databases (e.g. palengkey_stg) already have this table, created by the
+        // original Palengkey app with extra columns and live rows — leave it as is.
+        if (Schema::hasTable('deleted_account_cooldowns')) {
+            return;
+        }
+
         Schema::create('deleted_account_cooldowns', function (Blueprint $table) {
             $table->id();
             $table->string('email')->index();

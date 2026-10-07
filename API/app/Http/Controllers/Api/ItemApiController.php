@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Item;
 use App\Models\Market;
 use App\Models\MarketPriceSnapshot;
+use App\Support\BulkPricing;
 use App\Support\PriceDisplay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +31,7 @@ class ItemApiController extends Controller
             ->whereIn('id', function ($q) use ($marketId) {
                 $q->select('item_id')->from('market_price_snapshots')->where('market_id', $marketId);
             })
-            ->with(['category:id,name', 'type:id,name', 'unit:id,short_name']);
+            ->with(['category', 'type:id,name', 'unit:id,short_name']);
 
         if ($categoryId) {
             $query->where('category_id', $categoryId);
@@ -90,6 +91,7 @@ class ItemApiController extends Controller
                 'is_muslim_friendly' => str_contains(strtolower($item->type?->name ?? ''), 'halal'),
                 'cutoff_time' => $item->getCutoffTimeStringForMarketData($pivot, $market),
                 'is_cutoff' => $item->isPastCutoffForMarketData($pivot, $market),
+                ...$this->bulkInfo($item, $snap?->price),
             ];
         });
 
@@ -130,6 +132,19 @@ class ItemApiController extends Controller
             'price_at' => $snapshot->price_at,
             'cutoff_time' => $item->getCutoffTimeStringForMarket($marketId),
             'is_cutoff' => $item->isPastCutoffForMarket($marketId),
+            ...$this->bulkInfo($item, $snapshot->price),
         ]);
+    }
+
+    /** For the "Buy bulk" badge: threshold and wholesale price, null when not eligible. */
+    private function bulkInfo(Item $item, mixed $basePrice): array
+    {
+        $threshold = BulkPricing::thresholdKg($item);
+
+        return [
+            'bulk_min_kg' => $threshold,
+            'bulk_price' => $threshold !== null && $basePrice !== null ? BulkPricing::unitPrice($basePrice) : null,
+            'bulk_delivery_subsidy_cap' => $threshold !== null ? BulkPricing::subsidyCap() : null,
+        ];
     }
 }

@@ -6,7 +6,10 @@
     <title>Palengkey — Payment {{ ucfirst($status) }}</title>
 </head>
 <body style="font-family: sans-serif; text-align: center; padding: 48px 24px; color: #1F2937;">
-    @if ($status === 'paid')
+    @if ($cancelled ?? false)
+        <h1>Payment cancelled</h1>
+        <p>You didn't finish paying for order #{{ $orderNumber }}{{ isset($methodLabel) ? ' with '.$methodLabel : '' }}. Return to the Palengkey app to try again or choose another payment method.</p>
+    @elseif ($status === 'paid')
         <h1>Payment received 🎉</h1>
         <p>Order #{{ $orderNumber }} is confirmed. You can close this window and return to the Palengkey app.</p>
     @elseif ($status === 'failed' || $status === 'expired')

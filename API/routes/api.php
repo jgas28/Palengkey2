@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\ItemApiController;
 use App\Http\Controllers\Api\MarketApiController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\PalutoApiController;
 use App\Http\Controllers\Api\PayMongoController;
 use App\Http\Controllers\Api\PopupAdController;
 use App\Http\Controllers\Api\RecipeApiController;
@@ -43,6 +44,8 @@ Route::prefix('customer')->group(function () {
     Route::get('/recipes', [RecipeApiController::class, 'index']);
     Route::get('/recipes/{recipe}', [RecipeApiController::class, 'show']);
     Route::get('/recipe-types', [RecipeTypeApiController::class, 'index']);
+    Route::get('/paluto/stalls', [PalutoApiController::class, 'stalls']);
+    Route::get('/paluto/stalls/{stall}', [PalutoApiController::class, 'stall']);
     Route::get('/delivery-areas', [ContentController::class, 'deliveryAreas']);
     Route::get('/featured-reviews', [ContentController::class, 'featuredReviews']);
     Route::get('/hero-stats', [ContentController::class, 'heroStats']);
@@ -68,6 +71,7 @@ Route::prefix('customer')->group(function () {
     Route::delete('/cart/item/{cartItem}', [CartController::class, 'remove']);
     Route::delete('/cart/clear', [CartController::class, 'clear']);
     Route::post('/cart/add-recipe', [CartController::class, 'addRecipe']);
+    Route::post('/cart/add-paluto-dish', [CartController::class, 'addPalutoDish']);
     Route::delete('/cart/recipe-bundle/{bundle}', [CartController::class, 'removeRecipeBundle']);
 
     // Authenticated (Sanctum bearer token).
@@ -131,6 +135,7 @@ Route::prefix('customer')->group(function () {
 // token available there) — both live outside the /customer prefix and auth group.
 Route::post('/webhooks/paymongo', [PayMongoController::class, 'webhook']);
 Route::get('/payment/bpi/{order}/return', [BpiPaymentController::class, 'appReturn'])->name('api.bpi.return');
+Route::get('/payment/{order}/return', [BpiPaymentController::class, 'appReturn'])->name('api.payment.return');
 
 // Admin (staff) panel — kept in its own file since it's a large, separate surface.
 require __DIR__.'/admin.php';

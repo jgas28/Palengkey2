@@ -19,6 +19,11 @@ export interface AdminOrderItem {
    * decimal `quantity`/`price`/`price_at_purchase` fields duplicate this
    * and `subtotal` and aren't consumed here. */
   item_quantity: number;
+  /** Decimal string. For Paluto/recipe ingredient lines this is the amount to buy
+   * (e.g. "1.200" kg) — those lines don't use item_quantity. */
+  quantity: string;
+  /** Set when this line is an ingredient of a recipe bundle (Buy Raw or a stall's dish). */
+  order_recipe_bundle_id: number | null;
   subtotal: string;
 }
 
@@ -85,6 +90,8 @@ export interface AdminOrderDetail extends AdminOrderSummary {
   delivery_fee: string;
   vat: string;
   voucher_discount: string;
+  bulk_discount?: string;
+  bulk_delivery_subsidy?: string;
   voucher_code: string | null;
   distance_meters: string | null;
   payment_reference: string | null;

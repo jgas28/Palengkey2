@@ -49,7 +49,7 @@ describe("LoginForm", () => {
   it("shows validation errors without calling the API", async () => {
     renderLoginForm();
 
-    await userEvent.click(screen.getByRole("button", { name: "Sign In" }));
+    await userEvent.click(screen.getByRole("button", { name: "Log in" }));
 
     expect(await screen.findByText("Enter a valid email.")).toBeInTheDocument();
     expect(login).not.toHaveBeenCalled();
@@ -61,7 +61,7 @@ describe("LoginForm", () => {
 
     await userEvent.type(screen.getByLabelText("Email Address"), "juan@example.com");
     await userEvent.type(screen.getByLabelText("Password"), "secret123");
-    await userEvent.click(screen.getByRole("button", { name: "Sign In" }));
+    await userEvent.click(screen.getByRole("button", { name: "Log in" }));
 
     expect(await screen.findByText("Home page")).toBeInTheDocument();
     expect(useAuthStore.getState().isAuthenticated).toBe(true);
@@ -73,7 +73,7 @@ describe("LoginForm", () => {
 
     await userEvent.type(screen.getByLabelText("Email Address"), "juan@example.com");
     await userEvent.type(screen.getByLabelText("Password"), "secret123");
-    await userEvent.click(screen.getByRole("button", { name: "Sign In" }));
+    await userEvent.click(screen.getByRole("button", { name: "Log in" }));
 
     await waitFor(() => {
       expect(screen.getByText("OTP page")).toBeInTheDocument();

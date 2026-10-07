@@ -33,14 +33,18 @@ class CategoryController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate(['name' => 'required|string|max:255', 'image' => 'nullable|image|max:2048']);
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'image' => 'nullable|image|max:2048',
+            'bulk_min_kg' => 'nullable|numeric|min:0.001|max:9999',
+        ]);
 
         $category = DB::transaction(function () use ($request) {
             if (Category::whereRaw('LOWER(name)=?', [strtolower($request->name)])->where('status', 1)->exists()) {
                 abort(422, 'Category already exists.');
             }
 
-            $data = ['name' => $request->name];
+            $data = ['name' => $request->name, 'bulk_min_kg' => $request->input('bulk_min_kg')];
 
             if ($request->hasFile('image')) {
                 $data['image'] = $request->file('image')->store('categories', $this->disk());
@@ -60,11 +64,20 @@ class CategoryController extends Controller
     {
         abort_if(! $category->status, 404);
 
-        $request->validate(['name' => 'required|string|max:255', 'image' => 'nullable|image|max:2048']);
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'image' => 'nullable|image|max:2048',
+            // Blank clears it — the category stops qualifying for bulk pricing.
+            'bulk_min_kg' => 'nullable|numeric|min:0.001|max:9999',
+        ]);
 
         DB::transaction(function () use ($request, $category) {
             $old = $category->toArray();
             $data = ['name' => $request->name];
+
+            if ($request->has('bulk_min_kg')) {
+                $data['bulk_min_kg'] = $request->input('bulk_min_kg');
+            }
 
             if ($request->hasFile('image')) {
                 if ($category->image) {

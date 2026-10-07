@@ -45,18 +45,6 @@ class Recipe extends Model
         return $this->hasMany(RecipeIngredient::class)->orderBy('sort_order');
     }
 
-    public function stallRecipes()
-    {
-        return $this->hasMany(PalutoStallRecipe::class);
-    }
-
-    public function stalls()
-    {
-        return $this->belongsToMany(PalutoStall::class, 'paluto_stall_recipes')
-            ->withPivot(['rate', 'minimum_fee', 'status'])
-            ->withTimestamps();
-    }
-
     public function getImageFullUrlAttribute(): ?string
     {
         if (! $this->image) {

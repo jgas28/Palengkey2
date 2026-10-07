@@ -1,0 +1,82 @@
+/*
+ * Small additions on top of the generated Figma stylesheet (palengkey.css) for
+ * real-app states the prototype didn't need. Same body.pk scoping; keep this
+ * file short — anything that's in the design belongs in palengkey.css.
+ */
+
+/* Text fields inside cards — same look as the design's .auth-card inputs. */
+:where(body.pk) .checkout-card input:not([type="radio"]):not([type="checkbox"]),
+:where(body.pk) .checkout-card select,
+:where(body.pk) .support-card select {
+  width: 100%;
+  padding: 13px;
+  color: var(--ink);
+  background: white;
+  border: 1px solid #cfdddd;
+  border-radius: 10px;
+  outline: none;
+}
+
+:where(body.pk) .checkout-card input:focus,
+:where(body.pk) .checkout-card textarea:focus,
+:where(body.pk) .auth-card input:focus,
+:where(body.pk) .support-card textarea:focus,
+:where(body.pk) .address-form input:focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(0, 151, 167, 0.1);
+}
+
+/* Disabled buttons — the prototype never disabled anything. */
+:where(body.pk) .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Keyboard focus — the prototype relies on browser defaults that Tailwind resets. */
+:where(body.pk) a:focus-visible,
+:where(body.pk) button:focus-visible,
+:where(body.pk) [tabindex]:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+/* Company address in the footer brand column. */
+:where(body.pk) .footer-address {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  color: #9cb0b4;
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.5;
+}
+
+:where(body.pk) .footer-address > * {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+:where(body.pk) .footer-address svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--amber);
+}
+
+:where(body.pk) .footer-address a:hover {
+  color: white;
+}
+
+/* Header avatar menu items. */
+:where(body.pk) [role="menuitem"]:hover {
+  background: var(--teal-pale);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(body.pk) *,
+  :where(body.pk) *::before,
+  :where(body.pk) *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

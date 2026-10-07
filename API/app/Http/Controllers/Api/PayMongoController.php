@@ -70,38 +70,45 @@ class PayMongoController extends Controller
                     $cashless->order?->forceFill(['payment_status' => 'expired'])->save();
                 }
             }
-        } elseif ($eventType === 'payment_intent.succeeded') {
-            $paymentIntentId = $eventResource['id'] ?? null;
+        } elseif (in_array($eventType, ['payment_intent.succeeded', 'checkout_session.payment.paid'], true)) {
+            // Hosted checkout (card, GCash, Maya, UnionBank) reports on the session;
+            // its payment intent id is what we stored as the reference.
+            $paymentIntentId = $eventType === 'checkout_session.payment.paid'
+                ? ($eventAttributes['payment_intent']['id'] ?? null)
+                : ($eventResource['id'] ?? null);
 
-            if (! $paymentIntentId) {
-                return response()->json(['success' => true]);
-            }
-
-            $cashless = CashlessPayment::where('reference', $paymentIntentId)->first();
-
-            if ($cashless) {
-                $cashless->update([
-                    'status' => 'paid',
-                    'raw_response' => array_merge((array) ($cashless->raw_response ?? []), ['webhook' => $data]),
-                ]);
-
-                $order = $cashless->order;
-                if ($order && ! $this->isCancelledOrder($order)) {
-                    $order->forceFill([
-                        'payment_status' => 'paid',
-                        'payment_reference' => $paymentIntentId,
-                    ])->save();
-
-                    $this->markOrderReceived($order);
-                }
-
-                return response()->json(['success' => true]);
+            if ($paymentIntentId) {
+                $this->markPaid($paymentIntentId, $data);
             }
         } else {
             Log::info('Unhandled PayMongo webhook event', ['type' => $eventType]);
         }
 
         return response()->json(['success' => true]);
+    }
+
+    private function markPaid(string $paymentIntentId, array $webhookData): void
+    {
+        $cashless = CashlessPayment::where('reference', $paymentIntentId)->first();
+
+        if (! $cashless) {
+            return;
+        }
+
+        $cashless->update([
+            'status' => 'paid',
+            'raw_response' => array_merge((array) ($cashless->raw_response ?? []), ['webhook' => $webhookData]),
+        ]);
+
+        $order = $cashless->order;
+        if ($order && ! $this->isCancelledOrder($order)) {
+            $order->forceFill([
+                'payment_status' => 'paid',
+                'payment_reference' => $paymentIntentId,
+            ])->save();
+
+            $this->markOrderReceived($order);
+        }
     }
 
     /**

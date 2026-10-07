@@ -19,6 +19,8 @@ class OrderItem extends Model
         'item_quantity',
         'price',
         'price_at_purchase',
+        'is_bulk',
+        'regular_price',
         'subtotal',
     ];
 
