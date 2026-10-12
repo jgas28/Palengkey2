@@ -11,7 +11,10 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, helperText, id, className = "", rightElement, leftElement, ...props }, ref) => {
+  (
+    { label, error, helperText, id, className = "", rightElement, leftElement, ...props },
+    ref,
+  ) => {
     const generatedId = useId();
     const inputId = id ?? generatedId;
     const helperId = `${inputId}-helper`;
@@ -41,7 +44,9 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             </div>
           )}
           {rightElement && (
-            <div className="absolute right-2 top-1/2 -translate-y-1/2">{rightElement}</div>
+            <div className="absolute right-2 top-1/2 -translate-y-1/2">
+              {rightElement}
+            </div>
           )}
         </div>
         {error ? (

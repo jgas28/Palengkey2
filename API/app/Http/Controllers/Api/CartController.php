@@ -474,7 +474,7 @@ class CartController extends Controller
                 : 1.0;
             $isBulk = $bulk[$item->item_id]['qualifies'] ?? false;
             $regularUnitPrice = PriceDisplay::markedUp($item->price);
-            $displayUnitPrice = $isBulk ? BulkPricing::unitPrice($item->price) : $regularUnitPrice;
+            $displayUnitPrice = $isBulk ? BulkPricing::unitPrice($item->item, $item->price) : $regularUnitPrice;
             $priceEach = $hasWeightSelection
                 ? $this->priceForWeight($unit, $displayUnitPrice, $weightKg)
                 : $displayUnitPrice;

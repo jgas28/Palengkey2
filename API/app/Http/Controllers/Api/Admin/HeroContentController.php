@@ -16,7 +16,7 @@ class HeroContentController extends Controller
 
     public function store(Request $request)
     {
-        $data = $this->validated($request, true);
+        $data = $this->withStats($this->validated($request, true));
 
         $path = Storage::disk($this->disk())->putFile('hero-content', $request->file('image'));
         $data['image_url'] = Storage::disk($this->disk())->url($path);
@@ -36,7 +36,7 @@ class HeroContentController extends Controller
 
     public function update(Request $request, HeroContent $heroContent)
     {
-        $data = $this->validated($request, false);
+        $data = $this->withStats($this->validated($request, false));
 
         if ($request->hasFile('image')) {
             $path = Storage::disk($this->disk())->putFile('hero-content', $request->file('image'));
@@ -90,7 +90,28 @@ class HeroContentController extends Controller
             'cta_text_2' => 'nullable|string|max:100',
             'cta_link_2' => 'nullable|url',
             'is_active' => 'boolean',
+            // Hero stat chips, e.g. [{"label":"50+","value":"Local markets"}], sent as JSON.
+            'stats_json' => 'nullable|json',
         ]);
+    }
+
+    /** Decodes stats_json into clean {label, value} pairs (blank rows dropped). */
+    private function withStats(array $data): array
+    {
+        if (! array_key_exists('stats_json', $data)) {
+            return $data;
+        }
+
+        $data['stats_json'] = collect(json_decode($data['stats_json'] ?? '[]', true) ?: [])
+            ->map(fn ($row) => [
+                'label' => trim((string) ($row['label'] ?? '')),
+                'value' => trim((string) ($row['value'] ?? '')),
+            ])
+            ->filter(fn ($row) => $row['label'] !== '' || $row['value'] !== '')
+            ->values()
+            ->all();
+
+        return $data;
     }
 
     private function nextSequence(string $pageName): int

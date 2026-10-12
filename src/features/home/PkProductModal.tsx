@@ -25,14 +25,23 @@ export interface PkProductModalProps {
 }
 
 /** The design's product quick view (.product-modal), backed by the real item and cart. */
-export default function PkProductModal({ itemId, marketId, onClose }: PkProductModalProps) {
+export default function PkProductModal({
+  itemId,
+  marketId,
+  onClose,
+}: PkProductModalProps) {
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
   const [quantity, setQuantity] = useState(1);
   const [weightKg, setWeightKg] = useState(1);
   const [instructions, setInstructions] = useState("");
 
-  const { data: item, isLoading, isError, refetch } = useQuery({
+  const {
+    data: item,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["item", itemId, marketId],
     queryFn: () => getItem(itemId, marketId),
   });
@@ -40,11 +49,19 @@ export default function PkProductModal({ itemId, marketId, onClose }: PkProductM
   const weighted = item ? isWeightUnit(item.unit) : false;
   const selectedKg = weighted ? weightKg * quantity : 0;
   const bulkReached = Boolean(
-    weighted && item?.bulk_min_kg && item.bulk_price !== null && selectedKg + 0.0001 >= item.bulk_min_kg,
+    weighted &&
+    item?.bulk_min_kg &&
+    item.bulk_price !== null &&
+    selectedKg + 0.0001 >= item.bulk_min_kg,
   );
-  const unitPrice = item ? (bulkReached ? Number(item.bulk_price) : Number(item.price)) : 0;
+  const unitPrice = item
+    ? bulkReached
+      ? Number(item.bulk_price)
+      : Number(item.price)
+    : 0;
   const total = Math.round(unitPrice * (weighted ? weightKg : 1) * quantity * 100) / 100;
-  const saved = item && bulkReached ? (Number(item.price) - unitPrice) * weightKg * quantity : 0;
+  const saved =
+    item && bulkReached ? (Number(item.price) - unitPrice) * weightKg * quantity : 0;
 
   const addMutation = useMutation({
     mutationFn: () =>
@@ -61,7 +78,10 @@ export default function PkProductModal({ itemId, marketId, onClose }: PkProductM
       onClose();
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not add to cart.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not add to cart.",
+        "error",
+      );
     },
   });
 
@@ -74,16 +94,28 @@ export default function PkProductModal({ itemId, marketId, onClose }: PkProductM
         aria-label={item?.name ?? "Product details"}
         onClick={(event) => event.stopPropagation()}
       >
-        <button type="button" className="drawer-close" onClick={onClose} aria-label="Close product details">
+        <button
+          type="button"
+          className="drawer-close"
+          onClick={onClose}
+          aria-label="Close product details"
+        >
           <Icon name="x" />
         </button>
 
         {(isLoading || isError || !item) && (
-          <div className="product-details" style={{ gridColumn: "1 / -1", minHeight: 320 }}>
+          <div
+            className="product-details"
+            style={{ gridColumn: "1 / -1", minHeight: 320 }}
+          >
             {isError ? (
               <>
                 <h2>Couldn&apos;t load this item</h2>
-                <button type="button" className="btn primary" onClick={() => void refetch()}>
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => void refetch()}
+                >
                   Try again
                 </button>
               </>
@@ -100,7 +132,14 @@ export default function PkProductModal({ itemId, marketId, onClose }: PkProductM
                 {item.image ? (
                   <img src={item.image} alt={item.name} />
                 ) : (
-                  <div style={{ display: "grid", placeItems: "center", height: "100%", color: "var(--teal)" }}>
+                  <div
+                    style={{
+                      display: "grid",
+                      placeItems: "center",
+                      height: "100%",
+                      color: "var(--teal)",
+                    }}
+                  >
                     <Icon name="leaf" size={48} />
                   </div>
                 )}
@@ -149,10 +188,15 @@ export default function PkProductModal({ itemId, marketId, onClose }: PkProductM
                         {formatPeso(item.bulk_price)}/{item.unit ?? "kg"} wholesale
                       </span>
                       {item.bulk_delivery_subsidy_cap ? (
-                        <span>Delivery up to {formatPeso(item.bulk_delivery_subsidy_cap)} covered</span>
+                        <span>
+                          Delivery up to {formatPeso(item.bulk_delivery_subsidy_cap)}{" "}
+                          covered
+                        </span>
                       ) : null}
                       {!bulkReached && (
-                        <span>{formatKg(kgToGo(selectedKg, item.bulk_min_kg))}kg to go</span>
+                        <span>
+                          {formatKg(kgToGo(selectedKg, item.bulk_min_kg))}kg to go
+                        </span>
                       )}
                     </p>
                   </div>
@@ -160,11 +204,20 @@ export default function PkProductModal({ itemId, marketId, onClose }: PkProductM
               )}
 
               {item.is_cutoff && (
-                <div className="bulk-banner" style={{ color: "var(--teal-dark)", background: "var(--teal-pale)", borderColor: "#b9dadd" }}>
+                <div
+                  className="bulk-banner"
+                  style={{
+                    color: "var(--teal-dark)",
+                    background: "var(--teal-pale)",
+                    borderColor: "#b9dadd",
+                  }}
+                >
                   <Icon name="clock" />
                   <div>
                     <strong>Past today&apos;s cutoff</strong>
-                    <p>Add it now and it&apos;ll be delivered on the next available slot.</p>
+                    <p>
+                      Add it now and it&apos;ll be delivered on the next available slot.
+                    </p>
                   </div>
                 </div>
               )}
@@ -200,11 +253,19 @@ export default function PkProductModal({ itemId, marketId, onClose }: PkProductM
                   </small>
                 </div>
                 <div className="modal-quantity">
-                  <button type="button" aria-label="Decrease quantity" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
+                  <button
+                    type="button"
+                    aria-label="Decrease quantity"
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  >
                     <Icon name="minus" size={16} />
                   </button>
                   <span>{quantity}</span>
-                  <button type="button" aria-label="Increase quantity" onClick={() => setQuantity(quantity + 1)}>
+                  <button
+                    type="button"
+                    aria-label="Increase quantity"
+                    onClick={() => setQuantity(quantity + 1)}
+                  >
                     <Icon name="plus" size={16} />
                   </button>
                 </div>
@@ -222,7 +283,11 @@ export default function PkProductModal({ itemId, marketId, onClose }: PkProductM
 
               <div className="modal-total">
                 <div>
-                  <small>{saved > 0 ? `Total · You save ${formatPeso(saved)}` : "Estimated total"}</small>
+                  <small>
+                    {saved > 0
+                      ? `Total · You save ${formatPeso(saved)}`
+                      : "Estimated total"}
+                  </small>
                   <strong>{formatPeso(total)}</strong>
                 </div>
                 <button
@@ -231,7 +296,8 @@ export default function PkProductModal({ itemId, marketId, onClose }: PkProductM
                   disabled={addMutation.isPending}
                   onClick={() => addMutation.mutate()}
                 >
-                  <Icon name="cart" size={18} /> {addMutation.isPending ? "Adding…" : `Add ${quantity} to cart`}
+                  <Icon name="cart" size={18} />{" "}
+                  {addMutation.isPending ? "Adding…" : `Add ${quantity} to cart`}
                 </button>
               </div>
             </div>

@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
@@ -54,8 +59,8 @@ export default function AdminPalutoStalls() {
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["adminPalutoStalls", search, marketId],
-    queryFn: () =>
-      listAdminPalutoStalls({ search: search || undefined, marketId }),
+    queryFn: () => listAdminPalutoStalls({ search: search || undefined, marketId }),
+    placeholderData: keepPreviousData,
   });
 
   function openCreate() {
@@ -190,7 +195,9 @@ export default function AdminPalutoStalls() {
         />
         <select
           value={marketId ?? ""}
-          onChange={(e) => setMarketId(e.target.value ? Number(e.target.value) : undefined)}
+          onChange={(e) =>
+            setMarketId(e.target.value ? Number(e.target.value) : undefined)
+          }
           className="h-10 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
         >
           <option value="">All markets</option>
@@ -220,7 +227,10 @@ export default function AdminPalutoStalls() {
       {data && data.data.length > 0 && (
         <ul className="flex flex-col divide-y divide-border rounded-card border border-border">
           {data.data.map((stall) => (
-            <li key={stall.id} className="flex items-center justify-between gap-3 px-4 py-3">
+            <li
+              key={stall.id}
+              className="flex items-center justify-between gap-3 px-4 py-3"
+            >
               <button
                 type="button"
                 onClick={() => openEdit(stall)}
@@ -339,7 +349,9 @@ export default function AdminPalutoStalls() {
               <input
                 type="tel"
                 value={form.contact_phone}
-                onChange={(e) => setForm((f) => ({ ...f, contact_phone: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, contact_phone: e.target.value }))
+                }
                 className="rounded-lg border border-border bg-surface p-3 text-sm font-normal text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
               />
             </label>
@@ -373,7 +385,9 @@ export default function AdminPalutoStalls() {
             <input
               type="file"
               accept="image/*"
-              onChange={(e) => setForm((f) => ({ ...f, image: e.target.files?.[0] ?? null }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, image: e.target.files?.[0] ?? null }))
+              }
               className="text-sm text-text-muted"
             />
           </label>
@@ -388,7 +402,9 @@ export default function AdminPalutoStalls() {
           <Button
             loading={editingStall ? updateMutation.isPending : createMutation.isPending}
             disabled={!isFormValid}
-            onClick={() => (editingStall ? updateMutation.mutate() : createMutation.mutate())}
+            onClick={() =>
+              editingStall ? updateMutation.mutate() : createMutation.mutate()
+            }
           >
             {editingStall ? "Save changes" : "Add stall"}
           </Button>

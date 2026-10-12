@@ -39,10 +39,15 @@ describe("PkProductCard", () => {
     expect(onView).toHaveBeenCalledOnce();
   });
 
-  it("tags bulk-eligible items", () => {
-    render(<PkProductCard item={{ ...baseItem, bulk_min_kg: 10, bulk_price: 105 }} onView={vi.fn()} />);
+  it("leaves the bulk deal to the quick view", () => {
+    render(
+      <PkProductCard
+        item={{ ...baseItem, bulk_min_kg: 10, bulk_price: 105 }}
+        onView={vi.fn()}
+      />,
+    );
 
-    expect(screen.getByText("Bulk 10kg+")).toBeInTheDocument();
+    expect(screen.queryByText(/Bulk/)).not.toBeInTheDocument();
   });
 
   it("disables adding when the market has no price", () => {

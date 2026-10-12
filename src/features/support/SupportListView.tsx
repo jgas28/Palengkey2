@@ -3,7 +3,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import Icon from "@/components/pk/Icon";
 import { FAQS } from "@/features/support/faqs";
-import { getSupportOverview, openSupportForOrder, sendSupportMessage } from "@/services/api/support";
+import {
+  getSupportOverview,
+  openSupportForOrder,
+  sendSupportMessage,
+} from "@/services/api/support";
 import { useToastStore } from "@/stores/toastStore";
 
 /** The design's Help & Support page — FAQs, your conversations, and "create a ticket" for an order. */
@@ -30,7 +34,10 @@ export default function SupportListView() {
       navigate(`/support/${thread.id}`);
     },
     onError: (error) =>
-      showToast(error instanceof Error ? error.message : "Could not start a conversation.", "error"),
+      showToast(
+        error instanceof Error ? error.message : "Could not start a conversation.",
+        "error",
+      ),
   });
 
   function handleTicket(event: FormEvent) {
@@ -79,7 +86,11 @@ export default function SupportListView() {
               <h2 style={{ marginTop: 34 }}>Your conversations</h2>
               <div className="market-options">
                 {threads.map((thread) => (
-                  <button type="button" key={thread.id} onClick={() => navigate(`/support/${thread.id}`)}>
+                  <button
+                    type="button"
+                    key={thread.id}
+                    onClick={() => navigate(`/support/${thread.id}`)}
+                  >
                     <span>
                       <Icon name="message" />
                     </span>
@@ -103,13 +114,24 @@ export default function SupportListView() {
             <Icon name="message" />
           </span>
           <h2>Chat with customer care</h2>
-          <p>Message our team about a specific order. We usually reply within a few minutes during market hours.</p>
+          <p>
+            Message our team about a specific order. We usually reply within a few minutes
+            during market hours.
+          </p>
           {threads[0] ? (
-            <button type="button" className="btn chat-now" onClick={() => navigate(`/support/${threads[0].id}`)}>
+            <button
+              type="button"
+              className="btn chat-now"
+              onClick={() => navigate(`/support/${threads[0].id}`)}
+            >
               <Icon name="message" /> Open latest conversation <Icon name="arrow" />
             </button>
           ) : (
-            <a className="btn chat-now" href="mailto:contact@palengkey.ph" style={{ display: "flex" }}>
+            <a
+              className="btn chat-now"
+              href="mailto:contact@palengkey.ph"
+              style={{ display: "flex" }}
+            >
               <Icon name="message" /> Email contact@palengkey.ph <Icon name="arrow" />
             </a>
           )}
@@ -123,7 +145,10 @@ export default function SupportListView() {
               Try again
             </button>
           ) : orders.length === 0 ? (
-            <div className="sent-message" style={{ color: "var(--muted)", background: "var(--bg)" }}>
+            <div
+              className="sent-message"
+              style={{ color: "var(--muted)", background: "var(--bg)" }}
+            >
               <strong>No orders yet</strong>
               <p>Once you place an order, you can message us about it here.</p>
             </div>
@@ -134,7 +159,13 @@ export default function SupportListView() {
                 <select
                   value={orderNumber}
                   onChange={(event) => setOrderNumber(event.target.value)}
-                  style={{ width: "100%", padding: 13, border: "1px solid #cfdddd", borderRadius: 10, background: "white" }}
+                  style={{
+                    width: "100%",
+                    padding: 13,
+                    border: "1px solid #cfdddd",
+                    borderRadius: 10,
+                    background: "white",
+                  }}
                 >
                   <option value="">Choose an order</option>
                   {orders.map((order) => (
@@ -154,8 +185,13 @@ export default function SupportListView() {
                   placeholder="Tell us what happened..."
                 />
               </label>
-              <button type="submit" className="btn primary" disabled={ticketMutation.isPending}>
-                {ticketMutation.isPending ? "Sending…" : "Send message"} <Icon name="arrow" />
+              <button
+                type="submit"
+                className="btn primary"
+                disabled={ticketMutation.isPending}
+              >
+                {ticketMutation.isPending ? "Sending…" : "Send message"}{" "}
+                <Icon name="arrow" />
               </button>
             </form>
           )}

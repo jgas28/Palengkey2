@@ -16,7 +16,7 @@ const PANEL_STYLE = {
   right: 24,
   bottom: 88,
   width: "min(380px, calc(100vw - 32px))",
-  height: "min(580px, calc(100vh - 120px))",
+  height: "min(640px, calc(100vh - 110px))",
   minHeight: 0,
   borderRadius: 22,
   animation: "modal-in .2s ease",
@@ -51,7 +51,10 @@ export default function ChatFab() {
       setView({ name: "thread", threadId: thread.id, title: thread.subject });
     },
     onError: (error) =>
-      showToast(error instanceof Error ? error.message : "Could not start a conversation.", "error"),
+      showToast(
+        error instanceof Error ? error.message : "Could not start a conversation.",
+        "error",
+      ),
   });
 
   useEffect(() => {
@@ -68,27 +71,56 @@ export default function ChatFab() {
   return (
     <>
       {open && (
-        <div ref={panelRef} className="chat-shell" role="dialog" aria-modal="false" aria-label="Chat with Palengkey" style={PANEL_STYLE}>
-          <header className="chat-header" style={{ gridTemplateColumns: view.name === "thread" ? "34px 39px 1fr 34px" : "39px 1fr 34px" }}>
+        <div
+          ref={panelRef}
+          className="chat-shell chat-widget"
+          role="dialog"
+          aria-modal="false"
+          aria-label="Chat with Palengkey"
+          style={PANEL_STYLE}
+        >
+          <header
+            className="chat-header"
+            style={{
+              gridTemplateColumns:
+                view.name === "thread" ? "34px 39px 1fr 34px" : "39px 1fr 34px",
+            }}
+          >
             {view.name === "thread" && (
-              <button type="button" onClick={() => setView({ name: "home" })} aria-label="Back">
+              <button
+                type="button"
+                onClick={() => setView({ name: "home" })}
+                aria-label="Back"
+              >
                 <Icon name="arrow" />
               </button>
             )}
-            <span>
-              <Icon name="message" />
+            <span className="chat-brand-mark">
+              <img src="/palengkey-mark.png" alt="" />
             </span>
             <div>
               <strong>{view.name === "thread" ? view.title : "Palengkey Assist"}</strong>
               <small>
-                <i></i> {view.name === "thread" ? "Customer care team" : "Quick answers & customer care"}
+                <i></i>{" "}
+                {view.name === "thread"
+                  ? "Customer care team"
+                  : "Quick answers & customer care"}
               </small>
             </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Close chat"
-              style={{ display: "grid", placeItems: "center", width: 34, height: 34, color: "white", background: "rgba(255,255,255,.08)", border: 0, borderRadius: "50%" }}
+              style={{
+                display: "grid",
+                placeItems: "center",
+                width: 34,
+                height: 34,
+                color: "white",
+                background: "rgba(255,255,255,.08)",
+                border: 0,
+                borderRadius: "50%",
+              }}
             >
               <Icon name="x" size={18} />
             </button>
@@ -101,11 +133,13 @@ export default function ChatFab() {
               <section className="chat-messages">
                 <div className="chat-date">Today</div>
                 <article className="bot">
-                  <span>PA</span>
+                  <span className="chat-avatar">
+                    <img src="/palengkey-mark.png" alt="" />
+                  </span>
                   <div>
                     <p>
-                      Kumusta! I’m Palengkey Assist. Tap a question below for a quick answer, or message
-                      our team about an order.
+                      Kumusta! I’m Palengkey Assist. Tap a question below for a quick
+                      answer, or message our team about an order.
                     </p>
                   </div>
                 </article>
@@ -119,7 +153,9 @@ export default function ChatFab() {
                         </div>
                       </article>
                       <article className="bot">
-                        <span>PA</span>
+                        <span className="chat-avatar">
+                          <img src="/palengkey-mark.png" alt="" />
+                        </span>
                         <div>
                           <p>{faq?.answer}</p>
                         </div>
@@ -130,18 +166,28 @@ export default function ChatFab() {
 
                 {isAuthenticated ? (
                   <article className="bot">
-                    <span>PA</span>
+                    <span className="chat-avatar">
+                      <img src="/palengkey-mark.png" alt="" />
+                    </span>
                     <div style={{ width: "100%" }}>
                       <p style={{ marginBottom: 8 }}>
-                        {threads.length > 0 ? "Continue a conversation:" : "Need a person? Pick the order you need help with:"}
+                        {threads.length > 0
+                          ? "Continue a conversation:"
+                          : "Need a person? Pick the order you need help with:"}
                       </p>
                       <div style={{ display: "grid", gap: 6 }}>
                         {threads.slice(0, 4).map((thread) => (
                           <button
                             type="button"
                             key={thread.id}
-                            onClick={() => setView({ name: "thread", threadId: thread.id, title: thread.subject })}
-                            style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "8px 10px", color: "var(--teal-dark)", background: "var(--teal-pale)", border: 0, borderRadius: 9, fontSize: 10, fontWeight: 700, textAlign: "left" }}
+                            onClick={() =>
+                              setView({
+                                name: "thread",
+                                threadId: thread.id,
+                                title: thread.subject,
+                              })
+                            }
+                            className="chat-option"
                           >
                             <span>{thread.subject}</span>
                             <Icon name="chevron" size={14} />
@@ -153,13 +199,12 @@ export default function ChatFab() {
                               event.preventDefault();
                               if (orderNumber) startMutation.mutate(orderNumber);
                             }}
-                            style={{ display: "flex", gap: 6 }}
+                            className="chat-order-picker"
                           >
                             <select
                               value={orderNumber}
                               onChange={(event) => setOrderNumber(event.target.value)}
                               aria-label="Order to get help with"
-                              style={{ flex: 1, minWidth: 0, height: 32, padding: "0 8px", border: "1px solid var(--line)", borderRadius: 8, fontSize: 10 }}
                             >
                               <option value="">Choose an order</option>
                               {orders.map((order) => (
@@ -171,7 +216,6 @@ export default function ChatFab() {
                             <button
                               type="submit"
                               className="btn primary"
-                              style={{ minHeight: 32, padding: "0 10px", fontSize: 10 }}
                               disabled={!orderNumber || startMutation.isPending}
                             >
                               Chat
@@ -179,20 +223,30 @@ export default function ChatFab() {
                           </form>
                         )}
                         {orders.length === 0 && threads.length === 0 && (
-                          <p style={{ fontSize: 10 }}>Once you place an order, you can message our team about it here.</p>
+                          <p>
+                            Once you place an order, you can message our team about it
+                            here.
+                          </p>
                         )}
                       </div>
                     </div>
                   </article>
                 ) : (
                   <article className="bot">
-                    <span>PA</span>
+                    <span className="chat-avatar">
+                      <img src="/palengkey-mark.png" alt="" />
+                    </span>
                     <div>
                       <p>To message our team about an order, please log in first.</p>
                       <button
                         type="button"
                         className="btn primary"
-                        style={{ minHeight: 32, marginTop: 8, padding: "0 12px", fontSize: 10 }}
+                        style={{
+                          minHeight: 32,
+                          marginTop: 8,
+                          padding: "0 12px",
+                          fontSize: 10,
+                        }}
                         onClick={() => {
                           setOpen(false);
                           navigate("/login");
@@ -206,18 +260,26 @@ export default function ChatFab() {
               </section>
 
               <div className="quick-replies">
+                <span className="quick-replies-label">Quick questions</span>
                 {quickFaqs.map((faq) => (
                   <button
                     type="button"
                     key={faq.question}
-                    onClick={() => setAnswered((current) => (current.includes(faq.question) ? current : [...current, faq.question]))}
+                    onClick={() =>
+                      setAnswered((current) =>
+                        current.includes(faq.question)
+                          ? current
+                          : [...current, faq.question],
+                      )
+                    }
                   >
                     {faq.question}
                   </button>
                 ))}
               </div>
               <div className="chat-safety">
-                <Icon name="shield" size={13} /> Quick answers come from our Help Center. A real person replies in conversations.
+                <Icon name="shield" size={13} /> Quick answers come from our Help Center.
+                A real person replies in conversations.
               </div>
             </>
           )}

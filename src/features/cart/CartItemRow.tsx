@@ -18,7 +18,11 @@ function formatWeight(kg: number): string {
 }
 
 /** The design's basket line (.cart-line) with selection, note, quantity and remove. */
-export default function CartItemRow({ item, selected, onToggleSelect }: CartItemRowProps) {
+export default function CartItemRow({
+  item,
+  selected,
+  onToggleSelect,
+}: CartItemRowProps) {
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
   const [editingNote, setEditingNote] = useState(false);
@@ -49,14 +53,24 @@ export default function CartItemRow({ item, selected, onToggleSelect }: CartItem
 
   return (
     <article className="cart-line" style={selected ? undefined : { opacity: 0.6 }}>
-      <label className="cart-thumb" style={{ position: "relative", overflow: "hidden", cursor: "pointer" }}>
+      <label
+        className="cart-thumb"
+        style={{ position: "relative", overflow: "hidden", cursor: "pointer" }}
+      >
         {item.image ? <img src={item.image} alt="" /> : <Icon name="leaf" />}
         <input
           type="checkbox"
           checked={selected}
           onChange={onToggleSelect}
           aria-label={`Select ${item.name}`}
-          style={{ position: "absolute", left: 4, top: 4, width: 16, height: 16, accentColor: "var(--teal)" }}
+          style={{
+            position: "absolute",
+            left: 4,
+            top: 4,
+            width: 16,
+            height: 16,
+            accentColor: "var(--teal)",
+          }}
         />
       </label>
       <div className="cart-info">
@@ -77,7 +91,9 @@ export default function CartItemRow({ item, selected, onToggleSelect }: CartItem
           )}
         </small>
         {editingNote ? (
-          <span style={{ display: "flex", gap: 8, alignItems: "center", margin: "4px 0 6px" }}>
+          <span
+            style={{ display: "flex", gap: 8, alignItems: "center", margin: "4px 0 6px" }}
+          >
             <input
               value={noteDraft}
               onChange={(event) => setNoteDraft(event.target.value)}
@@ -85,18 +101,39 @@ export default function CartItemRow({ item, selected, onToggleSelect }: CartItem
               maxLength={500}
               autoFocus
               aria-label="Note for your shopper"
-              style={{ flex: 1, height: 30, padding: "0 8px", border: "1px solid #cfdddd", borderRadius: 8, fontSize: 10 }}
+              style={{
+                flex: 1,
+                height: 30,
+                padding: "0 8px",
+                border: "1px solid #cfdddd",
+                borderRadius: 8,
+                fontSize: 10,
+              }}
             />
-            <button type="button" style={{ color: "var(--teal-dark)" }} disabled={noteMutation.isPending} onClick={() => noteMutation.mutate(noteDraft.trim())}>
+            <button
+              type="button"
+              style={{ color: "var(--teal-dark)" }}
+              disabled={noteMutation.isPending}
+              onClick={() => noteMutation.mutate(noteDraft.trim())}
+            >
               Save
             </button>
-            <button type="button" style={{ color: "var(--muted)" }} onClick={() => setEditingNote(false)}>
+            <button
+              type="button"
+              style={{ color: "var(--muted)" }}
+              onClick={() => setEditingNote(false)}
+            >
               Cancel
             </button>
           </span>
         ) : (
-          <small style={{ cursor: "pointer", color: "var(--teal-dark)" }} onClick={() => setEditingNote(true)}>
-            {item.customer_note ? `Note: ${item.customer_note}` : "+ Add note for your shopper"}
+          <small
+            style={{ cursor: "pointer", color: "var(--teal-dark)" }}
+            onClick={() => setEditingNote(true)}
+          >
+            {item.customer_note
+              ? `Note: ${item.customer_note}`
+              : "+ Add note for your shopper"}
           </small>
         )}
         <button

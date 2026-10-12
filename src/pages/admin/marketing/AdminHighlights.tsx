@@ -1,5 +1,10 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/common/LoadingState";
 import ErrorState from "@/components/common/ErrorState";
@@ -40,6 +45,7 @@ export default function AdminHighlights() {
   const { data: searchResults, isFetching: searching } = useQuery({
     queryKey: ["adminItemsSearch", search],
     queryFn: () => listAdminItems({ search, page: 1 }),
+    placeholderData: keepPreviousData,
     enabled: search.trim().length > 1,
   });
 
@@ -47,7 +53,8 @@ export default function AdminHighlights() {
     queryClient.invalidateQueries({ queryKey: ["adminCuratedProducts", section] });
 
   const addMutation = useMutation({
-    mutationFn: (itemId: number) => createAdminCuratedProduct({ section, item_id: itemId }),
+    mutationFn: (itemId: number) =>
+      createAdminCuratedProduct({ section, item_id: itemId }),
     onSuccess: () => {
       invalidate();
       showToast("Added.", "success");
@@ -76,7 +83,10 @@ export default function AdminHighlights() {
       showToast("Removed.", "success");
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not remove item.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not remove item.",
+        "error",
+      );
     },
   });
 
@@ -135,7 +145,9 @@ export default function AdminHighlights() {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-text">{entry.item.name}</p>
+                    <p className="truncate text-sm font-medium text-text">
+                      {entry.item.name}
+                    </p>
                     {entry.item.category && (
                       <p className="text-xs text-text-muted">{entry.item.category}</p>
                     )}
@@ -161,7 +173,10 @@ export default function AdminHighlights() {
                       type="checkbox"
                       checked={entry.is_active}
                       onChange={(e) =>
-                        updateMutation.mutate({ id: entry.id, is_active: e.target.checked })
+                        updateMutation.mutate({
+                          id: entry.id,
+                          is_active: e.target.checked,
+                        })
                       }
                       className="h-5 w-5 accent-primary"
                     />
@@ -170,7 +185,9 @@ export default function AdminHighlights() {
                     type="button"
                     variant="danger"
                     size="sm"
-                    loading={removeMutation.isPending && removeMutation.variables === entry.id}
+                    loading={
+                      removeMutation.isPending && removeMutation.variables === entry.id
+                    }
                     onClick={() => removeMutation.mutate(entry.id)}
                   >
                     Remove

@@ -1,5 +1,5 @@
 import { adminApiClient } from "@/services/api/adminClient";
-import type { AdminHeroContent, HeroPageName } from "@/types/adminHeroContent";
+import type { AdminHeroContent, HeroPageName, HeroStat } from "@/types/adminHeroContent";
 
 export async function listAdminHeroContent(
   pageName: HeroPageName,
@@ -21,6 +21,7 @@ export interface HeroContentPayload {
   cta_text_2?: string;
   cta_link_2?: string;
   is_active: boolean;
+  stats: HeroStat[];
 }
 
 function toFormData(payload: HeroContentPayload): FormData {
@@ -35,6 +36,7 @@ function toFormData(payload: HeroContentPayload): FormData {
   if (payload.cta_text_2) form.append("cta_text_2", payload.cta_text_2);
   if (payload.cta_link_2) form.append("cta_link_2", payload.cta_link_2);
   form.append("is_active", payload.is_active ? "1" : "0");
+  form.append("stats_json", JSON.stringify(payload.stats));
   return form;
 }
 

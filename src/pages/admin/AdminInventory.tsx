@@ -30,14 +30,17 @@ export default function AdminInventory() {
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
 
-  const [marketId, setMarketId] = useState<number | undefined>(user?.market_id ?? undefined);
+  const [marketId, setMarketId] = useState<number | undefined>(
+    user?.market_id ?? undefined,
+  );
   const [search, setSearch] = useState("");
   const [edits, setEdits] = useState<Record<number, InventoryRowUpdate>>({});
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
-  const [importSummary, setImportSummary] = useState<{ updated: number; errors: string[] } | null>(
-    null,
-  );
+  const [importSummary, setImportSummary] = useState<{
+    updated: number;
+    errors: string[];
+  } | null>(null);
 
   const { data: markets = [] } = useQuery({
     queryKey: ["adminMarkets"],
@@ -84,7 +87,10 @@ export default function AdminInventory() {
       );
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not save changes.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not save changes.",
+        "error",
+      );
     },
   });
 
@@ -100,7 +106,10 @@ export default function AdminInventory() {
       showToast(`Imported: ${result.updated} item(s) updated.`, "success");
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not import CSV.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not import CSV.",
+        "error",
+      );
     },
   });
 
@@ -110,7 +119,10 @@ export default function AdminInventory() {
       const blob = await downloadAdminInventoryTemplate(marketId);
       triggerDownload(blob, `inventory_template_market_${marketId ?? "all"}.csv`);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Could not download template.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not download template.",
+        "error",
+      );
     } finally {
       setDownloadingTemplate(false);
     }
@@ -153,7 +165,9 @@ export default function AdminInventory() {
         {isSuperAdmin && (
           <select
             value={marketId ?? ""}
-            onChange={(e) => setMarketId(e.target.value ? Number(e.target.value) : undefined)}
+            onChange={(e) =>
+              setMarketId(e.target.value ? Number(e.target.value) : undefined)
+            }
             className="h-10 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
           >
             <option value="">Choose a market</option>
@@ -200,7 +214,9 @@ export default function AdminInventory() {
       )}
 
       {isSuperAdmin && marketId === undefined && (
-        <p className="text-sm text-text-muted">Choose a market above to manage its inventory.</p>
+        <p className="text-sm text-text-muted">
+          Choose a market above to manage its inventory.
+        </p>
       )}
 
       {marketId !== undefined && isLoading && (
@@ -249,7 +265,9 @@ export default function AdminInventory() {
                       <input
                         type="checkbox"
                         checked={current.is_available}
-                        onChange={(e) => updateRow(row, { is_available: e.target.checked })}
+                        onChange={(e) =>
+                          updateRow(row, { is_available: e.target.checked })
+                        }
                         className="h-4 w-4 rounded border-border"
                       />
                     </td>

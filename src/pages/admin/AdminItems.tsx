@@ -1,10 +1,17 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import Button from "@/components/ui/Button";
 import { Skeleton } from "@/components/common/LoadingState";
 import EmptyState from "@/components/common/EmptyState";
 import ErrorState from "@/components/common/ErrorState";
+import AdminTable, {
+  AdminStatusPill,
+  AdminThumb,
+  adminTd,
+  adminTdStrong,
+} from "@/components/admin/AdminTable";
+import ItemCsvImport from "@/features/admin/ItemCsvImport";
 import { listAdminItems } from "@/services/api/adminItems";
 import { listAdminMarkets } from "@/services/api/adminLookups";
 import { useAdminAuthStore } from "@/stores/adminAuthStore";
@@ -33,16 +40,20 @@ export default function AdminItems() {
   } = useQuery({
     queryKey: ["adminItems", marketId, search, page],
     queryFn: () => listAdminItems({ marketId, search, page }),
-    enabled: !isSuperAdmin || marketId !== undefined,
+    // No market = the whole catalog (super admin); with a market, its prices too.
+    placeholderData: keepPreviousData,
   });
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-semibold">Items</h1>
-        <Link to="/admin/items/new">
-          <Button size="sm">Add item</Button>
-        </Link>
+        <div className="flex gap-2">
+          <ItemCsvImport />
+          <Link to="/admin/items/new">
+            <Button size="sm">Add item</Button>
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -82,9 +93,9 @@ export default function AdminItems() {
       )}
 
       {isLoading && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+        <div className="flex flex-col gap-2">
           {Array.from({ length: 8 }).map((_, index) => (
-            <Skeleton key={index} className="aspect-[3/4] w-full" />
+            <Skeleton key={index} className="h-14 w-full" />
           ))}
         </div>
       )}
@@ -100,46 +111,59 @@ export default function AdminItems() {
 
       {itemsPage && itemsPage.data.length > 0 && (
         <>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-            {itemsPage.data.map((item) => (
-              <Link
-                key={item.id}
-                to={`/admin/items/${item.id}/edit${marketId ? `?market_id=${marketId}` : ""}`}
-                className="group flex flex-col overflow-hidden rounded-card border border-border bg-surface shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-card"
-              >
-                <div className="relative bg-background">
-                  <img
-                    src={item.image_url}
-                    alt={item.name}
-                    className="aspect-square w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                  {!item.status && (
-                    <span className="absolute left-2 top-2 rounded-pill bg-black/55 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-                      Inactive
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-1 flex-col gap-1.5 p-3.5">
-                  <span className="line-clamp-2 text-sm font-medium leading-snug text-text">
-                    {item.name}
-                  </span>
-                  {item.market ? (
-                    item.market.is_available ? (
-                      <span className="mt-auto text-sm font-bold text-primary-700">
-                        {formatPeso(Number(item.market.price ?? 0))}
-                      </span>
+          <AdminTable
+            head={["Item", "Category", "Unit", marketId ? "Price" : "Type", "Status", ""]}
+          >
+            {itemsPage.data.map((item) => {
+              const editUrl = `/admin/items/${item.id}/edit${marketId ? `?market_id=${marketId}` : ""}`;
+              return (
+                <tr key={item.id} className="hover:bg-background/60">
+                  <td className={adminTdStrong}>
+                    <Link
+                      to={editUrl}
+                      className="flex items-center gap-3 hover:text-primary"
+                    >
+                      <AdminThumb src={item.image_url} />
+                      <span className="line-clamp-2">{item.name}</span>
+                    </Link>
+                  </td>
+                  <td className={adminTd}>{item.category ?? "—"}</td>
+                  <td className={adminTd}>{item.unit ?? "—"}</td>
+                  <td className={adminTd}>
+                    {marketId ? (
+                      item.market?.price != null ? (
+                        <span className="font-semibold text-text">
+                          {formatPeso(Number(item.market.price))}
+                        </span>
+                      ) : (
+                        "Not listed"
+                      )
                     ) : (
-                      <span className="mt-auto inline-flex w-fit items-center rounded-pill bg-background px-2 py-0.5 text-xs font-medium text-text-muted">
-                        Unavailable
-                      </span>
-                    )
-                  ) : (
-                    <span className="mt-auto text-xs text-text-muted">{item.category}</span>
-                  )}
-                </div>
-              </Link>
-            ))}
-          </div>
+                      (item.type ?? "—")
+                    )}
+                  </td>
+                  <td className={adminTd}>
+                    <div className="flex flex-wrap gap-1">
+                      <AdminStatusPill active={item.status} />
+                      {marketId && item.market && !item.market.is_available && (
+                        <span className="rounded-pill bg-background px-2 py-0.5 text-xs font-medium text-text-muted">
+                          Unavailable
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Link
+                      to={editUrl}
+                      className="text-xs font-semibold text-primary hover:underline"
+                    >
+                      Edit
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
+          </AdminTable>
 
           <div className="flex items-center justify-between">
             <Button

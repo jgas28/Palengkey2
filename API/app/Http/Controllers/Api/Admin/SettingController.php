@@ -20,7 +20,7 @@ class SettingController extends Controller
         'service_fee_fixed_amount' => ['label' => 'Fixed Service Fee (₱) — Orders Below Minimum', 'default' => 20, 'group' => 'Pricing', 'type' => 'number'],
 
         'bulk_pricing_enabled' => ['label' => 'Bulk Pricing On (1 = on, 0 = off)', 'default' => 1, 'group' => 'Bulk Orders', 'type' => 'number'],
-        'bulk_discount_percent' => ['label' => 'Bulk Vendor Cost Adjustment (%) — markup kept', 'default' => 5, 'group' => 'Bulk Orders', 'type' => 'number'],
+        'bulk_discount_per_kg' => ['label' => 'Default Bulk Discount (₱ off per kg) — when the category has none', 'default' => 5, 'group' => 'Bulk Orders', 'type' => 'number'],
         'bulk_delivery_subsidy_cap' => ['label' => 'Bulk Delivery Subsidy Cap (₱) — BULK-FREESHIP', 'default' => 49, 'group' => 'Bulk Orders', 'type' => 'number'],
 
         'minimum_order_amount' => ['label' => 'Minimum Order Amount (₱)', 'default' => 500, 'group' => 'Orders', 'type' => 'number'],

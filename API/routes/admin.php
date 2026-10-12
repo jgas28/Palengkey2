@@ -52,10 +52,13 @@ Route::prefix('admin')->group(function () {
 
         Route::middleware('admin.role:admin,owner')->group(function () {
             Route::get('/dashboard', [DashboardController::class, 'index']);
+            Route::get('/dashboard/orders', [DashboardController::class, 'orders']);
         });
 
         Route::middleware('admin.role:admin')->group(function () {
             Route::get('/items', [ItemController::class, 'index']);
+            Route::get('/items/import-template', [ItemController::class, 'importTemplate']);
+            Route::post('/items/import', [ItemController::class, 'import']);
             Route::get('/items/{item}', [ItemController::class, 'show']);
             Route::post('/items', [ItemController::class, 'store']);
             Route::patch('/items/{item}', [ItemController::class, 'update']);
@@ -74,6 +77,9 @@ Route::prefix('admin')->group(function () {
                 '/orders/{order}/recipe-bundles/{recipeBundle}/cooking-status',
                 [OrderController::class, 'updateRecipeBundleCookingStatus'],
             );
+            Route::patch('/orders/{order}/items/{orderItem}/vendor-price', [OrderController::class, 'updateItemVendorPrice']);
+            Route::patch('/orders/{order}/items/{orderItem}', [OrderController::class, 'updateItem']);
+            Route::delete('/orders/{order}/items/{orderItem}', [OrderController::class, 'destroyItem']);
             Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);
             Route::post('/orders/{order}/assign-rider', [OrderController::class, 'assignRider']);
 
@@ -229,6 +235,9 @@ Route::prefix('admin')->group(function () {
             Route::get('/reports/sales', [ReportController::class, 'sales']);
             Route::get('/reports/verifications', [ReportController::class, 'verifications']);
             Route::get('/reports/activities', [ReportController::class, 'activities']);
+            Route::get('/reports/products', [ReportController::class, 'products']);
+            Route::get('/reports/payments', [ReportController::class, 'payments']);
+            Route::get('/reports/discounts', [ReportController::class, 'discounts']);
         });
     });
 });

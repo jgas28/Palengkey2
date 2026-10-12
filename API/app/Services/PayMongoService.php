@@ -149,7 +149,7 @@ class PayMongoService
                     'data' => [
                         'attributes' => [
                             'payment_method' => $paymentMethodId,
-                            'return_url' => $returnUrl ?? route('customer.payment.confirm'),
+                            'return_url' => $returnUrl ?? url('/'), // callers should pass their own return URL
                         ],
                     ],
                 ]);

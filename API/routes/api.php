@@ -22,6 +22,8 @@ use App\Http\Controllers\Api\PayMongoController;
 use App\Http\Controllers\Api\PopupAdController;
 use App\Http\Controllers\Api\RecipeApiController;
 use App\Http\Controllers\Api\RecipeTypeApiController;
+use App\Http\Controllers\Api\RiderAppController;
+use App\Http\Controllers\Api\RiderAuthController;
 use App\Http\Controllers\Api\RiderController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\TypeApiController;
@@ -55,6 +57,7 @@ Route::prefix('customer')->group(function () {
     Route::middleware('throttle:5,1')->group(function () {
         Route::post('/register', [CustomerAuthController::class, 'register']);
         Route::post('/login', [CustomerAuthController::class, 'login']);
+        Route::post('/auth/google', [CustomerAuthController::class, 'googleLogin']);
         Route::post('/forgot-password', [CustomerAuthController::class, 'forgotPassword']);
         Route::post('/reset-password', [CustomerAuthController::class, 'resetPassword']);
     });
@@ -133,6 +136,24 @@ Route::prefix('customer')->group(function () {
 // Hit by PayMongo's servers directly (signature-verified, not Sanctum) and by
 // the customer's browser being redirected back from BPI's site (no session or
 // token available there) — both live outside the /customer prefix and auth group.
+// Rider app (palengkey-rider-mobile) — same URLs as the old backend.
+Route::prefix('rider')->group(function () {
+    Route::post('/login', [RiderAuthController::class, 'login'])->middleware('throttle:5,1');
+
+    Route::middleware('rider.owns')->group(function () {
+        Route::post('/logout', [RiderAuthController::class, 'logout']);
+        Route::get('/profile', [RiderAppController::class, 'getProfile']);
+        Route::post('/profile/update', [RiderAppController::class, 'updateProfile']);
+        Route::post('/location/update', [RiderAppController::class, 'updateLocation']);
+        Route::post('/location/background-ping', [RiderAppController::class, 'backgroundPing']);
+        Route::get('/dashboard', [RiderAppController::class, 'getDashboard']);
+        Route::get('/orders', [RiderAppController::class, 'getOrders']);
+        Route::get('/order/details/{id}', [RiderAppController::class, 'getOrder']);
+        Route::post('/orders/{order}/start-delivery', [RiderAppController::class, 'startDelivery']);
+        Route::post('/order/complete', [RiderAppController::class, 'deliver']);
+    });
+});
+
 Route::post('/webhooks/paymongo', [PayMongoController::class, 'webhook']);
 Route::get('/payment/bpi/{order}/return', [BpiPaymentController::class, 'appReturn'])->name('api.bpi.return');
 Route::get('/payment/{order}/return', [BpiPaymentController::class, 'appReturn'])->name('api.payment.return');

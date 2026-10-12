@@ -54,7 +54,6 @@ export default function EditProfileForm() {
 
   return (
     <form onSubmit={handleSubmit} noValidate style={{ display: "grid", gap: 14 }}>
-
       <PkField
         label="First name"
         value={fname}

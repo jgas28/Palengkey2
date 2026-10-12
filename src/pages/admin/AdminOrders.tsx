@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { Link, useSearchParams } from "react-router-dom";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/common/LoadingState";
 import EmptyState from "@/components/common/EmptyState";
@@ -22,7 +22,10 @@ const FILTERS: { value: AdminOrderStatus | "all"; label: string }[] = [
 ];
 
 export default function AdminOrders() {
-  const [filter, setFilter] = useState<AdminOrderStatus | "all">("order_received");
+  const [searchParams] = useSearchParams();
+  const [filter, setFilter] = useState<AdminOrderStatus | "all">(
+    (searchParams.get("status") as AdminOrderStatus | "all" | null) ?? "order_received",
+  );
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [reservationsOnly, setReservationsOnly] = useState(false);
@@ -47,6 +50,7 @@ export default function AdminOrders() {
         reservationsOnly: reservationsOnly || undefined,
         page,
       }),
+    placeholderData: keepPreviousData,
   });
 
   return (

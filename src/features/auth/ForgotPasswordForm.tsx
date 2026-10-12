@@ -36,7 +36,11 @@ export default function ForgotPasswordForm() {
       <p className="kicker">Forgot your password?</p>
       <h1>Reset your password</h1>
       <p>Enter your email and we&apos;ll send you a reset code.</p>
-      <form onSubmit={(event: FormEvent) => event.preventDefault()} noValidate style={{ marginTop: 18 }}>
+      <form
+        onSubmit={(event: FormEvent) => event.preventDefault()}
+        noValidate
+        style={{ marginTop: 18 }}
+      >
         <PkField
           label="Email address"
           type="email"

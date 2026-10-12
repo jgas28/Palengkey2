@@ -38,7 +38,12 @@ export default function RecipeDetailDrawer({
   const showToast = useToastStore((state) => state.showToast);
   const queryClient = useQueryClient();
 
-  const { data: recipe, isLoading, isError, refetch } = useQuery({
+  const {
+    data: recipe,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["recipe", recipeId, marketId],
     queryFn: () => getRecipe(recipeId!, marketId ?? undefined),
     enabled: recipeId !== null,
@@ -71,7 +76,9 @@ export default function RecipeDetailDrawer({
     priced ? ingredients.filter((i) => i.unit_price === null).map((i) => i.id) : [],
   );
   const isIncluded = (id: number) => !excludedIds.has(id) && !unavailableIds.has(id);
-  const includedIngredients = ingredients.filter((ingredient) => isIncluded(ingredient.id));
+  const includedIngredients = ingredients.filter((ingredient) =>
+    isIncluded(ingredient.id),
+  );
   const estimatedTotal = includedIngredients.reduce(
     (sum, ingredient) =>
       sum + Number(ingredient.unit_price ?? 0) * Number(ingredient.quantity) * scale,
@@ -90,11 +97,17 @@ export default function RecipeDetailDrawer({
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: cartQueryKey });
-      showToast(`${recipe?.name ?? "Recipe"} ingredients added to your basket`, "success");
+      showToast(
+        `${recipe?.name ?? "Recipe"} ingredients added to your basket`,
+        "success",
+      );
       onClose();
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not add to cart.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not add to cart.",
+        "error",
+      );
     },
   });
 
@@ -105,12 +118,16 @@ export default function RecipeDetailDrawer({
       isOpen={recipeId !== null}
       onClose={onClose}
       label={recipe?.name ?? "Recipe"}
-      photo={recipe ? <img src={recipe.image ?? photos.vendor} alt={recipe.name} /> : undefined}
+      photo={
+        recipe ? <img src={recipe.image ?? photos.vendor} alt={recipe.name} /> : undefined
+      }
       action={
         recipe && (
           <>
             <div>
-              <small>{priced ? `Ingredient bundle · ${marketName}` : "Ingredient bundle"}</small>
+              <small>
+                {priced ? `Ingredient bundle · ${marketName}` : "Ingredient bundle"}
+              </small>
               <strong>{priced ? formatPeso(estimatedTotal) : "—"}</strong>
             </div>
             {priced ? (
@@ -120,7 +137,8 @@ export default function RecipeDetailDrawer({
                 disabled={includedIngredients.length === 0 || addMutation.isPending}
                 onClick={() => addMutation.mutate()}
               >
-                {addMutation.isPending ? "Adding…" : "Add all ingredients"} <Icon name="cart" size={18} />
+                {addMutation.isPending ? "Adding…" : "Add all ingredients"}{" "}
+                <Icon name="cart" size={18} />
               </button>
             ) : (
               <button type="button" className="btn primary" onClick={onChooseMarket}>
@@ -155,7 +173,11 @@ export default function RecipeDetailDrawer({
               <button
                 type="button"
                 aria-label="Decrease"
-                onClick={() => setQuantity(Math.max(quantitySettings.min, quantity - quantitySettings.step))}
+                onClick={() =>
+                  setQuantity(
+                    Math.max(quantitySettings.min, quantity - quantitySettings.step),
+                  )
+                }
               >
                 <Icon name="minus" size={16} />
               </button>
@@ -179,8 +201,20 @@ export default function RecipeDetailDrawer({
               const included = isIncluded(ingredient.id);
               const scaledQty = Number(ingredient.quantity) * scale;
               return (
-                <li key={ingredient.id} style={{ justifyContent: "space-between", opacity: included || !priced ? 1 : 0.55 }}>
-                  <label style={{ display: "flex", gap: 9, cursor: unavailable ? "not-allowed" : "pointer" }}>
+                <li
+                  key={ingredient.id}
+                  style={{
+                    justifyContent: "space-between",
+                    opacity: included || !priced ? 1 : 0.55,
+                  }}
+                >
+                  <label
+                    style={{
+                      display: "flex",
+                      gap: 9,
+                      cursor: unavailable ? "not-allowed" : "pointer",
+                    }}
+                  >
                     <input
                       type="checkbox"
                       checked={included}
@@ -234,7 +268,11 @@ export default function RecipeDetailDrawer({
             </div>
           )}
 
-          <div className="paluto-note" style={{ cursor: "pointer" }} onClick={() => navigate("/paluto")}>
+          <div
+            className="paluto-note"
+            style={{ cursor: "pointer" }}
+            onClick={() => navigate("/paluto")}
+          >
             <Icon name="bag" />
             <div>
               <strong>Rather have it cooked?</strong>

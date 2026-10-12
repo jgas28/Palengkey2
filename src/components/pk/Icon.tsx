@@ -40,8 +40,12 @@ const iconPaths: Record<IconName, ReactNode> = {
       <path d="M12 7v5l3 2" />
     </>
   ),
-  fish: <path d="M16.7 8.2C13 5.5 8 6 4 10c4 4 9 4.5 12.7 1.8L21 15V5l-4.3 3.2ZM8 10h.01" />,
-  facebook: <path d="M14 8h3V4h-3c-3 0-5 2-5 5v3H6v4h3v6h4v-6h3l1-4h-4V9c0-.7.3-1 1-1Z" />,
+  fish: (
+    <path d="M16.7 8.2C13 5.5 8 6 4 10c4 4 9 4.5 12.7 1.8L21 15V5l-4.3 3.2ZM8 10h.01" />
+  ),
+  facebook: (
+    <path d="M14 8h3V4h-3c-3 0-5 2-5 5v3H6v4h3v6h4v-6h3l1-4h-4V9c0-.7.3-1 1-1Z" />
+  ),
   instagram: (
     <>
       <rect x="3" y="3" width="18" height="18" rx="5" />
@@ -49,7 +53,9 @@ const iconPaths: Record<IconName, ReactNode> = {
       <path d="M17.5 6.5h.01" />
     </>
   ),
-  leaf: <path d="M20 4C11 4 5 8 5 15c0 2 1 4 3 5 1-6 5-9 9-11-4 3-6 6-7 11 7 0 10-7 10-16Z" />,
+  leaf: (
+    <path d="M20 4C11 4 5 8 5 15c0 2 1 4 3 5 1-6 5-9 9-11-4 3-6 6-7 11 7 0 10-7 10-16Z" />
+  ),
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   message: <path d="M21 12a8 8 0 0 1-8 8H6l-4 2 1.5-4A9 9 0 1 1 21 12Z" />,
   minus: <path d="M5 12h14" />,

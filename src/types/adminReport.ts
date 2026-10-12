@@ -78,3 +78,63 @@ export interface ActivitiesReport {
   market_activity: MarketActivityEntry[];
   rider_activity: RiderActivityEntry[];
 }
+
+export interface ProductSalesRow {
+  item_id: number | null;
+  item_name: string;
+  unit_name: string | null;
+  category: string | null;
+  quantity: number;
+  revenue: number;
+  orders: number;
+}
+
+export interface ProductsReport {
+  start_date: string;
+  end_date: string;
+  top_items: ProductSalesRow[];
+  sales_by_category: { category: string; items: number; revenue: number }[];
+  daily_sales: { day: string; orders: number; sales: number }[];
+}
+
+export interface PaymentsReport {
+  start_date: string;
+  end_date: string;
+  total: number;
+  methods: { payment_method: string | null; label: string; orders: number; total: number; share: number }[];
+}
+
+export interface DiscountTotals {
+  orders: number;
+  bulk_orders: number;
+  bulk_discount: number;
+  bulk_delivery_subsidy: number;
+  voucher_discount: number;
+  markup_earned: number;
+  vendor_savings: number;
+  vendor_lines_recorded: number;
+}
+
+export interface VendorSavingsLine {
+  id: number;
+  order_id: number;
+  order_number: string | null;
+  market_name: string | null;
+  item_name: string;
+  unit_name: string | null;
+  quantity: number;
+  listed_price: number | null;
+  paid_price: number | null;
+  savings: number | null;
+  note: string | null;
+  recorded_at: string | null;
+}
+
+export interface DiscountsReport {
+  start_date: string;
+  end_date: string;
+  markup_percent: number;
+  totals: DiscountTotals;
+  by_market: ({ market_id: number; market_name: string | null } & Omit<DiscountTotals, "bulk_orders" | "vendor_lines_recorded">)[];
+  vendor_lines: VendorSavingsLine[];
+}

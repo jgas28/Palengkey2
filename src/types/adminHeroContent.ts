@@ -1,5 +1,10 @@
 export type HeroPageName = "home" | "global";
 
+export interface HeroStat {
+  label: string;
+  value: string;
+}
+
 export interface AdminHeroContent {
   id: number;
   page_name: HeroPageName;
@@ -13,4 +18,6 @@ export interface AdminHeroContent {
   cta_link_2: string | null;
   is_active: boolean;
   sequence: number;
+  /** Stat chips shown on the hero, e.g. { label: "50+", value: "Local markets" }. */
+  stats_json?: HeroStat[] | null;
 }

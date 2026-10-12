@@ -1,6 +1,12 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import AdminTable, {
+  AdminStatusPill,
+  AdminThumb,
+  adminTd,
+  adminTdStrong,
+} from "@/components/admin/AdminTable";
 import Button from "@/components/ui/Button";
 import { Skeleton } from "@/components/common/LoadingState";
 import EmptyState from "@/components/common/EmptyState";
@@ -33,6 +39,7 @@ export default function AdminRecipes() {
         status: statusFilter || undefined,
         page,
       }),
+    placeholderData: keepPreviousData,
   });
 
   return (
@@ -84,9 +91,9 @@ export default function AdminRecipes() {
       </div>
 
       {isLoading && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+        <div className="flex flex-col gap-2">
           {Array.from({ length: 8 }).map((_, index) => (
-            <Skeleton key={index} className="aspect-[4/5] w-full" />
+            <Skeleton key={index} className="h-14 w-full" />
           ))}
         </div>
       )}
@@ -102,45 +109,41 @@ export default function AdminRecipes() {
 
       {recipesPage && recipesPage.data.length > 0 && (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          <AdminTable head={["Recipe", "Type", "Priced per", "Status", ""]}>
             {recipesPage.data.map((recipe) => (
-              <Link
-                key={recipe.id}
-                to={`/admin/recipes/${recipe.id}/edit`}
-                className="flex flex-col overflow-hidden rounded-card border border-border bg-surface"
-              >
-                <div className="relative">
-                  {recipe.image_url ? (
-                    <img
-                      src={recipe.image_url}
-                      alt={recipe.name}
-                      className="aspect-square w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex aspect-square w-full items-center justify-center bg-primary-50 text-2xl font-bold text-primary-700">
-                      {recipe.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  {!recipe.status && (
-                    <span className="absolute left-1 top-1 rounded-pill bg-black/60 px-2 py-0.5 text-xs font-semibold text-white">
-                      Deactivated
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-col gap-1 p-3">
-                  <span className="line-clamp-2 text-sm font-medium text-text">
-                    {recipe.name}
-                  </span>
-                  <span className="text-xs text-text-muted">
-                    {recipe.recipe_type ?? "Untagged"}
-                  </span>
-                  <span className="text-xs font-semibold text-primary-700">
-                    Per {recipe.pricing_unit} · base {recipe.base_quantity}
-                  </span>
-                </div>
-              </Link>
+              <tr key={recipe.id} className="hover:bg-background/60">
+                <td className={adminTdStrong}>
+                  <Link
+                    to={`/admin/recipes/${recipe.id}/edit`}
+                    className="flex items-center gap-3 hover:text-primary"
+                  >
+                    <AdminThumb src={recipe.image_url} />
+                    <span className="line-clamp-2">{recipe.name}</span>
+                  </Link>
+                </td>
+                <td className={adminTd}>{recipe.recipe_type ?? "Untagged"}</td>
+                <td className={adminTd}>
+                  {recipe.pricing_unit === "kg" ? "kg" : "serving"} · base{" "}
+                  {Number(recipe.base_quantity)}
+                </td>
+                <td className={adminTd}>
+                  <AdminStatusPill
+                    active={recipe.status}
+                    activeLabel="Live"
+                    inactiveLabel="Deactivated"
+                  />
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <Link
+                    to={`/admin/recipes/${recipe.id}/edit`}
+                    className="text-xs font-semibold text-primary hover:underline"
+                  >
+                    Edit
+                  </Link>
+                </td>
+              </tr>
             ))}
-          </div>
+          </AdminTable>
 
           <div className="flex items-center justify-between">
             <Button

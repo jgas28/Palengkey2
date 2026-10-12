@@ -1,7 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Icon from "@/components/pk/Icon";
-import { isFailedPaymentStatus, usePaymentStatus } from "@/features/checkout/usePaymentStatus";
+import {
+  isFailedPaymentStatus,
+  usePaymentStatus,
+} from "@/features/checkout/usePaymentStatus";
 import type { Order } from "@/types/order";
 
 const PAYMENT_TIMEOUT_MS = 15 * 60 * 1000;
@@ -48,7 +51,13 @@ export default function PaymentScreen({
   return (
     <main className="inner-page account-bg">
       <section className="confirmation shell">
-        <span style={failed ? { background: "#dc2626", boxShadow: "0 0 0 12px #fde8e8" } : { background: "var(--teal)", boxShadow: "0 0 0 12px var(--teal-pale)" }}>
+        <span
+          style={
+            failed
+              ? { background: "#dc2626", boxShadow: "0 0 0 12px #fde8e8" }
+              : { background: "var(--teal)", boxShadow: "0 0 0 12px var(--teal-pale)" }
+          }
+        >
           <Icon name={failed ? "x" : "clock"} size={38} />
         </span>
         <p className="kicker">{failed ? "Payment not completed" : "Awaiting payment"}</p>
@@ -56,13 +65,23 @@ export default function PaymentScreen({
         {failed ? (
           <>
             <p>{timedOut ? timeoutMessage : failureMessage}</p>
-            <button type="button" className="btn primary" onClick={() => navigate("/cart")}>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => navigate("/cart")}
+            >
               Back to basket <Icon name="arrow" />
             </button>
           </>
         ) : (
           <>
-            <div style={{ display: "grid", placeItems: "center", gridTemplateColumns: "1fr" }}>
+            <div
+              style={{
+                display: "grid",
+                placeItems: "center",
+                gridTemplateColumns: "1fr",
+              }}
+            >
               {renderPending(order)}
             </div>
             <p>Waiting for payment confirmation… {expiryHint}</p>

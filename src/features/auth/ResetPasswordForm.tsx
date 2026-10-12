@@ -94,7 +94,12 @@ export default function ResetPasswordForm() {
           {submitting ? "Saving…" : "Reset password"}
         </button>
       </form>
-      <button type="button" className="guest" style={{ marginTop: 16 }} onClick={() => navigate("/login")}>
+      <button
+        type="button"
+        className="guest"
+        style={{ marginTop: 16 }}
+        onClick={() => navigate("/login")}
+      >
         ← Back to log in
       </button>
     </AuthShell>

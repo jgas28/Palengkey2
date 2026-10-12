@@ -1,5 +1,7 @@
 import { useState, type ChangeEvent, type CSSProperties, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useGoogleSignIn } from "@/features/auth/useGoogleSignIn";
+import { GoogleGIcon } from "@/components/icons/BrandIcons";
 import AuthShell from "@/features/auth/AuthShell";
 import { register } from "@/services/api/auth";
 import { useAuthStore } from "@/stores/authStore";
@@ -52,6 +54,7 @@ function validate(
 }
 
 export default function RegisterForm() {
+  const { signIn: signInWithGoogle, loading: googleLoading } = useGoogleSignIn();
   const [values, setValues] = useState<FormValues>(initialValues);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -111,7 +114,9 @@ export default function RegisterForm() {
   }
 
   const errorText = (key: keyof typeof errors) =>
-    errors[key] ? <small style={{ color: "#dc2626", fontWeight: 500 }}>{errors[key]}</small> : null;
+    errors[key] ? (
+      <small style={{ color: "#dc2626", fontWeight: 500 }}>{errors[key]}</small>
+    ) : null;
   const errorBorder = (key: keyof typeof errors) =>
     errors[key] ? { borderColor: "#dc2626" } : undefined;
   const checkboxRow: CSSProperties = {
@@ -127,39 +132,81 @@ export default function RegisterForm() {
       <p className="kicker">Join Palengkey</p>
       <h1>Create your account</h1>
       <p>Fresh market shopping starts here.</p>
-      <form onSubmit={handleSubmit} noValidate style={{ marginTop: 18 }}>
+      <button
+        type="button"
+        className="btn social-login"
+        disabled={googleLoading}
+        onClick={() => void signInWithGoogle()}
+      >
+        <GoogleGIcon />{" "}
+        <span>{googleLoading ? "Opening Google…" : "Sign up with Google"}</span>
+      </button>
+      <div className="divider">
+        <span>or sign up with email</span>
+      </div>
+      <form onSubmit={handleSubmit} noValidate>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <label>
             First name *
-            <input value={values.fname} onChange={set("fname")} placeholder="Juan" style={errorBorder("fname")} />
+            <input
+              value={values.fname}
+              onChange={set("fname")}
+              placeholder="Juan"
+              style={errorBorder("fname")}
+            />
             {errorText("fname")}
           </label>
           <label>
             Last name *
-            <input value={values.lname} onChange={set("lname")} placeholder="Dela Cruz" style={errorBorder("lname")} />
+            <input
+              value={values.lname}
+              onChange={set("lname")}
+              placeholder="Dela Cruz"
+              style={errorBorder("lname")}
+            />
             {errorText("lname")}
           </label>
         </div>
         <label>
-          Middle name <small style={{ color: "var(--muted)", fontWeight: 400 }}>Optional</small>
+          Middle name{" "}
+          <small style={{ color: "var(--muted)", fontWeight: 400 }}>Optional</small>
           <input value={values.mname} onChange={set("mname")} placeholder="Santos" />
         </label>
         <label>
           Email address *
-          <input type="email" value={values.email} onChange={set("email")} placeholder="you@example.com" style={errorBorder("email")} />
+          <input
+            type="email"
+            value={values.email}
+            onChange={set("email")}
+            placeholder="you@example.com"
+            style={errorBorder("email")}
+          />
           {errorText("email")}
         </label>
         <label>
           Mobile number *
           <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <b style={{ padding: "13px 10px", background: "var(--bg)", border: "1px solid #cfdddd", borderRadius: 10, fontSize: 11 }}>+63</b>
+            <b
+              style={{
+                padding: "13px 10px",
+                background: "var(--bg)",
+                border: "1px solid #cfdddd",
+                borderRadius: 10,
+                fontSize: 11,
+              }}
+            >
+              +63
+            </b>
             <input
               type="tel"
               inputMode="numeric"
               maxLength={10}
               value={values.phone}
               onChange={(event) =>
-                setValues((prev) => ({ ...prev, phone: event.target.value.replace(/\D/g, "").slice(0, 10) }))
+                setValues((prev) => ({
+                  ...prev,
+                  phone: event.target.value.replace(/\D/g, "").slice(0, 10),
+                }))
               }
               placeholder="9XX XXX XXXX"
               style={errorBorder("phone")}
@@ -181,7 +228,17 @@ export default function RegisterForm() {
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
               aria-label={showPassword ? "Hide password" : "Show password"}
-              style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--teal-dark)", background: "none", border: 0, fontSize: 10, fontWeight: 700 }}
+              style={{
+                position: "absolute",
+                right: 10,
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "var(--teal-dark)",
+                background: "none",
+                border: 0,
+                fontSize: 10,
+                fontWeight: 700,
+              }}
             >
               {showPassword ? "Hide" : "Show"}
             </button>
@@ -202,7 +259,17 @@ export default function RegisterForm() {
               type="button"
               onClick={() => setShowConfirm((prev) => !prev)}
               aria-label={showConfirm ? "Hide password" : "Show password"}
-              style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--teal-dark)", background: "none", border: 0, fontSize: 10, fontWeight: 700 }}
+              style={{
+                position: "absolute",
+                right: 10,
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "var(--teal-dark)",
+                background: "none",
+                border: 0,
+                fontSize: 10,
+                fontWeight: 700,
+              }}
             >
               {showConfirm ? "Hide" : "Show"}
             </button>
@@ -211,15 +278,19 @@ export default function RegisterForm() {
         </label>
 
         <div style={{ margin: "4px 0 14px" }}>
-          <p style={{ margin: "0 0 8px", color: "#445255", fontSize: 10, fontWeight: 700 }}>
+          <p
+            style={{ margin: "0 0 8px", color: "#445255", fontSize: 10, fontWeight: 700 }}
+          >
             Send my verification code by
           </p>
           <div className="filter-pills" style={{ display: "inline-flex" }}>
-            {([
-              ["phone", "SMS"],
-              ["email", "Email"],
-              ["both", "Both"],
-            ] as const).map(([value, label]) => (
+            {(
+              [
+                ["phone", "SMS"],
+                ["email", "Email"],
+                ["both", "Both"],
+              ] as const
+            ).map(([value, label]) => (
               <button
                 type="button"
                 key={value}
@@ -241,10 +312,15 @@ export default function RegisterForm() {
           />
           <span>
             I agree to the{" "}
-            <Link to="/privacy-policy" style={{ color: "var(--teal-dark)", fontWeight: 700 }}>
+            <Link
+              to="/privacy-policy"
+              style={{ color: "var(--teal-dark)", fontWeight: 700 }}
+            >
               Privacy Policy
             </Link>
-            {errors.privacy && <small style={{ display: "block", color: "#dc2626" }}>Required</small>}
+            {errors.privacy && (
+              <small style={{ display: "block", color: "#dc2626" }}>Required</small>
+            )}
           </span>
         </label>
         <label style={checkboxRow}>
@@ -256,10 +332,15 @@ export default function RegisterForm() {
           />
           <span>
             I agree to the{" "}
-            <Link to="/terms-of-service" style={{ color: "var(--teal-dark)", fontWeight: 700 }}>
+            <Link
+              to="/terms-of-service"
+              style={{ color: "var(--teal-dark)", fontWeight: 700 }}
+            >
               Terms of Service
             </Link>
-            {errors.terms && <small style={{ display: "block", color: "#dc2626" }}>Required</small>}
+            {errors.terms && (
+              <small style={{ display: "block", color: "#dc2626" }}>Required</small>
+            )}
           </span>
         </label>
 

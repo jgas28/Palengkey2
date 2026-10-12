@@ -35,4 +35,19 @@ return [
         ],
     ],
 
+    // Google sign-in: ID tokens are accepted only when issued for one of these
+    // OAuth client IDs (web, Android, iOS — Google Cloud Console > Credentials).
+    'google' => [
+        'client_ids' => array_values(array_filter([
+            env('GOOGLE_CLIENT_ID'),
+            env('GOOGLE_ANDROID_CLIENT_ID'),
+            env('GOOGLE_IOS_CLIENT_ID'),
+        ])),
+    ],
+
+    // Rider app: reject token-less /rider requests once every rider has the updated APK.
+    'rider_api' => [
+        'enforce' => env('RIDER_API_AUTH_ENFORCED', false),
+    ],
+
 ];

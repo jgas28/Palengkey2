@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { Spinner } from "@/components/common/LoadingState";
@@ -22,7 +27,12 @@ interface RiderFormState {
   market_id: string;
 }
 
-const EMPTY_FORM: RiderFormState = { name: "", phone: "", vehicle_type: "", market_id: "" };
+const EMPTY_FORM: RiderFormState = {
+  name: "",
+  phone: "",
+  vehicle_type: "",
+  market_id: "",
+};
 
 export default function AdminRiders() {
   const user = useAdminAuthStore((state) => state.user);
@@ -37,6 +47,7 @@ export default function AdminRiders() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["adminRiders", search],
     queryFn: () => listAdminRiders(search || undefined),
+    placeholderData: keepPreviousData,
   });
 
   const { data: markets } = useQuery({
@@ -99,18 +110,25 @@ export default function AdminRiders() {
       closeModals();
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not update rider.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not update rider.",
+        "error",
+      );
     },
   });
 
   const toggleActiveMutation = useMutation({
-    mutationFn: (rider: AdminRider) => updateAdminRider(rider.id, { is_active: !rider.is_active }),
+    mutationFn: (rider: AdminRider) =>
+      updateAdminRider(rider.id, { is_active: !rider.is_active }),
     onSuccess: (_data, rider) => {
       void queryClient.invalidateQueries({ queryKey: ["adminRiders"] });
       showToast(rider.is_active ? "Rider deactivated." : "Rider activated.", "success");
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not update rider.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not update rider.",
+        "error",
+      );
     },
   });
 
@@ -157,13 +175,19 @@ export default function AdminRiders() {
       {isError && <ErrorState onRetry={() => void refetch()} />}
 
       {data && data.data.length === 0 && (
-        <EmptyState title="No riders yet." description="Add a rider to start assigning deliveries." />
+        <EmptyState
+          title="No riders yet."
+          description="Add a rider to start assigning deliveries."
+        />
       )}
 
       {data && data.data.length > 0 && (
         <ul className="flex flex-col divide-y divide-border rounded-card border border-border">
           {data.data.map((rider) => (
-            <li key={rider.id} className="flex items-center justify-between gap-3 px-4 py-3">
+            <li
+              key={rider.id}
+              className="flex items-center justify-between gap-3 px-4 py-3"
+            >
               <button
                 type="button"
                 onClick={() => openEdit(rider)}
@@ -173,7 +197,8 @@ export default function AdminRiders() {
                 <span className="text-xs text-text-muted">
                   {rider.phone} · {rider.vehicle_type}
                   {rider.market && ` · ${rider.market.name}`}
-                  {rider.active_orders_count > 0 && ` · ${rider.active_orders_count} active order(s)`}
+                  {rider.active_orders_count > 0 &&
+                    ` · ${rider.active_orders_count} active order(s)`}
                 </span>
               </button>
               <span
@@ -251,7 +276,9 @@ export default function AdminRiders() {
           <Button
             loading={editingRider ? updateMutation.isPending : createMutation.isPending}
             disabled={!isFormValid}
-            onClick={() => (editingRider ? updateMutation.mutate() : createMutation.mutate())}
+            onClick={() =>
+              editingRider ? updateMutation.mutate() : createMutation.mutate()
+            }
           >
             {editingRider ? "Save changes" : "Add rider"}
           </Button>

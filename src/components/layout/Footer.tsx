@@ -1,6 +1,7 @@
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
 import Icon from "@/components/pk/Icon";
+import { StoreBadge } from "@/components/icons/BrandIcons";
 import { Logo } from "@/components/layout/Header";
 import { useToastStore } from "@/stores/toastStore";
 
@@ -19,8 +20,8 @@ export default function Footer() {
         <div className="footer-brand">
           <Logo light />
           <p>
-            Ang paboritong palengke mo, online. Fresh market goods, thoughtfully picked and
-            delivered.
+            Ang paboritong palengke mo, online. Fresh market goods, thoughtfully picked
+            and delivered.
           </p>
           <address className="footer-address">
             <span>
@@ -51,12 +52,8 @@ export default function Footer() {
             </a>
           </div>
           <div className="store-badges">
-            <span>
-              <small>COMING SOON ON</small>App Store
-            </span>
-            <span>
-              <small>COMING SOON ON</small>Google Play
-            </span>
+            <StoreBadge store="apple" />
+            <StoreBadge store="google" />
           </div>
         </div>
         <div>
@@ -78,7 +75,11 @@ export default function Footer() {
           <h3>Stay in the loop</h3>
           <p>Fresh deals and market stories, straight to your inbox.</p>
           <form className="footer-form" onSubmit={handleSubscribe}>
-            <input type="email" aria-label="Email address" placeholder="Your email address" />
+            <input
+              type="email"
+              aria-label="Email address"
+              placeholder="Your email address"
+            />
             <button type="submit" aria-label="Subscribe" className="btn submit">
               <Icon name="arrow" />
             </button>
@@ -86,7 +87,9 @@ export default function Footer() {
         </div>
       </div>
       <div className="shell footer-bottom">
-        <span>© {new Date().getFullYear()} Palengkey. Made fresh in the Philippines.</span>
+        <span>
+          © {new Date().getFullYear()} Palengkey. Made fresh in the Philippines.
+        </span>
         <div>
           <Link to="/privacy-policy">Privacy</Link>
           <Link to="/terms-of-service">Terms</Link>

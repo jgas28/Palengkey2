@@ -22,7 +22,12 @@ export default function AddressPickerDrawer({
 }: AddressPickerDrawerProps) {
   const [showForm, setShowForm] = useState(false);
 
-  const { data: addresses = [], isLoading, isError, refetch } = useQuery({
+  const {
+    data: addresses = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["addresses"],
     queryFn: listAddresses,
     enabled: isOpen,
@@ -55,7 +60,9 @@ export default function AddressPickerDrawer({
       ) : (
         <>
           <div className="market-options">
-            {isLoading && <p style={{ color: "var(--muted)", fontSize: 11 }}>Loading addresses…</p>}
+            {isLoading && (
+              <p style={{ color: "var(--muted)", fontSize: 11 }}>Loading addresses…</p>
+            )}
             {isError && (
               <button type="button" onClick={() => void refetch()}>
                 <span>
@@ -68,7 +75,9 @@ export default function AddressPickerDrawer({
               </button>
             )}
             {!isLoading && !isError && addresses.length === 0 && (
-              <p style={{ color: "var(--muted)", fontSize: 11 }}>No saved addresses yet.</p>
+              <p style={{ color: "var(--muted)", fontSize: 11 }}>
+                No saved addresses yet.
+              </p>
             )}
             {addresses.map((address) => {
               const selected = address.id === selectedAddressId;
@@ -92,7 +101,13 @@ export default function AddressPickerDrawer({
                       {address.contact_name} · {address.contact_phone}
                     </small>
                   </div>
-                  <i>{selected ? <Icon name="check" size={16} /> : <Icon name="chevron" size={16} />}</i>
+                  <i>
+                    {selected ? (
+                      <Icon name="check" size={16} />
+                    ) : (
+                      <Icon name="chevron" size={16} />
+                    )}
+                  </i>
                 </button>
               );
             })}

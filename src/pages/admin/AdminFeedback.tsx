@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { Spinner } from "@/components/common/LoadingState";
@@ -31,6 +36,7 @@ export default function AdminFeedback() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["adminFeedback", filter],
     queryFn: () => listAdminFeedback(filter),
+    placeholderData: keepPreviousData,
   });
 
   const reviewMutation = useMutation({

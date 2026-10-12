@@ -39,4 +39,49 @@ export interface PlatformDashboard {
   recent_orders: DashboardOrder[];
 }
 
-export type AdminDashboard = MarketDashboard | PlatformDashboard;
+export type AdminDashboard = (MarketDashboard | PlatformDashboard) & DashboardExtras;
+
+export interface OverviewMetric {
+  value: number;
+  previous: number;
+  /** % change vs the previous period of the same length. */
+  change: number;
+}
+
+export interface DashboardOverview {
+  revenue: OverviewMetric;
+  orders: OverviewMetric;
+  customers: OverviewMetric;
+  average_order: OverviewMetric;
+  customers_label: string;
+}
+
+export interface LatestOrder {
+  id: number;
+  order_number: string;
+  customer_name: string | null;
+  customer_email: string | null;
+  market_name: string | null;
+  status: string;
+  payment_status: string | null;
+  total_amount: number;
+  created_at: string;
+}
+
+/** 0 = today (default), 1 = last 24 hours, or 7/30/90 days. */
+export type DashboardPeriod = 0 | 1 | 7 | 30 | 90;
+
+/** Shared by both dashboards: KPI overview for the chosen period. */
+export interface DashboardExtras {
+  period_days: DashboardPeriod;
+  overview: DashboardOverview;
+}
+
+export interface LatestOrdersPage {
+  data: LatestOrder[];
+  current_page: number;
+  last_page: number;
+  total: number;
+  from: number | null;
+  to: number | null;
+}

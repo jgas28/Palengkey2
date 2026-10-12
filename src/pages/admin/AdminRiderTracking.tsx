@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLiveRiderPositions } from "@/features/admin/useLiveRiderPositions";
 import { useQuery } from "@tanstack/react-query";
 import { Spinner } from "@/components/common/LoadingState";
 import EmptyState from "@/components/common/EmptyState";
@@ -25,6 +26,25 @@ export default function AdminRiderTracking() {
     refetchInterval: 10000,
   });
 
+  // Firebase gives live fixes from the rider app; use whichever is newer than the API's last saved one.
+  const live = useLiveRiderPositions((data ?? []).map((rider) => rider.id));
+  const riders = (data ?? []).map((rider) => {
+    const fix = live[rider.id];
+    const apiTime = rider.last_location_update
+      ? new Date(rider.last_location_update).getTime()
+      : 0;
+    return fix && (fix.updatedAt ?? 0) >= apiTime
+      ? {
+          ...rider,
+          latitude: fix.lat,
+          longitude: fix.lng,
+          last_location_update: fix.updatedAt
+            ? new Date(fix.updatedAt).toISOString()
+            : rider.last_location_update,
+        }
+      : rider;
+  });
+
   const { data: marketsPage } = useQuery({
     queryKey: ["adminMarketsFull", "active"],
     queryFn: () => listAdminMarketsFull({ status: 1 }),
@@ -35,12 +55,12 @@ export default function AdminRiderTracking() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Rider Tracking</h1>
-        <span className="text-xs text-text-muted">Auto-refreshes every 10s</span>
+        <span className="text-xs text-text-muted">Live from the rider app</span>
       </div>
 
       {data && data.length > 0 && (
         <AdminTrackingMap
-          riders={data}
+          riders={riders}
           markets={activeMarkets}
           selectedRiderId={selectedRiderId}
         />
@@ -63,7 +83,7 @@ export default function AdminRiderTracking() {
 
       {data && data.length > 0 && (
         <ul className="flex flex-col divide-y divide-border rounded-card border border-border">
-          {data.map((rider) => {
+          {riders.map((rider) => {
             const isLocated = rider.latitude !== null && rider.longitude !== null;
             const isSelected = rider.id === selectedRiderId;
             return (

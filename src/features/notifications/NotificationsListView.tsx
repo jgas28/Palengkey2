@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import Icon, { type IconName } from "@/components/pk/Icon";
+import {
+  notificationIcon,
+  notificationTarget,
+} from "@/features/notifications/notificationLinks";
+import Icon from "@/components/pk/Icon";
 import {
   clearAllNotifications,
   listNotifications,
@@ -57,11 +61,8 @@ export default function NotificationsListView() {
     if (!notification.is_read) {
       readMutation.mutate(notification.id);
     }
-    if (notification.action_url) {
-      navigate(notification.action_url);
-    } else if (notification.order_id) {
-      navigate(`/orders/${notification.order_id}`);
-    }
+    const target = notificationTarget(notification);
+    if (target) navigate(target);
   }
 
   function handleClearAll() {
@@ -73,13 +74,7 @@ export default function NotificationsListView() {
   const notifications = data?.notifications ?? [];
   const hasUnread = notifications.some((notification) => !notification.is_read);
 
-  function iconFor(notification: Notification): IconName {
-    const type = `${notification.type} ${notification.order_status ?? ""}`.toLowerCase();
-    if (type.includes("deliver") || type.includes("rider")) return "truck";
-    if (type.includes("promo") || type.includes("voucher") || type.includes("deal")) return "sparkle";
-    if (type.includes("payment")) return "shield";
-    return "bag";
-  }
+  const iconFor = notificationIcon;
 
   return (
     <main className="inner-page account-bg">
@@ -92,11 +87,22 @@ export default function NotificationsListView() {
         {notifications.length > 0 && (
           <div style={{ display: "flex", gap: 8 }}>
             {hasUnread && (
-              <button type="button" className="mark-read" disabled={markAllMutation.isPending} onClick={() => markAllMutation.mutate()}>
+              <button
+                type="button"
+                className="mark-read"
+                disabled={markAllMutation.isPending}
+                onClick={() => markAllMutation.mutate()}
+              >
                 Mark all as read
               </button>
             )}
-            <button type="button" className="mark-read" style={{ color: "#b13c3c" }} disabled={clearMutation.isPending} onClick={handleClearAll}>
+            <button
+              type="button"
+              className="mark-read"
+              style={{ color: "#b13c3c" }}
+              disabled={clearMutation.isPending}
+              onClick={handleClearAll}
+            >
               Clear all
             </button>
           </div>
@@ -137,7 +143,11 @@ export default function NotificationsListView() {
                 <p>{notification.message}</p>
                 <small>{new Date(notification.created_at).toLocaleString("en-PH")}</small>
               </div>
-              {!notification.is_read ? <i></i> : <span style={{ width: 0, height: 0, background: "none" }} />}
+              {!notification.is_read ? (
+                <i></i>
+              ) : (
+                <span style={{ width: 0, height: 0, background: "none" }} />
+              )}
               <Icon name="chevron" />
             </article>
           ))

@@ -13,6 +13,7 @@ use App\Services\PhoneNumber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
 class CustomerAuthController extends Controller
@@ -130,6 +131,108 @@ class CustomerAuthController extends Controller
             'token' => null,
             'user' => $this->userPayload($customer, forceEmailUnverified: true),
         ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | GOOGLE SIGN-IN (web, Android, iOS)
+    |--------------------------------------------------------------------------
+    | The app sends Google's ID token; we verify it with Google (signature,
+    | expiry, audience = one of our client IDs, verified email) rather than
+    | trusting an email/Google ID sent by the client. New Google users get an
+    | account; then — exactly like password login — an email OTP is required
+    | before the session token is issued (/customer/verify/otp).
+    */
+    public function googleLogin(Request $request)
+    {
+        $data = $request->validate([
+            'id_token' => 'required|string',
+            'device_id' => 'required|string',
+            'device_name' => 'nullable|string',
+            'platform' => 'nullable|string',
+        ]);
+
+        $google = $this->verifyGoogleIdToken($data['id_token']);
+        if (! $google) {
+            return response()->json(['message' => 'Google sign-in failed. Please try again.'], 401);
+        }
+
+        $email = strtolower($google['email']);
+        $customer = Customer::where('google_id', $google['sub'])->first()
+            ?? Customer::whereRaw('LOWER(email) = ?', [$email])->first();
+
+        // An email already linked to a different Google account can't be taken over.
+        if ($customer && $customer->google_id && $customer->google_id !== $google['sub']) {
+            return response()->json(['message' => 'This email is linked to a different Google account.'], 409);
+        }
+
+        if ($customer && $customer->verification_status === 'rejected') {
+            return response()->json(['message' => 'Your account was not approved. Please contact support.'], 403);
+        }
+
+        if (! $customer && ($cooldown = DeletedAccountCooldown::blocking($email))) {
+            $daysLeft = max(1, (int) now()->diffInDays($cooldown->expires_at, false));
+
+            return response()->json([
+                'message' => "This email was recently used on a deleted account. You can register again in {$daysLeft} day(s).",
+            ], 409);
+        }
+
+        $fname = trim((string) ($google['given_name'] ?? ''));
+
+        if (! $customer) {
+            $customer = Customer::create([
+                'email' => $email,
+                'fname' => $fname !== '' ? $fname : ucfirst(explode('@', $email)[0]),
+                'lname' => trim((string) ($google['family_name'] ?? '')),
+                'google_id' => $google['sub'],
+                'provider' => 'google',
+                'password' => null,
+                'verification_status' => 'approved',
+            ]);
+        } elseif (! $customer->google_id) {
+            // Existing email/password account — link Google to it.
+            $customer->update(['google_id' => $google['sub']]);
+        }
+
+        // Same as password login: withhold the token until the OTP is verified.
+        $this->resetOtpIfExpired($customer);
+
+        return response()->json([
+            'token' => null,
+            'user' => $this->userPayload($customer, forceEmailUnverified: true),
+        ]);
+    }
+
+    /** Google's verdict on an ID token, or null if it isn't valid for this app. */
+    private function verifyGoogleIdToken(string $idToken): ?array
+    {
+        $clientIds = config('services.google.client_ids', []);
+        if (empty($clientIds)) {
+            report(new \RuntimeException('Google sign-in: no GOOGLE_CLIENT_ID configured.'));
+
+            return null;
+        }
+
+        try {
+            $response = Http::timeout(10)->get('https://oauth2.googleapis.com/tokeninfo', ['id_token' => $idToken]);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return null;
+        }
+
+        $claims = $response->successful() ? $response->json() : null;
+
+        $valid = is_array($claims)
+            && in_array($claims['aud'] ?? null, $clientIds, true)
+            && in_array($claims['iss'] ?? null, ['accounts.google.com', 'https://accounts.google.com'], true)
+            && (int) ($claims['exp'] ?? 0) > time()
+            && filter_var($claims['email_verified'] ?? false, FILTER_VALIDATE_BOOLEAN)
+            && ! empty($claims['email'])
+            && ! empty($claims['sub']);
+
+        return $valid ? $claims : null;
     }
 
     /*

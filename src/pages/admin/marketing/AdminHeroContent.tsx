@@ -1,5 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import AdminTable, {
+  AdminStatusPill,
+  AdminThumb,
+  adminTd,
+  adminTdStrong,
+} from "@/components/admin/AdminTable";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
@@ -16,6 +22,7 @@ import { useToastStore } from "@/stores/toastStore";
 import type {
   AdminHeroContent as AdminHeroContentEntry,
   HeroPageName,
+  HeroStat,
 } from "@/types/adminHeroContent";
 
 interface FormState {
@@ -28,6 +35,7 @@ interface FormState {
   cta_text_2: string;
   cta_link_2: string;
   is_active: boolean;
+  stats: HeroStat[];
 }
 
 const emptyForm: FormState = {
@@ -40,6 +48,7 @@ const emptyForm: FormState = {
   cta_text_2: "",
   cta_link_2: "",
   is_active: true,
+  stats: [],
 };
 
 export default function AdminHeroContent() {
@@ -72,6 +81,7 @@ export default function AdminHeroContent() {
       cta_text_2: form.cta_text_2 || undefined,
       cta_link_2: form.cta_link_2 || undefined,
       is_active: form.is_active,
+      stats: form.stats.filter((stat) => stat.label.trim() || stat.value.trim()),
     };
   }
 
@@ -137,6 +147,7 @@ export default function AdminHeroContent() {
       cta_text_2: hero.cta_text_2 ?? "",
       cta_link_2: hero.cta_link_2 ?? "",
       is_active: hero.is_active,
+      stats: hero.stats_json ?? [],
     });
     setFormOpen(true);
   }
@@ -170,7 +181,9 @@ export default function AdminHeroContent() {
               type="button"
               onClick={() => setPageName(name)}
               className={`rounded-pill px-4 py-1.5 text-sm font-medium capitalize ${
-                pageName === name ? "bg-gradient-brand text-white shadow-soft" : "text-text-muted"
+                pageName === name
+                  ? "bg-gradient-brand text-white shadow-soft"
+                  : "text-text-muted"
               }`}
             >
               {name}
@@ -191,32 +204,45 @@ export default function AdminHeroContent() {
       {isError && <ErrorState onRetry={() => void refetch()} />}
 
       {heroes && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <AdminTable head={["Banner", "Buttons", "Order", "Status", ""]}>
           {heroes.map((hero) => (
-            <button
-              key={hero.id}
-              type="button"
-              onClick={() => openEditForm(hero)}
-              className="flex flex-col overflow-hidden rounded-card border border-border bg-surface text-left"
-            >
-              <img
-                src={hero.image_url}
-                alt={hero.title}
-                className="aspect-video w-full object-cover"
-              />
-              <div className="flex flex-col gap-1 p-3">
-                <span className="text-sm font-medium text-text">{hero.title}</span>
-                <span
-                  className={`text-xs font-semibold ${
-                    hero.is_active ? "text-status-delivered" : "text-text-muted"
-                  }`}
+            <tr key={hero.id} className="hover:bg-background/60">
+              <td className={adminTdStrong}>
+                <button
+                  type="button"
+                  onClick={() => openEditForm(hero)}
+                  className="flex items-center gap-3 text-left hover:text-primary"
                 >
-                  {hero.is_active ? `Active · #${hero.sequence}` : "Inactive"}
-                </span>
-              </div>
-            </button>
+                  <AdminThumb src={hero.image_url} />
+                  <span className="flex flex-col">
+                    <span className="line-clamp-1">{hero.title}</span>
+                    {hero.subtitle && (
+                      <span className="line-clamp-1 text-xs font-normal text-text-muted">
+                        {hero.subtitle}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              </td>
+              <td className={adminTd}>
+                {[hero.cta_text, hero.cta_text_2].filter(Boolean).join(" · ") || "—"}
+              </td>
+              <td className={adminTd}>{hero.is_active ? `#${hero.sequence}` : "—"}</td>
+              <td className={adminTd}>
+                <AdminStatusPill active={hero.is_active} />
+              </td>
+              <td className="px-4 py-3 text-right">
+                <button
+                  type="button"
+                  onClick={() => openEditForm(hero)}
+                  className="text-xs font-semibold text-primary hover:underline"
+                >
+                  Edit
+                </button>
+              </td>
+            </tr>
           ))}
-        </div>
+        </AdminTable>
       )}
 
       <Modal
@@ -289,6 +315,64 @@ export default function AdminHeroContent() {
               onChange={(e) => setForm({ ...form, cta_link_2: e.target.value })}
             />
           </div>
+
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-sm font-medium text-text">
+              Stats (optional)
+            </legend>
+            {form.stats.map((stat, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <input
+                  value={stat.label}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      stats: form.stats.map((row, i) =>
+                        i === index ? { ...row, label: e.target.value } : row,
+                      ),
+                    })
+                  }
+                  placeholder="50+"
+                  aria-label={`Stat ${index + 1} number`}
+                  className="h-10 w-24 rounded-lg border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+                />
+                <input
+                  value={stat.value}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      stats: form.stats.map((row, i) =>
+                        i === index ? { ...row, value: e.target.value } : row,
+                      ),
+                    })
+                  }
+                  placeholder="Local markets"
+                  aria-label={`Stat ${index + 1} label`}
+                  className="h-10 flex-1 rounded-lg border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm({ ...form, stats: form.stats.filter((_, i) => i !== index) })
+                  }
+                  className="text-xs font-medium text-status-cancelled"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            {form.stats.length < 4 && (
+              <button
+                type="button"
+                onClick={() =>
+                  setForm({ ...form, stats: [...form.stats, { label: "", value: "" }] })
+                }
+                className="self-start text-sm font-medium text-primary hover:underline"
+              >
+                + Add stat
+              </button>
+            )}
+          </fieldset>
 
           <label className="flex items-center gap-2 text-sm text-text">
             <input

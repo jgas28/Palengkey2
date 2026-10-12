@@ -58,7 +58,6 @@ export default function ChangePasswordForm() {
 
   return (
     <form onSubmit={handleSubmit} noValidate style={{ display: "grid", gap: 14 }}>
-
       <PkField
         label="Current password"
         type="password"

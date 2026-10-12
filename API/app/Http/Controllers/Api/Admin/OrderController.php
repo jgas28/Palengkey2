@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\OrderRecipeBundle;
 use App\Models\Rider;
+use App\Models\Setting;
+use App\Support\BulkPricing;
 use App\Services\AuditLogger;
 use App\Services\OrderNotifier;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -19,7 +22,8 @@ class OrderController extends Controller
     private const TRANSITIONS = [
         'order_received' => ['order_confirmed'],
         'order_confirmed' => ['preparing_items', 'order_received'],
-        'preparing_items' => ['out_for_delivery', 'order_confirmed'],
+        // Out for delivery is set by the rider app when the rider picks the order up.
+        'preparing_items' => ['order_confirmed'],
         'out_for_delivery' => ['delivered', 'preparing_items'],
         'delivered' => ['out_for_delivery'],
     ];
@@ -42,7 +46,8 @@ class OrderController extends Controller
         'delivered' => ['out_for_delivery'],
     ];
 
-    private const ASSIGNABLE_STATUSES = ['order_received', 'order_confirmed', 'preparing_items'];
+    /** Riders are assigned once the shopper is preparing the items (same as the old admin). */
+    private const ASSIGNABLE_STATUSES = ['preparing_items'];
 
     private const CANCEL_BLOCKED_STATUSES = ['out_for_delivery', 'delivered', 'cancelled'];
 
@@ -121,6 +126,150 @@ class OrderController extends Controller
     }
 
     /** Updates one "Cook for Me" bundle's kitchen progress within an order — independent of the order's own delivery-logistics status. */
+    /** Items can change only while the order is still being put together at the market. */
+    private const EDITABLE_ITEM_STATUSES = ['pending_payment', 'order_received', 'order_confirmed', 'preparing_items'];
+
+    /**
+     * Fix a line when the market can't fill it as ordered — e.g. only 1.5 kg left,
+     * or the vendor's price changed. Totals (service fee, voucher) are recalculated.
+     */
+    public function updateItem(Request $request, Order $order, OrderItem $orderItem)
+    {
+        $this->authorizeOrderAccess($request, $order);
+        abort_if($orderItem->order_id !== $order->id, 404);
+        abort_unless(in_array($order->status, self::EDITABLE_ITEM_STATUSES, true), 422, 'Items can only be edited before the order leaves preparation.');
+
+        $data = $request->validate([
+            'quantity' => 'required|numeric|min:0.001|max:99999',
+            'price' => 'required|numeric|min:0|max:999999.99',
+            'reason' => 'nullable|string|max:255',
+        ]);
+
+        $before = $order->total_amount;
+
+        DB::transaction(function () use ($order, $orderItem, $data) {
+            $lockedOrder = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            $line = OrderItem::whereKey($orderItem->id)->where('order_id', $lockedOrder->id)->lockForUpdate()->firstOrFail();
+            $old = $line->only(['quantity', 'price', 'subtotal']);
+
+            $quantity = round((float) $data['quantity'], 3);
+            $price = round((float) $data['price'], 2);
+            // Weighed lines become one pack of the new weight; counted lines keep a whole count.
+            $weighed = BulkPricing::isWeightUnit((object) ['short_name' => $line->unit_name]);
+            $line->update([
+                'quantity' => $quantity,
+                'item_quantity' => $weighed ? 1 : max(1, (int) round($quantity)),
+                'weight_kg' => $weighed ? $quantity : null,
+                'price' => $price,
+                'price_at_purchase' => $price,
+                'subtotal' => round($quantity * $price, 2),
+            ]);
+
+            $this->recalculateOrderTotals($lockedOrder);
+
+            AuditLogger::log('order_item_updated', $line, $line->id, $old, $line->only(['quantity', 'price', 'subtotal']) + ['reason' => $data['reason'] ?? null]);
+        });
+
+        return $this->itemChangeResponse($order, $before, 'Item updated and totals recalculated.');
+    }
+
+    /** Drop a line the market couldn't supply (out of stock). The last line can't go — cancel instead. */
+    public function destroyItem(Request $request, Order $order, OrderItem $orderItem)
+    {
+        $this->authorizeOrderAccess($request, $order);
+        abort_if($orderItem->order_id !== $order->id, 404);
+        abort_unless(in_array($order->status, self::EDITABLE_ITEM_STATUSES, true), 422, 'Items can only be removed before the order leaves preparation.');
+        abort_if($order->items()->count() <= 1, 422, 'This is the last item — cancel the order instead.');
+
+        $reason = $request->validate(['reason' => 'nullable|string|max:255'])['reason'] ?? null;
+        $before = $order->total_amount;
+
+        DB::transaction(function () use ($order, $orderItem, $reason) {
+            $lockedOrder = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            $line = OrderItem::whereKey($orderItem->id)->where('order_id', $lockedOrder->id)->lockForUpdate()->firstOrFail();
+
+            AuditLogger::log('order_item_removed', $line, $line->id, $line->only(['item_name', 'quantity', 'price', 'subtotal']), ['reason' => $reason]);
+            $line->delete();
+
+            $this->recalculateOrderTotals($lockedOrder);
+        });
+
+        return $this->itemChangeResponse($order, $before, 'Item removed and totals recalculated.');
+    }
+
+    /** Same formula as checkout: items + delivery (net + VAT) + service + cooking − voucher − bulk subsidy. */
+    private function recalculateOrderTotals(Order $order): void
+    {
+        $order->loadMissing('voucher');
+
+        $subtotal = round((float) $order->items()->sum('subtotal'), 2);
+        $serviceFee = Setting::calculateServiceFee($subtotal);
+        $deliveryGross = round((float) $order->delivery_fee + (float) $order->vat, 2);
+        $bulkSubsidy = min((float) ($order->bulk_delivery_subsidy ?? 0), $deliveryGross);
+        $cookingFee = (float) ($order->paluto_cooking_fee ?? 0);
+        $voucherDiscount = 0.0;
+
+        if ($order->voucher && ! $order->voucher->redemptionBlockReason((int) $order->customer_id, $subtotal, (int) $order->market_id)) {
+            $voucherDiscount = $order->voucher->calculateTotalDiscount($subtotal, $serviceFee, $deliveryGross - $bulkSubsidy);
+        }
+
+        $order->forceFill([
+            'subtotal' => $subtotal,
+            'service_fee' => $serviceFee,
+            'voucher_discount' => $voucherDiscount,
+            'total_amount' => max(0, round($subtotal + $deliveryGross + $serviceFee + $cookingFee - $voucherDiscount - $bulkSubsidy, 2)),
+        ])->save();
+
+        if ($order->voucher_id) {
+            DB::table('voucher_usages')->where('order_id', $order->id)
+                ->update(['discount_amount' => $voucherDiscount, 'updated_at' => now()]);
+        }
+    }
+
+    /** Includes the total's change so staff know to refund/collect the difference on paid orders. */
+    private function itemChangeResponse(Order $order, mixed $totalBefore, string $message)
+    {
+        $fresh = $order->fresh(['items', 'customer', 'rider', 'voucher', 'cashlessPayment', 'recipeBundles.stall']);
+        $difference = round((float) $fresh->total_amount - (float) $totalBefore, 2);
+        $isPaid = in_array($fresh->payment_status, ['paid', 'completed', 'succeeded'], true);
+
+        return response()->json([
+            'message' => $message,
+            'total_difference' => $difference,
+            'refund_due' => $isPaid && $difference < 0 ? abs($difference) : 0,
+            'order' => $fresh,
+        ]);
+    }
+
+    /**
+     * Market staff record what the vendor actually charged (after haggling) and
+     * why. Blank vendor_price clears it. Feeds the vendor-savings report.
+     */
+    public function updateItemVendorPrice(Request $request, Order $order, OrderItem $orderItem)
+    {
+        $this->authorizeOrderAccess($request, $order);
+        abort_if($orderItem->order_id !== $order->id, 404);
+        abort_unless(OrderItem::hasVendorColumns(), 422, 'Run the latest migrations to record vendor prices.');
+
+        $data = $request->validate([
+            'vendor_price' => 'nullable|numeric|min:0|max:9999999',
+            'vendor_note' => 'nullable|string|max:500',
+        ]);
+
+        $old = $orderItem->only(['vendor_price', 'vendor_note']);
+
+        $orderItem->update([
+            'vendor_price' => $data['vendor_price'] ?? null,
+            'vendor_note' => $data['vendor_note'] ?? null,
+            'vendor_price_by' => $request->user()->id,
+            'vendor_price_at' => now(),
+        ]);
+
+        AuditLogger::log('order_item_vendor_price_updated', $orderItem, $orderItem->id, $old, $orderItem->only(['vendor_price', 'vendor_note']));
+
+        return response()->json(['message' => 'Vendor price saved.', 'item' => $orderItem->fresh()]);
+    }
+
     public function updateRecipeBundleCookingStatus(
         Request $request,
         Order $order,
@@ -191,7 +340,7 @@ class OrderController extends Controller
 
         if (! in_array($order->status, self::ASSIGNABLE_STATUSES, true)) {
             return response()->json([
-                'message' => 'Rider can only be assigned before the order is out for delivery.',
+                'message' => 'A rider can be assigned only while the order is being prepared.',
             ], 422);
         }
 

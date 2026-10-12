@@ -123,7 +123,8 @@ export default function CheckoutForm() {
   );
 
   const selectedBundles = useMemo(
-    () => cart?.recipe_bundles?.filter((bundle) => recipeBundleIds.includes(bundle.id)) ?? [],
+    () =>
+      cart?.recipe_bundles?.filter((bundle) => recipeBundleIds.includes(bundle.id)) ?? [],
     [cart, recipeBundleIds],
   );
 
@@ -141,7 +142,10 @@ export default function CheckoutForm() {
   }, [itemIds, recipeBundleIds, cart, selectedItems, selectedBundles, navigate]);
 
   const subtotal = useMemo(() => {
-    const itemsSubtotal = selectedItems.reduce((sum, item) => sum + Number(item.subtotal), 0);
+    const itemsSubtotal = selectedItems.reduce(
+      (sum, item) => sum + Number(item.subtotal),
+      0,
+    );
     const bundlesSubtotal = selectedBundles.reduce(
       (sum, bundle) => sum + Number(bundle.subtotal),
       0,
@@ -180,7 +184,11 @@ export default function CheckoutForm() {
     ? Math.min(deliveryFeeGross, Number(cart?.bulk?.delivery_subsidy_cap ?? 0))
     : 0;
   const estimatedTotal =
-    subtotal + deliveryFeeGross + (serviceFee ?? 0) - discountAmount - bulkDeliverySubsidy;
+    subtotal +
+    deliveryFeeGross +
+    (serviceFee ?? 0) -
+    discountAmount -
+    bulkDeliverySubsidy;
 
   const voucherMutation = useMutation({
     mutationFn: (code: string) =>
@@ -224,7 +232,8 @@ export default function CheckoutForm() {
         return;
       }
 
-      const redirectUrl = response.payment_redirect?.redirect_url ?? response.bpi?.redirect_url;
+      const redirectUrl =
+        response.payment_redirect?.redirect_url ?? response.bpi?.redirect_url;
       if (redirectUrl) {
         navigate(`/checkout/pay/${response.order.id}`, {
           state: { redirectUrl },
@@ -247,9 +256,12 @@ export default function CheckoutForm() {
   if (cart && selectedItems.length === 0 && selectedBundles.length === 0) return null;
 
   const stepIndex = STEPS.indexOf(step);
-  const orderLaterLabel = ORDER_LATER_SLOTS.find((s) => s.value === orderLaterSlot)?.label;
+  const orderLaterLabel = ORDER_LATER_SLOTS.find(
+    (s) => s.value === orderLaterSlot,
+  )?.label;
   const selectedPaymentMethod = PAYMENT_METHODS.find((m) => m.value === paymentMethod)!;
-  const canSubmit = !checkoutMutation.isPending && serviceFee !== null && !deliveryFeeLoading;
+  const canSubmit =
+    !checkoutMutation.isPending && serviceFee !== null && !deliveryFeeLoading;
 
   return (
     <main className="inner-page account-bg">
@@ -286,7 +298,15 @@ export default function CheckoutForm() {
                       {selectedAddress.label}
                       {selectedAddress.is_default && (
                         <small
-                          style={{ marginLeft: 8, padding: "3px 7px", color: "#176b3a", background: "#e7f6ec", borderRadius: 999, fontSize: 8, textTransform: "uppercase" }}
+                          style={{
+                            marginLeft: 8,
+                            padding: "3px 7px",
+                            color: "#176b3a",
+                            background: "#e7f6ec",
+                            borderRadius: 999,
+                            fontSize: 8,
+                            textTransform: "uppercase",
+                          }}
                         >
                           Default
                         </small>
@@ -341,7 +361,10 @@ export default function CheckoutForm() {
                   <Icon name="clock" />
                   <div>
                     <strong>Same-day ordering is closed for some items</strong>
-                    <p>They&apos;re past the market cutoff — choose a delivery slot for the next market run.</p>
+                    <p>
+                      They&apos;re past the market cutoff — choose a delivery slot for the
+                      next market run.
+                    </p>
                   </div>
                 </div>
               )}
@@ -422,7 +445,10 @@ export default function CheckoutForm() {
               <h2>Choose a payment method</h2>
               <div className="payment-list">
                 {PAYMENT_METHODS.map((method) => (
-                  <label className={paymentMethod === method.value ? "selected" : ""} key={method.value}>
+                  <label
+                    className={paymentMethod === method.value ? "selected" : ""}
+                    key={method.value}
+                  >
                     <input
                       type="radio"
                       name="payment"
@@ -436,10 +462,18 @@ export default function CheckoutForm() {
                 ))}
               </div>
               <div className="step-actions">
-                <button type="button" className="btn outline" onClick={() => setStep("details")}>
+                <button
+                  type="button"
+                  className="btn outline"
+                  onClick={() => setStep("details")}
+                >
                   Back
                 </button>
-                <button type="button" className="btn primary" onClick={() => setStep("confirm")}>
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => setStep("confirm")}
+                >
                   Review order <Icon name="arrow" />
                 </button>
               </div>
@@ -462,7 +496,9 @@ export default function CheckoutForm() {
                 </div>
                 <div>
                   <span>Delivery</span>
-                  <strong>{hasCutoffItems ? `Next available day, ${orderLaterLabel}` : "Today"}</strong>
+                  <strong>
+                    {hasCutoffItems ? `Next available day, ${orderLaterLabel}` : "Today"}
+                  </strong>
                   {hasCutoffItems && <p>Scheduled Order Later delivery</p>}
                 </div>
                 {notes && (
@@ -473,7 +509,11 @@ export default function CheckoutForm() {
                 )}
               </div>
               <div className="step-actions">
-                <button type="button" className="btn outline" onClick={() => setStep("payment")}>
+                <button
+                  type="button"
+                  className="btn outline"
+                  onClick={() => setStep("payment")}
+                >
                   Back
                 </button>
                 <button
@@ -482,7 +522,8 @@ export default function CheckoutForm() {
                   disabled={!canSubmit}
                   onClick={() => checkoutMutation.mutate()}
                 >
-                  <Icon name="check" /> {checkoutMutation.isPending ? "Placing order…" : "Confirm order"}
+                  <Icon name="check" />{" "}
+                  {checkoutMutation.isPending ? "Placing order…" : "Confirm order"}
                 </button>
               </div>
             </div>
@@ -504,14 +545,19 @@ export default function CheckoutForm() {
             <div className="mini-line" key={`bundle-${bundle.id}`}>
               <span>
                 {bundle.recipe_name}
-                {bundle.stall_name ? ` · Paluto at ${bundle.stall_name}` : " · Ingredients"}
+                {bundle.stall_name
+                  ? ` · Paluto at ${bundle.stall_name}`
+                  : " · Ingredients"}
               </span>
               <strong>{formatPeso(Number(bundle.subtotal))}</strong>
             </div>
           ))}
 
           <div style={{ display: "block" }}>
-            <div className="voucher-input" style={{ margin: "6px 0 4px", maxWidth: "none" }}>
+            <div
+              className="voucher-input"
+              style={{ margin: "6px 0 4px", maxWidth: "none" }}
+            >
               <Icon name="sparkle" />
               <input
                 value={voucherCode}
@@ -532,12 +578,26 @@ export default function CheckoutForm() {
             <button
               type="button"
               onClick={() => setVoucherListOpen(true)}
-              style={{ padding: 0, color: "var(--teal-dark)", background: "none", border: 0, fontSize: 10, fontWeight: 700 }}
+              style={{
+                padding: 0,
+                color: "var(--teal-dark)",
+                background: "none",
+                border: 0,
+                fontSize: 10,
+                fontWeight: 700,
+              }}
             >
               Browse available vouchers
             </button>
             {appliedVoucher && (
-              <p style={{ margin: "6px 0 0", color: "#16a34a", fontSize: 10, fontWeight: 700 }}>
+              <p
+                style={{
+                  margin: "6px 0 0",
+                  color: "#16a34a",
+                  fontSize: 10,
+                  fontWeight: 700,
+                }}
+              >
                 ✓ {appliedVoucher.code} applied — you save {formatPeso(discountAmount)}
               </p>
             )}

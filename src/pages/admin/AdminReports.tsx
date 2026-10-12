@@ -13,6 +13,11 @@ import {
   getVerificationsReport,
 } from "@/services/api/adminReports";
 import { useToastStore } from "@/stores/toastStore";
+import {
+  DiscountsPanel,
+  PaymentsPanel,
+  ProductsPanel,
+} from "@/pages/admin/reports/ExtraReportPanels";
 
 function peso(amount: number): string {
   return `₱${amount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
@@ -37,7 +42,17 @@ function triggerDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-type Tab = "sales" | "verifications" | "activities";
+type Tab =
+  "sales" | "products" | "payments" | "discounts" | "activities" | "verifications";
+
+const TABS: { value: Tab; label: string }[] = [
+  { value: "sales", label: "Sales" },
+  { value: "products", label: "Products & categories" },
+  { value: "payments", label: "Payments" },
+  { value: "discounts", label: "Margins & vendor savings" },
+  { value: "activities", label: "Markets & riders" },
+  { value: "verifications", label: "Verifications" },
+];
 
 export default function AdminReports() {
   const [tab, setTab] = useState<Tab>("sales");
@@ -49,18 +64,18 @@ export default function AdminReports() {
       <h1 className="text-lg font-semibold">Reports</h1>
 
       <div className="flex gap-1 overflow-x-auto border-b border-border">
-        {(["sales", "verifications", "activities"] as Tab[]).map((value) => (
+        {TABS.map(({ value, label }) => (
           <button
             key={value}
             type="button"
             onClick={() => setTab(value)}
-            className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium capitalize ${
+            className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium ${
               tab === value
                 ? "border-primary text-primary"
                 : "border-transparent text-text-muted hover:text-text"
             }`}
           >
-            {value}
+            {label}
           </button>
         ))}
       </div>
@@ -81,10 +96,15 @@ export default function AdminReports() {
       </div>
 
       {tab === "sales" && <SalesPanel startDate={startDate} endDate={endDate} />}
+      {tab === "products" && <ProductsPanel startDate={startDate} endDate={endDate} />}
+      {tab === "payments" && <PaymentsPanel startDate={startDate} endDate={endDate} />}
+      {tab === "discounts" && <DiscountsPanel startDate={startDate} endDate={endDate} />}
       {tab === "verifications" && (
         <VerificationsPanel startDate={startDate} endDate={endDate} />
       )}
-      {tab === "activities" && <ActivitiesPanel startDate={startDate} endDate={endDate} />}
+      {tab === "activities" && (
+        <ActivitiesPanel startDate={startDate} endDate={endDate} />
+      )}
     </div>
   );
 }
@@ -109,7 +129,10 @@ function SalesPanel({ startDate, endDate }: PanelProps) {
       const blob = await downloadSalesReport({ startDate, endDate }, format);
       triggerDownload(blob, `sales_report_${startDate}_to_${endDate}.${format}`);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Could not download report.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not download report.",
+        "error",
+      );
     } finally {
       setDownloading(null);
     }
@@ -216,13 +239,17 @@ function SalesPanel({ startDate, endDate }: PanelProps) {
             <tbody className="divide-y divide-border">
               {data.orders.map((order) => (
                 <tr key={order.id}>
-                  <td className="px-4 py-3 font-medium text-text">{order.order_number}</td>
+                  <td className="px-4 py-3 font-medium text-text">
+                    {order.order_number}
+                  </td>
                   <td className="px-4 py-3 text-text-muted">
                     {new Date(order.created_at).toLocaleDateString("en-PH")}
                   </td>
                   <td className="px-4 py-3 text-text-muted">{order.market_name}</td>
                   <td className="px-4 py-3 text-text-muted">{order.customer_name}</td>
-                  <td className="px-4 py-3 text-text-muted">{peso(order.total_amount)}</td>
+                  <td className="px-4 py-3 text-text-muted">
+                    {peso(order.total_amount)}
+                  </td>
                 </tr>
               ))}
               {data.orders.length === 0 && (
@@ -255,7 +282,10 @@ function VerificationsPanel({ startDate, endDate }: PanelProps) {
       const blob = await downloadVerificationsReport({ startDate, endDate });
       triggerDownload(blob, `verifications_report_${startDate}_to_${endDate}.csv`);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Could not download report.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not download report.",
+        "error",
+      );
     } finally {
       setDownloading(false);
     }
@@ -275,7 +305,11 @@ function VerificationsPanel({ startDate, endDate }: PanelProps) {
 
   return (
     <>
-      <Button variant="secondary" loading={downloading} onClick={() => void handleDownload()}>
+      <Button
+        variant="secondary"
+        loading={downloading}
+        onClick={() => void handleDownload()}
+      >
         Download CSV
       </Button>
 
@@ -353,7 +387,10 @@ function ActivitiesPanel({ startDate, endDate }: PanelProps) {
       const blob = await downloadActivitiesReport({ startDate, endDate });
       triggerDownload(blob, `activities_report_${startDate}_to_${endDate}.csv`);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Could not download report.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not download report.",
+        "error",
+      );
     } finally {
       setDownloading(false);
     }
@@ -373,7 +410,11 @@ function ActivitiesPanel({ startDate, endDate }: PanelProps) {
 
   return (
     <>
-      <Button variant="secondary" loading={downloading} onClick={() => void handleDownload()}>
+      <Button
+        variant="secondary"
+        loading={downloading}
+        onClick={() => void handleDownload()}
+      >
         Download CSV
       </Button>
 

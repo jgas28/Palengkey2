@@ -1,5 +1,16 @@
 import { useState, type FormEvent } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
+import AdminTable, {
+  AdminStatusPill,
+  AdminThumb,
+  adminTd,
+  adminTdStrong,
+} from "@/components/admin/AdminTable";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
@@ -70,6 +81,7 @@ export default function AdminPopupAds() {
   } = useQuery({
     queryKey: ["adminPopupAds", search],
     queryFn: () => listAdminPopupAds(search),
+    placeholderData: keepPreviousData,
   });
 
   const { data: vouchers = [] } = useQuery({
@@ -210,35 +222,44 @@ export default function AdminPopupAds() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+      <AdminTable head={["Popup", "Type", "Schedule", "Status", ""]}>
         {page.data.map((ad) => (
-          <button
-            key={ad.id}
-            type="button"
-            onClick={() => openEditForm(ad)}
-            className="flex flex-col overflow-hidden rounded-card border border-border bg-surface text-left"
-          >
-            <img
-              src={ad.image_url}
-              alt={ad.title}
-              className="aspect-video w-full object-cover"
-            />
-            <div className="flex flex-col gap-1 p-3">
-              <span className="line-clamp-1 text-sm font-medium text-text">
-                {ad.title}
-              </span>
-              <span className="text-xs text-text-muted">{TYPE_LABELS[ad.type]}</span>
-              <span
-                className={`text-xs font-semibold ${
-                  ad.is_active ? "text-status-delivered" : "text-text-muted"
-                }`}
+          <tr key={ad.id} className="hover:bg-background/60">
+            <td className={adminTdStrong}>
+              <button
+                type="button"
+                onClick={() => openEditForm(ad)}
+                className="flex items-center gap-3 text-left hover:text-primary"
               >
-                {ad.is_active ? "Active" : "Inactive"}
-              </span>
-            </div>
-          </button>
+                <AdminThumb src={ad.image_url} />
+                <span className="line-clamp-2">{ad.title}</span>
+              </button>
+            </td>
+            <td className={adminTd}>{TYPE_LABELS[ad.type]}</td>
+            <td className={adminTd}>
+              {ad.starts_at || ad.ends_at
+                ? `${ad.starts_at ? new Date(ad.starts_at).toLocaleDateString("en-PH") : "Now"} – ${
+                    ad.ends_at
+                      ? new Date(ad.ends_at).toLocaleDateString("en-PH")
+                      : "No end"
+                  }`
+                : "Always"}
+            </td>
+            <td className={adminTd}>
+              <AdminStatusPill active={ad.is_active} />
+            </td>
+            <td className="px-4 py-3 text-right">
+              <button
+                type="button"
+                onClick={() => openEditForm(ad)}
+                className="text-xs font-semibold text-primary hover:underline"
+              >
+                Edit
+              </button>
+            </td>
+          </tr>
         ))}
-      </div>
+      </AdminTable>
 
       <Modal
         isOpen={formOpen}

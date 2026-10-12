@@ -21,10 +21,12 @@ export interface CheckoutRouteMapProps {
   distanceKm?: number;
   etaMin?: number;
   etaMax?: number;
+  /** Live rider position while out for delivery. */
+  rider?: LatLng | null;
+  height?: number;
 }
 
-const MAP_HEIGHT = 200;
-const MAP_CONTAINER_STYLE = { width: "100%", height: `${MAP_HEIGHT}px` };
+const DEFAULT_HEIGHT = 200;
 const BRAND = "#0097A7";
 const ALTERNATE = "#7C8B90";
 
@@ -84,7 +86,11 @@ export default function CheckoutRouteMap({
   distanceKm,
   etaMin,
   etaMax,
+  rider,
+  height = DEFAULT_HEIGHT,
 }: CheckoutRouteMapProps) {
+  const MAP_HEIGHT = height;
+  const MAP_CONTAINER_STYLE = { width: "100%", height: `${height}px` };
   const { isLoaded, loadError } = useGoogleMapsLoader();
   const [route, setRoute] = useState<RouteState>({ status: "loading" });
 
@@ -160,6 +166,14 @@ export default function CheckoutRouteMap({
             label={{ text: "M", color: "#ffffff", fontWeight: "700" }}
           />
           <MarkerF position={destination} title={destination.label} />
+          {rider && (
+            <MarkerF
+              position={rider}
+              title="Your rider"
+              label={{ text: "R", color: "#ffffff", fontWeight: "700" }}
+              zIndex={3}
+            />
+          )}
 
           {route.status === "found" && route.shortest.index !== route.fastest.index && (
             <DirectionsRenderer

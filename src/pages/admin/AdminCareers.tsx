@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
@@ -47,7 +52,9 @@ export default function AdminCareers() {
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["adminCareers", statusFilter, search],
-    queryFn: () => listAdminCareers({ status: statusFilter, search: search || undefined }),
+    queryFn: () =>
+      listAdminCareers({ status: statusFilter, search: search || undefined }),
+    placeholderData: keepPreviousData,
   });
 
   function openCreate() {
@@ -87,7 +94,10 @@ export default function AdminCareers() {
       closeForm();
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not create listing.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not create listing.",
+        "error",
+      );
     },
   });
 
@@ -99,7 +109,10 @@ export default function AdminCareers() {
       closeForm();
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not update listing.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not update listing.",
+        "error",
+      );
     },
   });
 
@@ -110,7 +123,10 @@ export default function AdminCareers() {
       showToast("Job listing deleted.", "success");
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not delete listing.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not delete listing.",
+        "error",
+      );
     },
   });
 
@@ -164,13 +180,19 @@ export default function AdminCareers() {
       {isError && <ErrorState onRetry={() => void refetch()} />}
 
       {data && data.data.length === 0 && (
-        <EmptyState title="No job listings." description="Add a listing to start recruiting." />
+        <EmptyState
+          title="No job listings."
+          description="Add a listing to start recruiting."
+        />
       )}
 
       {data && data.data.length > 0 && (
         <ul className="flex flex-col divide-y divide-border rounded-card border border-border">
           {data.data.map((career) => (
-            <li key={career.id} className="flex items-center justify-between gap-3 px-4 py-3">
+            <li
+              key={career.id}
+              className="flex items-center justify-between gap-3 px-4 py-3"
+            >
               <button
                 type="button"
                 onClick={() => openEdit(career)}
@@ -233,7 +255,9 @@ export default function AdminCareers() {
             Responsibilities
             <textarea
               value={form.responsibilities}
-              onChange={(e) => setForm((f) => ({ ...f, responsibilities: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, responsibilities: e.target.value }))
+              }
               rows={3}
               className="rounded-lg border border-border bg-surface p-3 text-sm font-normal text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
             />
@@ -266,7 +290,9 @@ export default function AdminCareers() {
               Status
               <select
                 value={form.status}
-                onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as CareerStatus }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, status: e.target.value as CareerStatus }))
+                }
                 className="rounded-lg border border-border bg-surface p-3 text-sm font-normal text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
               >
                 <option value="open">Open</option>

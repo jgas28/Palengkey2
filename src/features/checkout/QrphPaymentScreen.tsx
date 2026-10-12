@@ -17,9 +17,13 @@ export default function QrphPaymentScreen() {
       timeoutMessage="This is taking longer than expected. Please try again."
       expiryHint="This code expires in about 15 minutes."
       renderPending={(order) => {
-        const qrUrl = order?.cashlessPayment?.qr_url ?? initialQrUrl;
+        const qrUrl = order?.cashless_payment?.qr_url ?? initialQrUrl;
         return qrUrl ? (
-          <img src={qrUrl} alt="QR Ph payment code" className="h-64 w-64 object-contain" />
+          <img
+            src={qrUrl}
+            alt="QR Ph payment code"
+            className="h-64 w-64 object-contain"
+          />
         ) : (
           <div className="flex h-64 w-64 items-center justify-center">
             <Spinner />

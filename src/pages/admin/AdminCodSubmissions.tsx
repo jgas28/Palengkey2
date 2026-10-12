@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { Spinner } from "@/components/common/LoadingState";
@@ -12,7 +17,10 @@ import {
   rejectAdminIdSubmission,
 } from "@/services/api/adminIdSubmissions";
 import { useToastStore } from "@/stores/toastStore";
-import type { AdminIdSubmissionEntry, IdSubmissionFilter } from "@/types/adminIdSubmission";
+import type {
+  AdminIdSubmissionEntry,
+  IdSubmissionFilter,
+} from "@/types/adminIdSubmission";
 
 const FILTERS: { value: IdSubmissionFilter; label: string }[] = [
   { value: "pending", label: "Pending" },
@@ -34,6 +42,7 @@ export default function AdminCodSubmissions() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["adminIdSubmissions", filter, search],
     queryFn: () => listAdminIdSubmissions(filter, search || undefined),
+    placeholderData: keepPreviousData,
   });
 
   const { data: detail, isLoading: isDetailLoading } = useQuery({
@@ -57,7 +66,8 @@ export default function AdminCodSubmissions() {
 
   const approveMutation = useMutation({
     mutationFn: () => approveAdminIdSubmission(selectedEntry!.id, notes || undefined),
-    onSuccess: () => invalidateAndClose("Approved. Customer can now use Cash on Delivery."),
+    onSuccess: () =>
+      invalidateAndClose("Approved. Customer can now use Cash on Delivery."),
     onError: (error) => {
       showToast(error instanceof Error ? error.message : "Could not approve.", "error");
     },
@@ -127,7 +137,9 @@ export default function AdminCodSubmissions() {
               >
                 <div className="flex w-full items-center justify-between">
                   <span className="font-medium text-text">
-                    {entry.customer ? `${entry.customer.fname} ${entry.customer.lname}` : "—"}
+                    {entry.customer
+                      ? `${entry.customer.fname} ${entry.customer.lname}`
+                      : "—"}
                   </span>
                   <span className="text-xs font-semibold capitalize text-text-muted">
                     {entry.status}
@@ -160,7 +172,9 @@ export default function AdminCodSubmissions() {
                     {detail.customer?.email} · {detail.customer?.phone}
                   </p>
                   {detail.order && (
-                    <p className="text-xs text-text-muted">Order #{detail.order.order_number}</p>
+                    <p className="text-xs text-text-muted">
+                      Order #{detail.order.order_number}
+                    </p>
                   )}
                 </div>
 
@@ -233,7 +247,10 @@ export default function AdminCodSubmissions() {
                           >
                             Approve
                           </Button>
-                          <Button variant="secondary" onClick={() => setShowRejectForm(true)}>
+                          <Button
+                            variant="secondary"
+                            onClick={() => setShowRejectForm(true)}
+                          >
                             Reject
                           </Button>
                         </div>
@@ -261,7 +278,10 @@ export default function AdminCodSubmissions() {
                           >
                             Confirm rejection
                           </Button>
-                          <Button variant="secondary" onClick={() => setShowRejectForm(false)}>
+                          <Button
+                            variant="secondary"
+                            onClick={() => setShowRejectForm(false)}
+                          >
                             Cancel
                           </Button>
                         </div>

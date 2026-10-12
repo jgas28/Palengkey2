@@ -4,7 +4,7 @@ import Icon from "@/components/pk/Icon";
 import { logout as logoutRequest } from "@/services/api/auth";
 import { useAuthStore } from "@/stores/authStore";
 
-/** Logged-in customer's photo, or initials on the design's amber avatar when there's none. */
+/** Logged-in customer's photo, or initials on the brand teal→green avatar when there's none. */
 function Avatar({ imageUrl, initials }: { imageUrl: string | null; initials: string }) {
   const [failed, setFailed] = useState(false);
 
@@ -16,8 +16,8 @@ function Avatar({ imageUrl, initials }: { imageUrl: string | null; initials: str
         width: 36,
         height: 36,
         overflow: "hidden",
-        color: "var(--teal-dark)",
-        background: "var(--amber)",
+        color: "white",
+        background: "linear-gradient(135deg, #0097a7 0%, #00838f 55%, #0a9137 130%)",
         border: "2px solid white",
         borderRadius: "50%",
         boxShadow: "0 0 0 1px var(--line)",
@@ -26,7 +26,11 @@ function Avatar({ imageUrl, initials }: { imageUrl: string | null; initials: str
         fontWeight: 700,
       }}
     >
-      {imageUrl && !failed ? <img src={imageUrl} alt="" onError={() => setFailed(true)} /> : initials}
+      {imageUrl && !failed ? (
+        <img src={imageUrl} alt="" onError={() => setFailed(true)} />
+      ) : (
+        initials
+      )}
     </span>
   );
 }
@@ -58,7 +62,11 @@ export default function AccountMenu() {
   useEffect(() => {
     if (!open) return;
     const close = (event: MouseEvent | KeyboardEvent) => {
-      if (event instanceof KeyboardEvent ? event.key === "Escape" : !ref.current?.contains(event.target as Node)) {
+      if (
+        event instanceof KeyboardEvent
+          ? event.key === "Escape"
+          : !ref.current?.contains(event.target as Node)
+      ) {
         setOpen(false);
       }
     };
@@ -122,17 +130,33 @@ export default function AccountMenu() {
           }}
         >
           {user && (
-            <div style={{ padding: "8px 12px 10px", borderBottom: "1px solid var(--line)", marginBottom: 6 }}>
+            <div
+              style={{
+                padding: "8px 12px 10px",
+                borderBottom: "1px solid var(--line)",
+                marginBottom: 6,
+              }}
+            >
               <strong style={{ display: "block", fontSize: 13 }}>
                 {user.fname} {user.lname}
               </strong>
               <small style={{ color: "var(--muted)", fontSize: 10 }}>{user.email}</small>
             </div>
           )}
-          <button type="button" role="menuitem" style={itemStyle} onClick={() => go("/profile")}>
+          <button
+            type="button"
+            role="menuitem"
+            style={itemStyle}
+            onClick={() => go("/profile")}
+          >
             <Icon name="shield" size={17} /> Profile
           </button>
-          <button type="button" role="menuitem" style={itemStyle} onClick={() => go("/orders")}>
+          <button
+            type="button"
+            role="menuitem"
+            style={itemStyle}
+            onClick={() => go("/orders")}
+          >
             <Icon name="bag" size={17} /> My orders
           </button>
           <button

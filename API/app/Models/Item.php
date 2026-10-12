@@ -15,6 +15,7 @@ class Item extends Model
         'type_id',
         'unit_id',
         'bulk_min_kg',
+        'bulk_discount_per_kg',
         'status',
         'cutoff_time',
         'cutoff_timezone',
@@ -25,6 +26,7 @@ class Item extends Model
         return [
             'status' => 'boolean',
             'bulk_min_kg' => 'decimal:3',
+            'bulk_discount_per_kg' => 'decimal:2',
             'cutoff_time' => 'datetime:H:i',
         ];
     }
@@ -109,6 +111,21 @@ class Item extends Model
      * Cutoff-time precedence: per-market item override > market default > item's own
      * cutoff_time > system-wide setting.
      */
+    /**
+     * Start of the next delivery day for an order placed after cutoff: today if the
+     * market hasn't opened yet (early morning), otherwise tomorrow — at slot 1's start.
+     * Checkout then moves it to the time slot the customer picked.
+     */
+    public function getNextAvailableDeliverySlot(?Market $market = null): \Carbon\Carbon
+    {
+        $timezone = $market?->cutoff_timezone ?: ($this->cutoff_timezone ?: 'Asia/Manila');
+        $now = now($timezone);
+        $opening = $now->copy()->setTimeFromTimeString($this->getOperationalStartTimeString());
+        $date = $now->lt($opening) ? $now->copy()->startOfDay() : $now->copy()->addDay()->startOfDay();
+
+        return $date->setTimeFromTimeString($this->normalizeTimeString($this->settingValue('delivery_slot_1_start', '07:00'), '07:00'));
+    }
+
     public function getCutoffTimeStringForMarketData($marketItemPivot, ?Market $market): string
     {
         if ($marketItemPivot && $marketItemPivot->cutoff_time) {

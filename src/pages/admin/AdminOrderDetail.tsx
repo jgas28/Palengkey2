@@ -23,6 +23,9 @@ import type {
   CookingStatus,
 } from "@/types/adminOrder";
 import { paymentMethodLabel } from "@/features/orders/paymentMethods";
+import VendorPriceEditor from "@/features/admin/VendorPriceEditor";
+import OrderItemEditor from "@/features/admin/OrderItemEditor";
+import { vendorSavings } from "@/features/admin/vendorSavings";
 
 /** Trims a decimal quantity like "1.200" to "1.2". */
 function formatQty(value: string): string {
@@ -30,15 +33,32 @@ function formatQty(value: string): string {
 }
 
 /** The shopper's buy list for one recipe bundle — exactly the lines to purchase at the market. */
-function BundleBuyList({ items }: { items: AdminOrderItem[] }) {
+function BundleBuyList({
+  orderId,
+  items,
+  editable,
+  isPaid,
+}: {
+  orderId: number;
+  items: AdminOrderItem[];
+  editable: boolean;
+  isPaid: boolean;
+}) {
   if (items.length === 0) {
-    return <p className="text-xs text-text-muted">Nothing to buy — the stall supplies everything.</p>;
+    return (
+      <p className="text-xs text-text-muted">
+        Nothing to buy — the stall supplies everything.
+      </p>
+    );
   }
 
   return (
     <ul className="flex flex-col divide-y divide-border rounded-lg bg-background px-3">
       {items.map((item) => (
-        <li key={item.id} className="flex items-center justify-between gap-3 py-1.5 text-sm">
+        <li
+          key={item.id}
+          className="flex items-center justify-between gap-3 py-1.5 text-sm"
+        >
           <span className="text-text">
             <span className="font-semibold">
               {formatQty(item.quantity)}
@@ -46,17 +66,27 @@ function BundleBuyList({ items }: { items: AdminOrderItem[] }) {
             </span>{" "}
             {item.item_name}
             {item.customer_note && (
-              <span className="block text-xs text-text-muted">Note: {item.customer_note}</span>
+              <span className="block text-xs text-text-muted">
+                Note: {item.customer_note}
+              </span>
+            )}
+            <VendorPriceEditor orderId={orderId} item={item} />
+          </span>
+          <span className="flex shrink-0 flex-col items-end gap-1 self-start">
+            <span className="text-text-muted">₱{item.subtotal}</span>
+            {editable && (
+              <OrderItemEditor orderId={orderId} item={item} isPaid={isPaid} />
             )}
           </span>
-          <span className="shrink-0 text-text-muted">₱{item.subtotal}</span>
         </li>
       ))}
     </ul>
   );
 }
 
-const COOKING_FORWARD_TRANSITION: Partial<Record<CookingStatus, { status: CookingStatus; label: string }>> = {
+const COOKING_FORWARD_TRANSITION: Partial<
+  Record<CookingStatus, { status: CookingStatus; label: string }>
+> = {
   pending: { status: "preparing", label: "Start preparing" },
   preparing: { status: "cooking", label: "Start cooking" },
   cooking: { status: "ready_for_pickup", label: "Mark ready for pickup" },
@@ -73,22 +103,26 @@ const COOKING_STATUS_LABELS: Record<CookingStatus, string> = {
   delivered: "Delivered",
 };
 
-const FORWARD_TRANSITION: Partial<Record<AdminOrderStatus, { status: AdminOrderStatus; label: string }>> = {
+const FORWARD_TRANSITION: Partial<
+  Record<AdminOrderStatus, { status: AdminOrderStatus; label: string }>
+> = {
   pending_payment: { status: "order_received", label: "Mark as paid" },
   order_received: { status: "order_confirmed", label: "Confirm order" },
   order_confirmed: { status: "preparing_items", label: "Start preparing" },
-  preparing_items: { status: "out_for_delivery", label: "Mark out for delivery" },
   out_for_delivery: { status: "delivered", label: "Mark delivered" },
 };
 
-const BACK_TRANSITION: Partial<Record<AdminOrderStatus, { status: AdminOrderStatus; label: string }>> = {
+const BACK_TRANSITION: Partial<
+  Record<AdminOrderStatus, { status: AdminOrderStatus; label: string }>
+> = {
   order_confirmed: { status: "order_received", label: "Revert to received" },
   preparing_items: { status: "order_confirmed", label: "Revert to confirmed" },
   out_for_delivery: { status: "preparing_items", label: "Revert to preparing" },
   delivered: { status: "out_for_delivery", label: "Revert to out for delivery" },
 };
 
-const ASSIGNABLE_STATUSES: AdminOrderStatus[] = ["order_received", "order_confirmed", "preparing_items"];
+/** Riders are assigned while preparing; the rider app then marks it out for delivery. */
+const ASSIGNABLE_STATUSES: AdminOrderStatus[] = ["preparing_items"];
 const CANCEL_BLOCKED: AdminOrderStatus[] = ["out_for_delivery", "delivered", "cancelled"];
 
 export default function AdminOrderDetail() {
@@ -102,7 +136,12 @@ export default function AdminOrderDetail() {
   const [showRiderPicker, setShowRiderPicker] = useState(false);
   const [printing, setPrinting] = useState(false);
 
-  const { data: order, isLoading, isError, refetch } = useQuery({
+  const {
+    data: order,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["adminOrder", id],
     queryFn: () => getAdminOrder(id),
   });
@@ -125,7 +164,10 @@ export default function AdminOrderDetail() {
       showToast(data.message, "success");
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not update status.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not update status.",
+        "error",
+      );
     },
   });
 
@@ -153,7 +195,10 @@ export default function AdminOrderDetail() {
       setCancelReason("");
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not cancel order.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not cancel order.",
+        "error",
+      );
     },
   });
 
@@ -165,7 +210,10 @@ export default function AdminOrderDetail() {
       setShowRiderPicker(false);
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not assign rider.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not assign rider.",
+        "error",
+      );
     },
   });
 
@@ -177,7 +225,10 @@ export default function AdminOrderDetail() {
       window.open(url, "_blank");
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Could not generate labels.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not generate labels.",
+        "error",
+      );
     } finally {
       setPrinting(false);
     }
@@ -200,12 +251,32 @@ export default function AdminOrderDetail() {
   const canAssignRider = ASSIGNABLE_STATUSES.includes(order.status);
 
   // Recipe/dish ingredient lines belong under their bundle's buy list, not the flat item list.
-  const standaloneItems = order.items.filter((item) => item.order_recipe_bundle_id === null);
-  const stallBundles = order.recipeBundles.filter((bundle) => bundle.paluto_stall_id !== null);
-  const rawBundles = order.recipeBundles.filter((bundle) => bundle.paluto_stall_id === null);
+  const standaloneItems = order.items.filter(
+    (item) => item.order_recipe_bundle_id === null,
+  );
+  const stallBundles = (order.recipe_bundles ?? []).filter(
+    (bundle) => bundle.paluto_stall_id !== null,
+  );
+  const rawBundles = (order.recipe_bundles ?? []).filter(
+    (bundle) => bundle.paluto_stall_id === null,
+  );
   const itemsForBundle = (bundle: AdminOrderRecipeBundle) =>
     order.items.filter((item) => item.order_recipe_bundle_id === bundle.id);
   const canCancel = !CANCEL_BLOCKED.includes(order.status);
+  // Same rule as the API: lines can change until the order leaves the market.
+  const itemsEditable = [
+    "pending_payment",
+    "order_received",
+    "order_confirmed",
+    "preparing_items",
+  ].includes(order.status);
+  const isPaid = order.payment_status === "paid";
+  const recordedSavings = order.items
+    .map(vendorSavings)
+    .filter((value): value is number => value !== null);
+  const vendorSavingsTotal = recordedSavings.length
+    ? recordedSavings.reduce((sum, value) => sum + value, 0)
+    : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -224,18 +295,33 @@ export default function AdminOrderDetail() {
         </div>
       </div>
 
-      <Button variant="secondary" size="sm" loading={printing} onClick={() => void handlePrint()}>
+      <Button
+        variant="secondary"
+        size="sm"
+        loading={printing}
+        onClick={() => void handlePrint()}
+      >
         Print labels
       </Button>
 
       <div className="rounded-card border border-border p-4">
         <p className="font-medium text-text">{order.contact_name}</p>
         <p className="text-sm text-text-muted">{order.contact_phone}</p>
-        {order.customer && <p className="text-sm text-text-muted">{order.customer.email}</p>}
+        {order.customer && (
+          <p className="text-sm text-text-muted">{order.customer.email}</p>
+        )}
         <p className="mt-2 text-sm text-text">{order.delivery_address}</p>
         {order.is_reservation && order.scheduled_delivery_time && (
           <p className="mt-1 text-xs font-medium text-status-preparing">
-            Order later — scheduled {order.scheduled_delivery_time}
+            Order later — deliver{" "}
+            {new Date(order.scheduled_delivery_time).toLocaleString("en-PH", {
+              timeZone: "Asia/Manila",
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+            })}
           </p>
         )}
         {order.notes && (
@@ -254,17 +340,35 @@ export default function AdminOrderDetail() {
         )}
         <ul className="flex flex-col divide-y divide-border">
           {standaloneItems.map((item) => (
-            <li key={item.id} className="flex items-center justify-between py-2 text-sm">
+            <li
+              key={item.id}
+              className="flex items-start justify-between gap-3 py-2 text-sm"
+            >
               <div>
                 <p className="text-text">
-                  {item.item_quantity}× {item.item_name}
-                  {item.unit_name && ` (${item.unit_name})`}
+                  <span className="font-semibold">
+                    {formatQty(item.quantity)}
+                    {item.unit_name && ` ${item.unit_name}`}
+                  </span>{" "}
+                  {item.item_name}
+                  {item.price && (
+                    <span className="text-xs text-text-muted">
+                      {" "}
+                      · ₱{item.price}/{item.unit_name ?? "unit"}
+                    </span>
+                  )}
                 </p>
                 {item.customer_note && (
                   <p className="text-xs text-text-muted">Note: {item.customer_note}</p>
                 )}
+                <VendorPriceEditor orderId={order.id} item={item} />
               </div>
-              <span className="text-text">₱{item.subtotal}</span>
+              <span className="flex shrink-0 flex-col items-end gap-1">
+                <span className="text-text">₱{item.subtotal}</span>
+                {itemsEditable && (
+                  <OrderItemEditor orderId={order.id} item={item} isPaid={isPaid} />
+                )}
+              </span>
             </li>
           ))}
         </ul>
@@ -289,6 +393,12 @@ export default function AdminOrderDetail() {
             <div className="flex justify-between text-status-delivered">
               <span>Bulk delivery subsidy (BULK-FREESHIP-49)</span>
               <span>-₱{order.bulk_delivery_subsidy}</span>
+            </div>
+          )}
+          {vendorSavingsTotal !== null && (
+            <div className="flex justify-between text-text-muted">
+              <span>Vendor haggle savings (admin only)</span>
+              <span>₱{vendorSavingsTotal.toFixed(2)}</span>
             </div>
           )}
           {Number(order.bulk_discount ?? 0) > 0 && (
@@ -336,15 +446,20 @@ export default function AdminOrderDetail() {
                 cookingStatusMutation.isPending &&
                 cookingStatusMutation.variables?.bundleId === bundle.id;
               return (
-                <li key={bundle.id} className="flex flex-col gap-2 rounded-lg border border-border p-3">
+                <li
+                  key={bundle.id}
+                  className="flex flex-col gap-2 rounded-lg border border-border p-3"
+                >
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-sm font-medium text-text">
-                        {bundle.recipe_name} · {formatQty(bundle.quantity)} {bundle.pricing_unit}
+                        {bundle.recipe_name} · {formatQty(bundle.quantity)}{" "}
+                        {bundle.pricing_unit}
                       </p>
                       <p className="text-xs text-text-muted">
                         Deliver to {bundle.stall_name}
-                        {bundle.stall?.contact_phone && ` · ${bundle.stall.contact_phone}`}
+                        {bundle.stall?.contact_phone &&
+                          ` · ${bundle.stall.contact_phone}`}
                         {" · "}cooking fee ₱{bundle.cooking_fee}
                       </p>
                     </div>
@@ -352,7 +467,12 @@ export default function AdminOrderDetail() {
                       {COOKING_STATUS_LABELS[bundle.cooking_status]}
                     </span>
                   </div>
-                  <BundleBuyList items={itemsForBundle(bundle)} />
+                  <BundleBuyList
+                    orderId={order.id}
+                    items={itemsForBundle(bundle)}
+                    editable={itemsEditable}
+                    isPaid={isPaid}
+                  />
                   {forwardCooking && (
                     <Button
                       variant="secondary"
@@ -384,11 +504,20 @@ export default function AdminOrderDetail() {
           </p>
           <ul className="flex flex-col gap-3">
             {rawBundles.map((bundle) => (
-              <li key={bundle.id} className="flex flex-col gap-2 rounded-lg border border-border p-3">
+              <li
+                key={bundle.id}
+                className="flex flex-col gap-2 rounded-lg border border-border p-3"
+              >
                 <p className="text-sm font-medium text-text">
-                  {bundle.recipe_name} · {formatQty(bundle.quantity)} {bundle.pricing_unit}
+                  {bundle.recipe_name} · {formatQty(bundle.quantity)}{" "}
+                  {bundle.pricing_unit}
                 </p>
-                <BundleBuyList items={itemsForBundle(bundle)} />
+                <BundleBuyList
+                  orderId={order.id}
+                  items={itemsForBundle(bundle)}
+                  editable={itemsEditable}
+                  isPaid={isPaid}
+                />
               </li>
             ))}
           </ul>
@@ -413,6 +542,17 @@ export default function AdminOrderDetail() {
           >
             {order.rider ? "Reassign rider" : "Assign rider"}
           </Button>
+        )}
+        {!canAssignRider &&
+          ["order_received", "order_confirmed"].includes(order.status) && (
+            <p className="mt-2 text-xs text-text-muted">
+              You can assign a rider once the order is being prepared.
+            </p>
+          )}
+        {order.status === "preparing_items" && order.rider && (
+          <p className="mt-2 text-xs text-text-muted">
+            The rider marks it out for delivery from the rider app on pickup.
+          </p>
         )}
       </div>
 
@@ -502,7 +642,11 @@ export default function AdminOrderDetail() {
         </div>
       )}
 
-      <Modal isOpen={showRiderPicker} onClose={() => setShowRiderPicker(false)} title="Assign rider">
+      <Modal
+        isOpen={showRiderPicker}
+        onClose={() => setShowRiderPicker(false)}
+        title="Assign rider"
+      >
         {!riders && (
           <div className="flex justify-center py-4">
             <Spinner />

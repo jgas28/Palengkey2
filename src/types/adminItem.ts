@@ -26,6 +26,9 @@ export interface AdminItem {
   /** Per-item bulk threshold override (kg); null = use the category's. */
   bulk_min_kg: string | null;
   category_bulk_min_kg: string | null;
+  /** Per-item ₱/kg bulk discount override; null = use the category's. */
+  bulk_discount_per_kg: string | null;
+  category_bulk_discount_per_kg: string | null;
   images: AdminItemImage[];
   market: AdminItemMarketListing | null;
 }

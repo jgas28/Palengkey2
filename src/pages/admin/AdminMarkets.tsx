@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { Spinner } from "@/components/common/LoadingState";
@@ -34,6 +39,7 @@ interface MarketFormState {
   longitude: string;
   status: AdminMarketStatus;
   cutoff_time: string;
+  cutoff_timezone: string;
   image: File | null;
 }
 
@@ -45,6 +51,7 @@ const EMPTY_FORM: MarketFormState = {
   longitude: "",
   status: 1,
   cutoff_time: "17:00",
+  cutoff_timezone: "Asia/Manila",
   image: null,
 };
 
@@ -59,6 +66,7 @@ export default function AdminMarkets() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["adminMarketsFull", search],
     queryFn: () => listAdminMarketsFull({ search: search || undefined }),
+    placeholderData: keepPreviousData,
   });
 
   function openCreate() {
@@ -76,6 +84,7 @@ export default function AdminMarkets() {
       longitude: market.longitude,
       status: market.status,
       cutoff_time: market.cutoff_time ?? "17:00",
+      cutoff_timezone: market.cutoff_timezone ?? "Asia/Manila",
       image: null,
     });
   }
@@ -96,6 +105,7 @@ export default function AdminMarkets() {
         longitude: Number(form.longitude),
         status: form.status,
         cutoff_time: form.cutoff_time,
+        cutoff_timezone: form.cutoff_timezone,
         image: form.image ?? undefined,
       }),
     onSuccess: () => {
@@ -105,7 +115,10 @@ export default function AdminMarkets() {
       closeModals();
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not create market.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not create market.",
+        "error",
+      );
     },
   });
 
@@ -120,6 +133,7 @@ export default function AdminMarkets() {
         longitude: Number(form.longitude),
         status: form.status,
         cutoff_time: form.cutoff_time,
+        cutoff_timezone: form.cutoff_timezone,
         image: form.image ?? undefined,
       });
     },
@@ -130,7 +144,10 @@ export default function AdminMarkets() {
       closeModals();
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not update market.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not update market.",
+        "error",
+      );
     },
   });
 
@@ -142,7 +159,10 @@ export default function AdminMarkets() {
       showToast("Market deactivated.", "success");
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not deactivate market.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not deactivate market.",
+        "error",
+      );
     },
   });
 
@@ -179,13 +199,19 @@ export default function AdminMarkets() {
       {isError && <ErrorState onRetry={() => void refetch()} />}
 
       {data && data.data.length === 0 && (
-        <EmptyState title="No markets yet." description="Add a market to start listing items." />
+        <EmptyState
+          title="No markets yet."
+          description="Add a market to start listing items."
+        />
       )}
 
       {data && data.data.length > 0 && (
         <ul className="flex flex-col divide-y divide-border rounded-card border border-border">
           {data.data.map((market) => (
-            <li key={market.id} className="flex items-center justify-between gap-3 px-4 py-3">
+            <li
+              key={market.id}
+              className="flex items-center justify-between gap-3 px-4 py-3"
+            >
               <button
                 type="button"
                 onClick={() => openEdit(market)}
@@ -293,11 +319,29 @@ export default function AdminMarkets() {
               />
             </label>
             <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
+              Cutoff timezone
+              <select
+                value={form.cutoff_timezone}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, cutoff_timezone: e.target.value }))
+                }
+                className="rounded-lg border border-border bg-surface p-3 text-sm font-normal text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+              >
+                <option value="Asia/Manila">Asia/Manila (PH)</option>
+                <option value="America/New_York">America/New_York</option>
+                <option value="Europe/London">Europe/London</option>
+                <option value="Australia/Sydney">Australia/Sydney</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
               Status
               <select
                 value={form.status}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, status: Number(e.target.value) as AdminMarketStatus }))
+                  setForm((f) => ({
+                    ...f,
+                    status: Number(e.target.value) as AdminMarketStatus,
+                  }))
                 }
                 className="rounded-lg border border-border bg-surface p-3 text-sm font-normal text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
               >
@@ -312,7 +356,9 @@ export default function AdminMarkets() {
             <input
               type="file"
               accept="image/*"
-              onChange={(e) => setForm((f) => ({ ...f, image: e.target.files?.[0] ?? null }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, image: e.target.files?.[0] ?? null }))
+              }
               className="text-sm text-text-muted"
             />
           </label>
@@ -327,7 +373,9 @@ export default function AdminMarkets() {
           <Button
             loading={editingMarket ? updateMutation.isPending : createMutation.isPending}
             disabled={!isFormValid}
-            onClick={() => (editingMarket ? updateMutation.mutate() : createMutation.mutate())}
+            onClick={() =>
+              editingMarket ? updateMutation.mutate() : createMutation.mutate()
+            }
           >
             {editingMarket ? "Save changes" : "Add market"}
           </Button>

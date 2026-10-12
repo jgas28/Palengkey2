@@ -26,15 +26,16 @@ export default function CartBulkBanner({ bulk }: CartBulkBannerProps) {
         </strong>
         {bulk.active && (
           <p>
-            Wholesale pricing applied{savings > 0 ? ` — you're saving ${formatPeso(savings)}` : ""}.
-            Delivery covered up to {formatPeso(cap)} with {bulk.voucher_code} at checkout.
+            Wholesale pricing applied
+            {savings > 0 ? ` — you're saving ${formatPeso(savings)}` : ""}. Delivery
+            covered up to {formatPeso(cap)} with {bulk.voucher_code} at checkout.
           </p>
         )}
         {pending.map((entry) => (
           <p key={entry.item_id}>
             {entry.name}: {formatKg(entry.total_kg)}kg in basket — add{" "}
-            {formatKg(kgToGo(entry.total_kg, entry.threshold_kg))}kg more for the bulk price (
-            {formatKg(entry.threshold_kg)}kg+).
+            {formatKg(kgToGo(entry.total_kg, entry.threshold_kg))}kg more for the bulk
+            price ({formatKg(entry.threshold_kg)}kg+).
           </p>
         ))}
       </div>

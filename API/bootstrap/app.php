@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'admin.role' => \App\Http\Middleware\EnsureAdminRole::class,
+            'rider.owns' => \App\Http\Middleware\RiderOwnsRequest::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -1,10 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import PkField from "@/components/pk/PkField";
-import {
-  confirmAccountDeletion,
-  requestAccountDeletion,
-} from "@/services/api/profile";
+import { confirmAccountDeletion, requestAccountDeletion } from "@/services/api/profile";
 import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
 import type { OtpChannel } from "@/types/auth";
@@ -49,7 +46,10 @@ export default function DeleteAccountForm() {
       await clearSession();
       navigate("/login", { replace: true });
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Could not delete account.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not delete account.",
+        "error",
+      );
     } finally {
       setDeleting(false);
     }
@@ -72,10 +72,20 @@ export default function DeleteAccountForm() {
           error={otpError}
         />
 
-        <button type="submit" className="btn primary" style={{ background: "#b82f2f" }} disabled={deleting}>
+        <button
+          type="submit"
+          className="btn primary"
+          style={{ background: "#b82f2f" }}
+          disabled={deleting}
+        >
           {deleting ? "Deleting…" : "Permanently delete my account"}
         </button>
-        <button type="button" className="btn outline" onClick={() => setStep("warn")} disabled={deleting}>
+        <button
+          type="button"
+          className="btn outline"
+          onClick={() => setStep("warn")}
+          disabled={deleting}
+        >
           Back
         </button>
       </form>
@@ -86,15 +96,15 @@ export default function DeleteAccountForm() {
     <div style={{ display: "grid", gap: 14 }}>
       <div className="checkout-cutoff" style={{ margin: 0 }}>
         <div style={{ display: "grid", gap: 6, fontSize: 11, lineHeight: 1.6 }}>
-        <strong>This can&apos;t be undone.</strong>
-        <p>
-          Your name, email, phone, saved addresses, and ID documents will be permanently
-          removed. Your order history is kept for tax/financial records, but won&apos;t be
-          linked to your identity anymore.
-        </p>
-        <p>
-          Your email and phone number will be locked from re-registration for 120 days.
-        </p>
+          <strong>This can&apos;t be undone.</strong>
+          <p>
+            Your name, email, phone, saved addresses, and ID documents will be permanently
+            removed. Your order history is kept for tax/financial records, but won&apos;t
+            be linked to your identity anymore.
+          </p>
+          <p>
+            Your email and phone number will be locked from re-registration for 120 days.
+          </p>
         </div>
       </div>
 
@@ -102,10 +112,20 @@ export default function DeleteAccountForm() {
         We&apos;ll send a confirmation code before anything is deleted.
       </p>
 
-      <button type="button" className="btn primary" disabled={requesting !== null} onClick={() => void requestCode("email")}>
+      <button
+        type="button"
+        className="btn primary"
+        disabled={requesting !== null}
+        onClick={() => void requestCode("email")}
+      >
         {requesting === "email" ? "Sending…" : "Send code via email"}
       </button>
-      <button type="button" className="btn outline" disabled={requesting !== null} onClick={() => void requestCode("sms")}>
+      <button
+        type="button"
+        className="btn outline"
+        disabled={requesting !== null}
+        onClick={() => void requestCode("sms")}
+      >
         {requesting === "sms" ? "Sending…" : "Send code via SMS"}
       </button>
     </div>

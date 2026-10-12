@@ -20,7 +20,7 @@ export default function RedirectPaymentScreen() {
       timeoutMessage="This is taking longer than expected. Please try again."
       expiryHint="Finish paying within 15–30 minutes or the order is cancelled."
       renderPending={(order) => {
-        const redirectUrl = order?.cashlessPayment?.redirect_url ?? initialRedirectUrl;
+        const redirectUrl = order?.cashless_payment?.redirect_url ?? initialRedirectUrl;
         const label = order ? paymentMethodLabel(order.payment_method) : "payment page";
         return (
           <button

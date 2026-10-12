@@ -9,6 +9,8 @@ export interface OrderItem {
   price_at_purchase: string;
   subtotal: number | string;
   customer_note: string | null;
+  /** Catalog photo, when the item still exists. */
+  image?: string | null;
 }
 
 export type PaymentMethod =
@@ -95,12 +97,19 @@ export interface Order {
   delivery_slot: string | null;
   notes: string | null;
   items: OrderItem[];
-  recipeBundles: OrderRecipeBundle[];
-  cashlessPayment: CashlessPayment | null;
+  recipe_bundles: OrderRecipeBundle[];
+  cashless_payment: CashlessPayment | null;
   rider: OrderRider | null;
+  /** Where the order is bought — for the route map. Coordinates are decimal strings. */
+  market?: { id: number; name: string; latitude: string | number | null; longitude: string | number | null } | null;
   cancellation_reason: string | null;
   delivery_photo: string | null;
   received_at?: string;
+  /** When each step happened (null until it does). */
+  accepted_at?: string | null;
+  prepared_at?: string | null;
+  out_for_delivery_at?: string | null;
+  completed_at?: string | null;
   created_at: string;
 }
 

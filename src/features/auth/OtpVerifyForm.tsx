@@ -173,7 +173,14 @@ export default function OtpVerifyForm() {
         </div>
       ) : (
         <>
-          <div style={{ display: "flex", justifyContent: "center", gap: 8, margin: "22px 0" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              gap: 8,
+              margin: "22px 0",
+            }}
+          >
             {digits.map((digit, i) => (
               <input
                 key={i}

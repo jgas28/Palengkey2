@@ -1,5 +1,10 @@
 import { useState, type FormEvent } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
@@ -62,6 +67,7 @@ function TypesPanel() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["adminTypes", search],
     queryFn: () => listAdminTypes({ search: search || undefined }),
+    placeholderData: keepPreviousData,
   });
 
   const createMutation = useMutation({
@@ -73,7 +79,10 @@ function TypesPanel() {
       closeForm();
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not create type.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not create type.",
+        "error",
+      );
     },
   });
 
@@ -85,7 +94,10 @@ function TypesPanel() {
       closeForm();
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not update type.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not update type.",
+        "error",
+      );
     },
   });
 
@@ -96,7 +108,10 @@ function TypesPanel() {
       showToast("Type deactivated.", "success");
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not deactivate type.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not deactivate type.",
+        "error",
+      );
     },
   });
 
@@ -161,13 +176,20 @@ function TypesPanel() {
       <ul className="flex flex-col divide-y divide-border rounded-card border border-border">
         {data.data.map((type) => (
           <li key={type.id} className="flex items-center justify-between gap-3 px-4 py-3">
-            <button type="button" onClick={() => openEditForm(type)} className="flex-1 text-left">
+            <button
+              type="button"
+              onClick={() => openEditForm(type)}
+              className="flex-1 text-left"
+            >
               <span className="font-medium text-text">{type.name}</span>
               <span className="ml-2 text-xs text-text-muted">
-                {type.active_items_count} active item{type.active_items_count === 1 ? "" : "s"}
+                {type.active_items_count} active item
+                {type.active_items_count === 1 ? "" : "s"}
               </span>
             </button>
-            <span className={`text-xs font-semibold ${type.status ? "text-status-delivered" : "text-text-muted"}`}>
+            <span
+              className={`text-xs font-semibold ${type.status ? "text-status-delivered" : "text-text-muted"}`}
+            >
               {type.status ? "Active" : "Inactive"}
             </span>
             {type.status ? (
@@ -193,10 +215,23 @@ function TypesPanel() {
         ))}
       </ul>
 
-      <Modal isOpen={formOpen} onClose={closeForm} title={editing ? "Edit type" : "Add type"}>
+      <Modal
+        isOpen={formOpen}
+        onClose={closeForm}
+        title={editing ? "Edit type" : "Add type"}
+      >
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} required />
-          <Button type="submit" fullWidth loading={createMutation.isPending || updateMutation.isPending}>
+          <Input
+            label="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+          <Button
+            type="submit"
+            fullWidth
+            loading={createMutation.isPending || updateMutation.isPending}
+          >
             {editing ? "Save changes" : "Create type"}
           </Button>
         </form>
@@ -217,6 +252,7 @@ function UnitsPanel() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["adminUnits", search],
     queryFn: () => listAdminUnits({ search: search || undefined }),
+    placeholderData: keepPreviousData,
   });
 
   const createMutation = useMutation({
@@ -228,7 +264,10 @@ function UnitsPanel() {
       closeForm();
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not create unit.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not create unit.",
+        "error",
+      );
     },
   });
 
@@ -240,7 +279,10 @@ function UnitsPanel() {
       closeForm();
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not update unit.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not update unit.",
+        "error",
+      );
     },
   });
 
@@ -251,7 +293,10 @@ function UnitsPanel() {
       showToast("Unit deactivated.", "success");
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not deactivate unit.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not deactivate unit.",
+        "error",
+      );
     },
   });
 
@@ -319,15 +364,22 @@ function UnitsPanel() {
       <ul className="flex flex-col divide-y divide-border rounded-card border border-border">
         {data.data.map((unit) => (
           <li key={unit.id} className="flex items-center justify-between gap-3 px-4 py-3">
-            <button type="button" onClick={() => openEditForm(unit)} className="flex-1 text-left">
+            <button
+              type="button"
+              onClick={() => openEditForm(unit)}
+              className="flex-1 text-left"
+            >
               <span className="font-medium text-text">
                 {unit.name} <span className="text-text-muted">({unit.short_name})</span>
               </span>
               <span className="ml-2 text-xs text-text-muted">
-                {unit.active_items_count} active item{unit.active_items_count === 1 ? "" : "s"}
+                {unit.active_items_count} active item
+                {unit.active_items_count === 1 ? "" : "s"}
               </span>
             </button>
-            <span className={`text-xs font-semibold ${unit.status ? "text-status-delivered" : "text-text-muted"}`}>
+            <span
+              className={`text-xs font-semibold ${unit.status ? "text-status-delivered" : "text-text-muted"}`}
+            >
               {unit.status ? "Active" : "Inactive"}
             </span>
             {unit.status ? (
@@ -353,9 +405,18 @@ function UnitsPanel() {
         ))}
       </ul>
 
-      <Modal isOpen={formOpen} onClose={closeForm} title={editing ? "Edit unit" : "Add unit"}>
+      <Modal
+        isOpen={formOpen}
+        onClose={closeForm}
+        title={editing ? "Edit unit" : "Add unit"}
+      >
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} required />
+          <Input
+            label="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
           <Input
             label="Short name"
             value={shortName}
@@ -363,7 +424,11 @@ function UnitsPanel() {
             placeholder="kg, g, pc, ..."
             required
           />
-          <Button type="submit" fullWidth loading={createMutation.isPending || updateMutation.isPending}>
+          <Button
+            type="submit"
+            fullWidth
+            loading={createMutation.isPending || updateMutation.isPending}
+          >
             {editing ? "Save changes" : "Create unit"}
           </Button>
         </form>

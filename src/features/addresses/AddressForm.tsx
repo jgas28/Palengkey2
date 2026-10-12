@@ -64,7 +64,10 @@ export default function AddressForm({ existingAddress, onSaved }: AddressFormPro
     setCoords(result);
   }
 
-  function handleMapChange(nextCoords: { lat: number; lng: number }, formattedAddress?: string) {
+  function handleMapChange(
+    nextCoords: { lat: number; lng: number },
+    formattedAddress?: string,
+  ) {
     setCoords(nextCoords);
     if (formattedAddress && !address.trim()) {
       setAddress(formattedAddress);
@@ -130,12 +133,25 @@ export default function AddressForm({ existingAddress, onSaved }: AddressFormPro
       </div>
 
       <div style={{ display: "grid", gap: 8, marginBottom: 20 }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 8, color: "#465456", fontSize: 9, fontWeight: 700 }}>
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            color: "#465456",
+            fontSize: 9,
+            fontWeight: 700,
+          }}
+        >
           Pin your exact location
           {coords && <span style={{ color: "var(--teal)" }}>Location set ✓</span>}
         </span>
         <div style={{ overflow: "hidden", borderRadius: 14 }}>
-          <AddressMapPicker lat={coords?.lat ?? 0} lng={coords?.lng ?? 0} onChange={handleMapChange} />
+          <AddressMapPicker
+            lat={coords?.lat ?? 0}
+            lng={coords?.lng ?? 0}
+            onChange={handleMapChange}
+          />
         </div>
         <button
           type="button"
@@ -144,15 +160,23 @@ export default function AddressForm({ existingAddress, onSaved }: AddressFormPro
           disabled={locating}
           onClick={() => void handleUseLocation()}
         >
-          <Icon name="truck" size={15} /> {locating ? "Locating…" : "Use my current location"}
+          <Icon name="truck" size={15} />{" "}
+          {locating ? "Locating…" : "Use my current location"}
         </button>
-        {errors.coords && <small style={{ color: "#dc2626", fontSize: 10 }}>{errors.coords}</small>}
+        {errors.coords && (
+          <small style={{ color: "#dc2626", fontSize: 10 }}>{errors.coords}</small>
+        )}
         <small style={{ color: "var(--muted)", fontSize: 9 }}>
           Tap or drag the pin to set exactly where we should deliver.
         </small>
       </div>
 
-      <button type="submit" className="btn primary" style={{ width: "100%" }} disabled={saveMutation.isPending}>
+      <button
+        type="submit"
+        className="btn primary"
+        style={{ width: "100%" }}
+        disabled={saveMutation.isPending}
+      >
         {saveMutation.isPending ? "Saving…" : "Save address"} <Icon name="check" />
       </button>
     </form>

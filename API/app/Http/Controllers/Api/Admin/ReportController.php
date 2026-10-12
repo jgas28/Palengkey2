@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CustomerVerification;
 use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Setting;
 use App\Models\Rider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -265,6 +267,206 @@ class ReportController extends Controller
         }, 200, [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => "attachment; filename={$filename}",
+        ]);
+    }
+
+    private const COMPLETED = ['delivered', 'completed'];
+
+    /** Products: best sellers, sales by category and a daily sales trend. */
+    public function products(Request $request)
+    {
+        [$start, $end] = $this->dateRange($request);
+
+        $lines = DB::table('order_items')
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->leftJoin('items', 'items.id', '=', 'order_items.item_id')
+            ->leftJoin('categories', 'categories.id', '=', 'items.category_id')
+            ->whereIn('orders.status', self::COMPLETED)
+            ->whereBetween(DB::raw('DATE(orders.created_at)'), [$start, $end]);
+
+        $topItems = (clone $lines)
+            ->groupBy('order_items.item_id', 'order_items.item_name', 'order_items.unit_name', 'categories.name')
+            ->selectRaw('order_items.item_id, order_items.item_name, order_items.unit_name, categories.name as category,
+                SUM(order_items.quantity) as quantity, SUM(order_items.subtotal) as revenue,
+                COUNT(DISTINCT order_items.order_id) as orders')
+            ->orderByDesc('revenue')
+            ->get()
+            ->map(fn ($row) => [
+                'item_id' => $row->item_id,
+                'item_name' => $row->item_name,
+                'unit_name' => $row->unit_name,
+                'category' => $row->category,
+                'quantity' => round((float) $row->quantity, 3),
+                'revenue' => round((float) $row->revenue, 2),
+                'orders' => (int) $row->orders,
+            ]);
+
+        if ($request->query('format') === 'csv') {
+            return $this->streamCsv(
+                "product_sales_{$start}_to_{$end}.csv",
+                ['Item', 'Category', 'Unit', 'Quantity Sold', 'Orders', 'Revenue'],
+                $topItems,
+                fn ($row) => [$row['item_name'], $row['category'], $row['unit_name'], $row['quantity'], $row['orders'], $row['revenue']],
+            );
+        }
+
+        $byCategory = $topItems->groupBy(fn ($row) => $row['category'] ?? 'Uncategorized')
+            ->map(fn ($rows, $category) => [
+                'category' => $category,
+                'items' => $rows->count(),
+                'revenue' => round($rows->sum('revenue'), 2),
+            ])
+            ->sortByDesc('revenue')
+            ->values();
+
+        $daily = Order::query()
+            ->whereIn('status', self::COMPLETED)
+            ->whereBetween(DB::raw('DATE(created_at)'), [$start, $end])
+            ->groupBy(DB::raw('DATE(created_at)'))
+            ->selectRaw('DATE(created_at) as day, COUNT(*) as orders, SUM(total_amount) as sales')
+            ->orderBy('day')
+            ->get()
+            ->map(fn ($row) => [
+                'day' => (string) $row->day,
+                'orders' => (int) $row->orders,
+                'sales' => round((float) $row->sales, 2),
+            ]);
+
+        return response()->json([
+            'start_date' => $start,
+            'end_date' => $end,
+            'top_items' => $topItems->take(50)->values(),
+            'sales_by_category' => $byCategory,
+            'daily_sales' => $daily,
+        ]);
+    }
+
+    /** Payments: completed sales by payment method. */
+    public function payments(Request $request)
+    {
+        [$start, $end] = $this->dateRange($request);
+
+        $rows = Order::query()
+            ->whereIn('status', self::COMPLETED)
+            ->whereBetween(DB::raw('DATE(created_at)'), [$start, $end])
+            ->groupBy('payment_method')
+            ->selectRaw('payment_method, COUNT(*) as orders, SUM(total_amount) as total')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn ($row) => [
+                'payment_method' => $row->payment_method,
+                'label' => Order::PAYMENT_METHOD_LABELS[$row->payment_method] ?? ($row->payment_method ?: 'Unknown'),
+                'orders' => (int) $row->orders,
+                'total' => round((float) $row->total, 2),
+            ]);
+
+        if ($request->query('format') === 'csv') {
+            return $this->streamCsv(
+                "payments_report_{$start}_to_{$end}.csv",
+                ['Payment Method', 'Orders', 'Total'],
+                $rows,
+                fn ($row) => [$row['label'], $row['orders'], $row['total']],
+            );
+        }
+
+        $grand = $rows->sum('total');
+
+        return response()->json([
+            'start_date' => $start,
+            'end_date' => $end,
+            'total' => round($grand, 2),
+            'methods' => $rows->map(fn ($row) => $row + [
+                'share' => $grand > 0 ? round($row['total'] / $grand * 100, 1) : 0,
+            ])->values(),
+        ]);
+    }
+
+    /**
+     * Discounts & margins: what bulk pricing, vouchers and the delivery subsidy
+     * cost us, the markup earned, and what staff saved by haggling with vendors.
+     */
+    public function discounts(Request $request)
+    {
+        [$start, $end] = $this->dateRange($request);
+
+        $orders = Order::with('market')
+            ->whereIn('status', self::COMPLETED)
+            ->whereBetween(DB::raw('DATE(created_at)'), [$start, $end])
+            ->get();
+
+        $vendorLines = collect();
+
+        if (OrderItem::hasVendorColumns()) {
+            $vendorLines = OrderItem::with('order:id,order_number,market_id', 'order.market:id,name')
+                ->whereIn('order_id', $orders->pluck('id'))
+                ->where(fn ($q) => $q->whereNotNull('vendor_price')->orWhereNotNull('vendor_note'))
+                ->orderByDesc('vendor_price_at')
+                ->get()
+                ->map(function (OrderItem $line) {
+                    $listed = $line->vendor_list_price !== null ? (float) $line->vendor_list_price : null;
+                    $paid = $line->vendor_price !== null ? (float) $line->vendor_price : null;
+
+                    return [
+                        'id' => $line->id,
+                        'order_id' => $line->order_id,
+                        'order_number' => $line->order?->order_number,
+                        'market_name' => $line->order?->market?->name,
+                        'item_name' => $line->item_name,
+                        'unit_name' => $line->unit_name,
+                        'quantity' => (float) $line->quantity,
+                        'listed_price' => $listed,
+                        'paid_price' => $paid,
+                        'savings' => $listed !== null && $paid !== null ? round(($listed - $paid) * (float) $line->quantity, 2) : null,
+                        'note' => $line->vendor_note,
+                        'recorded_at' => $line->vendor_price_at?->toIso8601String(),
+                    ];
+                });
+        }
+
+        if ($request->query('format') === 'csv') {
+            return $this->streamCsv(
+                "vendor_savings_{$start}_to_{$end}.csv",
+                ['Order #', 'Market', 'Item', 'Unit', 'Quantity', 'Listed Price', 'Paid Price', 'Savings', 'Admin Note', 'Recorded'],
+                $vendorLines,
+                fn ($row) => [
+                    $row['order_number'], $row['market_name'], $row['item_name'], $row['unit_name'], $row['quantity'],
+                    $row['listed_price'], $row['paid_price'], $row['savings'], $row['note'], $row['recorded_at'],
+                ],
+            );
+        }
+
+        $markup = (float) Setting::get('item_markup_percent', 10);
+        // Markup earned = subtotal − subtotal / (1 + markup%); approximate for bulk lines.
+        $markupEarned = fn ($subtotal) => (float) $subtotal - (float) $subtotal / (1 + $markup / 100);
+        $vendorByOrder = $vendorLines->groupBy('order_id')->map(fn ($rows) => (float) $rows->sum('savings'));
+
+        $byMarket = $orders->groupBy('market_id')->map(fn ($marketOrders) => [
+            'market_id' => $marketOrders->first()->market_id,
+            'market_name' => $marketOrders->first()->market?->name,
+            'orders' => $marketOrders->count(),
+            'bulk_discount' => round((float) $marketOrders->sum('bulk_discount'), 2),
+            'bulk_delivery_subsidy' => round((float) $marketOrders->sum('bulk_delivery_subsidy'), 2),
+            'voucher_discount' => round((float) $marketOrders->sum('voucher_discount'), 2),
+            'markup_earned' => round($marketOrders->sum(fn ($o) => $markupEarned($o->subtotal)), 2),
+            'vendor_savings' => round($marketOrders->sum(fn ($o) => $vendorByOrder[$o->id] ?? 0), 2),
+        ])->sortByDesc('orders')->values();
+
+        return response()->json([
+            'start_date' => $start,
+            'end_date' => $end,
+            'markup_percent' => $markup,
+            'totals' => [
+                'orders' => $orders->count(),
+                'bulk_orders' => $orders->filter(fn ($o) => (float) $o->bulk_discount > 0 || (float) $o->bulk_delivery_subsidy > 0)->count(),
+                'bulk_discount' => round((float) $orders->sum('bulk_discount'), 2),
+                'bulk_delivery_subsidy' => round((float) $orders->sum('bulk_delivery_subsidy'), 2),
+                'voucher_discount' => round((float) $orders->sum('voucher_discount'), 2),
+                'markup_earned' => round($orders->sum(fn ($o) => $markupEarned($o->subtotal)), 2),
+                'vendor_savings' => round((float) $vendorLines->sum('savings'), 2),
+                'vendor_lines_recorded' => $vendorLines->count(),
+            ],
+            'by_market' => $byMarket,
+            'vendor_lines' => $vendorLines->values(),
         ]);
     }
 

@@ -15,7 +15,14 @@ export interface PkDrawerProps {
 }
 
 /** The design's right-side sheet (.recipe-drawer) — bottom sheet on mobile, via the stylesheet. */
-export default function PkDrawer({ isOpen, onClose, label, photo, action, children }: PkDrawerProps) {
+export default function PkDrawer({
+  isOpen,
+  onClose,
+  label,
+  photo,
+  action,
+  children,
+}: PkDrawerProps) {
   const ref = useRef<HTMLElement>(null);
   useFocusTrap(ref, isOpen, onClose);
 
@@ -40,7 +47,12 @@ export default function PkDrawer({ isOpen, onClose, label, photo, action, childr
         aria-label={label}
         onClick={(event) => event.stopPropagation()}
       >
-        <button type="button" className="drawer-close" onClick={onClose} aria-label="Close">
+        <button
+          type="button"
+          className="drawer-close"
+          onClick={onClose}
+          aria-label="Close"
+        >
           <Icon name="x" />
         </button>
         {photo && <div className="drawer-photo">{photo}</div>}

@@ -1,14 +1,15 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import Input from "@/components/ui/Input";
-import Button from "@/components/ui/Button";
+import AuthShell from "@/features/auth/AuthShell";
 import { adminLogin } from "@/services/api/adminAuth";
 import { useAdminAuthStore } from "@/stores/adminAuthStore";
 import { useToastStore } from "@/stores/toastStore";
 
+/** Admin / super admin login — same photo-and-card layout as the customer login. */
 export default function AdminLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [submitting, setSubmitting] = useState(false);
   const setSession = useAdminAuthStore((state) => state.setSession);
@@ -37,41 +38,77 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="relative flex min-h-full flex-col items-center justify-center overflow-hidden bg-gradient-brand px-4 py-10">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-accent/25 blur-3xl"
-      />
-      <div className="relative w-full max-w-sm">
-        <p className="mb-1 text-center text-2xl font-semibold text-white">Palengkey</p>
-        <p className="mb-8 text-center text-sm text-white/80">Admin Panel</p>
-        <div className="animate-scale-in rounded-card bg-surface p-6 shadow-lifted">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <h1 className="text-lg font-semibold">Log in</h1>
-
-            <Input
-              label="Email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              error={errors.email}
-            />
-            <Input
-              label="Password"
-              type="password"
+    <AuthShell
+      quote="“Every fresh order starts with the market team.”"
+      homeHref="/admin/login"
+    >
+      <p className="kicker">Palengkey Admin Panel</p>
+      <h1>Log in to manage</h1>
+      <p>For market admins, super admins, marketing and finance staff.</p>
+      <form onSubmit={handleSubmit} noValidate style={{ marginTop: 18 }}>
+        <label htmlFor="admin-email">
+          Email Address
+          <input
+            id="admin-email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@palengkey.ph"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            aria-invalid={Boolean(errors.email)}
+            style={errors.email ? { borderColor: "#dc2626" } : undefined}
+          />
+          {errors.email && (
+            <small style={{ color: "#dc2626", fontWeight: 500 }}>{errors.email}</small>
+          )}
+        </label>
+        <label htmlFor="admin-password">
+          Password
+          <span style={{ position: "relative", display: "block" }}>
+            <input
+              id="admin-password"
+              type={showPassword ? "text" : "password"}
               autoComplete="current-password"
+              placeholder="Your password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              error={errors.password}
+              aria-invalid={Boolean(errors.password)}
+              style={
+                errors.password
+                  ? { borderColor: "#dc2626", paddingRight: 64 }
+                  : { paddingRight: 64 }
+              }
             />
-
-            <Button type="submit" fullWidth loading={submitting}>
-              Log in
-            </Button>
-          </form>
-        </div>
-      </div>
-    </div>
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              style={{
+                position: "absolute",
+                right: 10,
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "var(--teal-dark)",
+                background: "none",
+                border: 0,
+                fontSize: 10,
+                fontWeight: 700,
+              }}
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </span>
+          {errors.password && (
+            <small style={{ color: "#dc2626", fontWeight: 500 }}>{errors.password}</small>
+          )}
+        </label>
+        <button type="submit" className="btn primary auth-submit" disabled={submitting}>
+          {submitting ? "Logging in…" : "Log in"}
+        </button>
+      </form>
+      <p className="auth-switch">
+        Forgot your password? Ask your super admin to reset it.
+      </p>
+    </AuthShell>
   );
 }

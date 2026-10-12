@@ -8,6 +8,7 @@ use App\Models\Market;
 use App\Models\MarketItem;
 use App\Models\MarketPriceSnapshot;
 use App\Services\AuditLogger;
+use App\Services\ItemCsvParser;
 use App\Services\PriceRecorder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -38,7 +39,18 @@ class ItemController extends Controller
         }
 
         $items = $query->orderBy('name')->paginate(20);
-        $items->getCollection()->transform(fn (Item $item) => $this->formatItem($item, $marketId));
+
+        // One query each for the page's market listings and prices (was 2 per item).
+        $ids = $items->getCollection()->pluck('id');
+        $listings = $marketId ? MarketItem::where('market_id', $marketId)->whereIn('item_id', $ids)->get()->keyBy('item_id') : collect();
+        $snapshots = $marketId ? MarketPriceSnapshot::where('market_id', $marketId)->whereIn('item_id', $ids)->get()->keyBy('item_id') : collect();
+
+        $items->getCollection()->transform(fn (Item $item) => $this->formatItem(
+            $item,
+            $marketId,
+            $listings->get($item->id),
+            $snapshots->get($item->id),
+        ));
 
         return response()->json($items);
     }
@@ -50,6 +62,50 @@ class ItemController extends Controller
         return response()->json(
             $this->formatItem($item->load(['category', 'type', 'unit', 'images']), $marketId),
         );
+    }
+
+    /**
+     * Batch-create catalog items from a CSV (same columns as the old admin, plus
+     * optional bulk overrides). Duplicates by name + unit are skipped. Photos and
+     * market prices are added afterwards (item edit / Inventory import).
+     */
+    public function import(Request $request)
+    {
+        $request->validate(['file' => 'required|file|mimes:csv,txt|max:4096']);
+
+        $parsed = ItemCsvParser::parse($request->file('file')->getRealPath());
+        $created = [];
+
+        DB::transaction(function () use ($parsed, &$created) {
+            foreach ($parsed['valid'] as $row) {
+                $item = Item::create($row);
+                AuditLogger::log('created', $item, $item->id, null, $item->toArray());
+                $created[] = ['id' => $item->id, 'name' => $item->name];
+            }
+        });
+
+        AuditLogger::custom('items_csv_import_completed', ['created' => count($created), 'errors' => count($parsed['errors'])]);
+
+        return response()->json([
+            'created' => count($created),
+            'items' => $created,
+            'errors' => $parsed['errors'],
+        ]);
+    }
+
+    public function importTemplate()
+    {
+        return response()->stream(function () {
+            $file = fopen('php://output', 'w');
+            fwrite($file, "\xEF\xBB\xBF");
+            fputcsv($file, ['Name', 'Description', 'Category', 'Type', 'Unit', 'Status(YES/NO)', 'CutoffTime(HH:MM)', 'BulkMinKg', 'BulkDiscountPerKg']);
+            fputcsv($file, ['Pork Kasim', 'Fresh pork shoulder', 'Poultry And Meats', '', 'kg', 'YES', '17:00', '', '']);
+            fputcsv($file, ['Calamansi', '', 'Fruits', '', 'kg', 'YES', '', '10', '3']);
+            fclose($file);
+        }, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename=items_import_template.csv',
+        ]);
     }
 
     public function store(Request $request)
@@ -65,6 +121,7 @@ class ItemController extends Controller
             'type_id' => 'nullable|exists:types,id,status,1',
             'unit_id' => 'required|exists:units,id,status,1',
             'bulk_min_kg' => 'nullable|numeric|min:0.001|max:9999',
+            'bulk_discount_per_kg' => 'nullable|numeric|min:0|max:99999',
             'price' => 'required|numeric|min:0',
             'is_available' => 'boolean',
             'cutoff_time' => 'nullable|date_format:H:i',
@@ -94,6 +151,7 @@ class ItemController extends Controller
                     'type_id' => $data['type_id'] ?? null,
                     'unit_id' => $data['unit_id'],
                     'bulk_min_kg' => $data['bulk_min_kg'] ?? null,
+                    'bulk_discount_per_kg' => $data['bulk_discount_per_kg'] ?? null,
                 ]);
 
                 AuditLogger::log('created', $item, $item->id, null, $item->toArray());
@@ -136,6 +194,8 @@ class ItemController extends Controller
             'unit_id' => 'sometimes|required|exists:units,id,status,1',
             // Overrides the category's bulk threshold; blank = use the category's.
             'bulk_min_kg' => 'nullable|numeric|min:0.001|max:9999',
+            // Overrides the category's ₱/kg bulk discount; blank = use the category's.
+            'bulk_discount_per_kg' => 'nullable|numeric|min:0|max:99999',
         ]);
 
         $item->update($data);
@@ -208,15 +268,20 @@ class ItemController extends Controller
         return MarketItem::where('item_id', $item->id)->where('market_id', $marketId)->exists();
     }
 
-    private function formatItem(Item $item, ?int $marketId): array
+    /** $marketItem / $snapshot: preloaded row, null if none, or false to look it up. */
+    private function formatItem(Item $item, ?int $marketId, MarketItem|null|false $marketItem = false, MarketPriceSnapshot|null|false $snapshot = false): array
     {
-        $marketItem = $marketId
-            ? MarketItem::where('item_id', $item->id)->where('market_id', $marketId)->first()
-            : null;
+        if ($marketItem === false) {
+            $marketItem = $marketId
+                ? MarketItem::where('item_id', $item->id)->where('market_id', $marketId)->first()
+                : null;
+        }
 
-        $snapshot = $marketId
-            ? MarketPriceSnapshot::where('item_id', $item->id)->where('market_id', $marketId)->first()
-            : null;
+        if ($snapshot === false) {
+            $snapshot = $marketId
+                ? MarketPriceSnapshot::where('item_id', $item->id)->where('market_id', $marketId)->first()
+                : null;
+        }
 
         return [
             'id' => $item->id,
@@ -232,6 +297,8 @@ class ItemController extends Controller
             'unit' => $item->unit?->name,
             'bulk_min_kg' => $item->bulk_min_kg,
             'category_bulk_min_kg' => $item->category?->bulk_min_kg,
+            'bulk_discount_per_kg' => $item->bulk_discount_per_kg,
+            'category_bulk_discount_per_kg' => $item->category?->bulk_discount_per_kg,
             'images' => $item->images->map(fn ($image) => [
                 'id' => $image->id,
                 'url' => $image->image_url,

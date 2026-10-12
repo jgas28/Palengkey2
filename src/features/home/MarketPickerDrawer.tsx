@@ -72,7 +72,11 @@ export default function MarketPickerDrawer({ isOpen, onClose }: MarketPickerDraw
           />
         </label>
         <div className="market-options">
-          {isLoading && <p style={{ margin: 0, color: "var(--muted)", fontSize: 11 }}>Loading markets…</p>}
+          {isLoading && (
+            <p style={{ margin: 0, color: "var(--muted)", fontSize: 11 }}>
+              Loading markets…
+            </p>
+          )}
           {isError && (
             <button type="button" onClick={() => void refetch()}>
               <span>
@@ -85,7 +89,9 @@ export default function MarketPickerDrawer({ isOpen, onClose }: MarketPickerDraw
             </button>
           )}
           {!isLoading && !isError && shown.length === 0 && (
-            <p style={{ color: "var(--muted)", fontSize: 11 }}>No markets match your search.</p>
+            <p style={{ color: "var(--muted)", fontSize: 11 }}>
+              No markets match your search.
+            </p>
           )}
           {shown.map((market) => {
             const selected = market.id === selectedMarketId;
@@ -110,7 +116,11 @@ export default function MarketPickerDrawer({ isOpen, onClose }: MarketPickerDraw
                 </div>
                 {market.has_items ? (
                   <i>
-                    {selected ? <Icon name="check" size={16} /> : <Icon name="chevron" size={16} />}
+                    {selected ? (
+                      <Icon name="check" size={16} />
+                    ) : (
+                      <Icon name="chevron" size={16} />
+                    )}
                   </i>
                 ) : (
                   <b>Coming soon</b>
@@ -124,7 +134,8 @@ export default function MarketPickerDrawer({ isOpen, onClose }: MarketPickerDraw
           <span>
             <strong>Market-to-door delivery</strong>
             <small>
-              Your order is shopped and delivered from one market to keep everything fresh.
+              Your order is shopped and delivered from one market to keep everything
+              fresh.
             </small>
           </span>
         </div>

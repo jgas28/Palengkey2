@@ -11,7 +11,11 @@ export default function SupportThreadView() {
     <main className="inner-page chat-page">
       <div className="shell chat-shell">
         <header className="chat-header">
-          <button type="button" onClick={() => navigate("/support")} aria-label="Back to support">
+          <button
+            type="button"
+            onClick={() => navigate("/support")}
+            aria-label="Back to support"
+          >
             <Icon name="arrow" />
           </button>
           <span>
@@ -29,7 +33,8 @@ export default function SupportThreadView() {
         </header>
         <ChatThreadPanel threadId={Number(threadId)} />
         <div className="chat-safety">
-          <Icon name="shield" size={13} /> Messages go to the Palengkey customer care team for this order.
+          <Icon name="shield" size={13} /> Messages go to the Palengkey customer care team
+          for this order.
         </div>
       </div>
     </main>

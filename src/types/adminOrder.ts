@@ -24,7 +24,15 @@ export interface AdminOrderItem {
   quantity: string;
   /** Set when this line is an ingredient of a recipe bundle (Buy Raw or a stall's dish). */
   order_recipe_bundle_id: number | null;
+  /** Customer price per unit (decimal string). */
+  price?: string | null;
   subtotal: string;
+  /** Vendor's listed price per unit at checkout, before markup (admin only). */
+  vendor_list_price?: string | null;
+  /** What staff actually paid per unit after haggling; null = not recorded. */
+  vendor_price?: string | null;
+  vendor_note?: string | null;
+  vendor_price_at?: string | null;
 }
 
 export interface AdminOrderCustomer {
@@ -104,7 +112,7 @@ export interface AdminOrderDetail extends AdminOrderSummary {
   cancellation_reason: string | null;
   notes: string | null;
   items: AdminOrderItem[];
-  recipeBundles: AdminOrderRecipeBundle[];
+  recipe_bundles: AdminOrderRecipeBundle[];
   voucher: { id: number; code: string } | null;
   cashless_payment: { provider: string; method: string; status: string; reference: string | null } | null;
 }

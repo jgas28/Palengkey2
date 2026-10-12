@@ -136,14 +136,14 @@ class ItemApiController extends Controller
         ]);
     }
 
-    /** For the "Buy bulk" badge: threshold and wholesale price, null when not eligible. */
+    /** For the quick-view bulk banner: threshold and wholesale price, null when not eligible. */
     private function bulkInfo(Item $item, mixed $basePrice): array
     {
         $threshold = BulkPricing::thresholdKg($item);
 
         return [
             'bulk_min_kg' => $threshold,
-            'bulk_price' => $threshold !== null && $basePrice !== null ? BulkPricing::unitPrice($basePrice) : null,
+            'bulk_price' => $threshold !== null && $basePrice !== null ? round(BulkPricing::unitPrice($item, $basePrice), 2) : null,
             'bulk_delivery_subsidy_cap' => $threshold !== null ? BulkPricing::subsidyCap() : null,
         ];
     }

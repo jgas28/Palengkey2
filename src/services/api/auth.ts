@@ -39,6 +39,20 @@ export async function register(payload: RegisterPayload): Promise<AuthResponse> 
   return data;
 }
 
+export interface GoogleLoginPayload {
+  /** Google ID token — the API verifies it with Google. */
+  id_token: string;
+  device_id: string;
+  device_name?: string;
+  platform?: string;
+}
+
+/** Same response as login(): token is null until the email OTP is verified. */
+export async function googleLogin(payload: GoogleLoginPayload): Promise<AuthResponse> {
+  const { data } = await apiClient.post<AuthResponse>("/customer/auth/google", payload);
+  return data;
+}
+
 export async function login(payload: LoginPayload): Promise<AuthResponse> {
   const { data } = await apiClient.post<AuthResponse>("/customer/login", payload);
   return data;

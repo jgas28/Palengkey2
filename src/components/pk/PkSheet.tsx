@@ -12,7 +12,13 @@ export interface PkSheetProps {
 }
 
 /** The design's form side-sheet (.address-sheet) — used for adding addresses and picking one at checkout. */
-export default function PkSheet({ isOpen, onClose, kicker, title, children }: PkSheetProps) {
+export default function PkSheet({
+  isOpen,
+  onClose,
+  kicker,
+  title,
+  children,
+}: PkSheetProps) {
   const ref = useRef<HTMLElement>(null);
   useFocusTrap(ref, isOpen, onClose);
 
@@ -28,7 +34,12 @@ export default function PkSheet({ isOpen, onClose, kicker, title, children }: Pk
         aria-label={title}
         onClick={(event) => event.stopPropagation()}
       >
-        <button type="button" className="drawer-close" onClick={onClose} aria-label="Close">
+        <button
+          type="button"
+          className="drawer-close"
+          onClick={onClose}
+          aria-label="Close"
+        >
           <Icon name="x" />
         </button>
         {kicker && <p className="kicker">{kicker}</p>}

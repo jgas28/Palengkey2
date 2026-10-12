@@ -4,6 +4,7 @@ import Icon from "@/components/pk/Icon";
 import AccountMenu from "@/components/layout/AccountMenu";
 import { useCart } from "@/features/cart/useCart";
 import { useUnreadCount } from "@/features/notifications/useUnreadCount";
+import NotificationBell from "@/features/notifications/NotificationBell";
 import { useAuthStore } from "@/stores/authStore";
 
 const DESKTOP_LINKS = [
@@ -79,19 +80,7 @@ export default function Header() {
           >
             <Icon name="search" />
           </button>
-          <button
-            type="button"
-            className="icon-btn cart-button hide-mobile"
-            onClick={() => navigate("/notifications")}
-            aria-label={
-              unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"
-            }
-          >
-            <Icon name="bell" />
-            {unreadCount > 0 && (
-              <span className="cart-count">{unreadCount > 99 ? "99+" : unreadCount}</span>
-            )}
-          </button>
+          {isAuthenticated && <NotificationBell />}
           <button
             type="button"
             className="icon-btn cart-button"
@@ -135,7 +124,11 @@ export default function Header() {
             </Link>
           ))}
           {!isAuthenticated && (
-            <button type="button" className="btn primary" onClick={() => navigate("/login")}>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => navigate("/login")}
+            >
               Log in
             </button>
           )}

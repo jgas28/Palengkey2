@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
+import { useLiveRiderLocation } from "@/features/orders/useLiveRiderLocation";
+import CheckoutRouteMap from "@/features/checkout/CheckoutRouteMap";
 import Icon from "@/components/pk/Icon";
 import { getRiderLocation } from "@/services/api/riderTracking";
 import { calculateDistanceKm } from "@/utils/distance";
@@ -44,6 +46,8 @@ export default function OrderDetailView() {
     isLoading,
     isError,
     refetch,
+    dataUpdatedAt,
+    isFetching,
   } = useQuery({
     queryKey: ["order", id],
     queryFn: () => getOrder(id),
@@ -109,16 +113,26 @@ export default function OrderDetailView() {
     }
   }
 
-  const isRiderLive = order ? normalizeOrderStatus(order.status) === "out_for_delivery" : false;
-  const { data: riderLocation } = useQuery({
+  const isRiderLive = order
+    ? normalizeOrderStatus(order.status) === "out_for_delivery"
+    : false;
+  // Live position from Firebase (rider app writes it every few seconds); the API's
+  // last known location is polled only as a fallback while Firebase has nothing.
+  const liveLocation = useLiveRiderLocation(id, isRiderLive && Boolean(order?.rider));
+  const { data: polledLocation } = useQuery({
     queryKey: ["riderLocation", id],
     queryFn: () => getRiderLocation(id),
-    refetchInterval: 8000,
-    enabled: isRiderLive && Boolean(order?.rider),
+    refetchInterval: 15000,
+    enabled: isRiderLive && Boolean(order?.rider) && !liveLocation,
   });
+  const riderPoint = liveLocation
+    ? { lat: liveLocation.lat, lng: liveLocation.lng }
+    : polledLocation
+      ? { lat: Number(polledLocation.latitude), lng: Number(polledLocation.longitude) }
+      : null;
   const riderDistance =
-    riderLocation && order
-      ? `About ${calculateDistanceKm(riderLocation.latitude, riderLocation.longitude, order.latitude, order.longitude).toFixed(1)} km away`
+    riderPoint && order
+      ? `About ${calculateDistanceKm(riderPoint.lat, riderPoint.lng, order.latitude, order.longitude).toFixed(1)} km away`
       : (order?.rider?.phone ?? "");
 
   function handleCancel() {
@@ -143,7 +157,8 @@ export default function OrderDetailView() {
   }
 
   const canonical = normalizeOrderStatus(order.status);
-  const currentIndex = canonical === "pending_payment" ? -1 : ORDER_STATUS_STEPS.indexOf(canonical);
+  const currentIndex =
+    canonical === "pending_payment" ? -1 : ORDER_STATUS_STEPS.indexOf(canonical);
   const isCancelled = canonical === "cancelled";
   const isOutForDelivery = canonical === "out_for_delivery";
   const headline = isCancelled
@@ -162,7 +177,7 @@ export default function OrderDetailView() {
     : canonical === "delivered"
       ? "This market run was completed successfully."
       : order.is_reservation && order.scheduled_delivery_time
-        ? `Scheduled for ${new Date(order.scheduled_delivery_time).toLocaleString("en-PH")}`
+        ? `Scheduled for ${new Date(order.scheduled_delivery_time).toLocaleString("en-PH", { timeZone: "Asia/Manila", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`
         : "We'll keep this page updated as your order moves along.";
   const STEP_DETAIL: Record<string, string> = {
     order_received: "We received your market list.",
@@ -171,7 +186,72 @@ export default function OrderDetailView() {
     out_for_delivery: "Your rider is bringing the order to you.",
     delivered: "Order received at your doorstep.",
   };
-  const palutoBundles = order.recipeBundles.filter((bundle) => bundle.paluto_stall_id !== null);
+  const marketLat = Number(order.market?.latitude);
+  const marketLng = Number(order.market?.longitude);
+  const marketPoint =
+    order.market &&
+    Number.isFinite(marketLat) &&
+    Number.isFinite(marketLng) &&
+    marketLat !== 0
+      ? { lat: marketLat, lng: marketLng, name: order.market.name }
+      : null;
+  // When each step happened, for the progress list.
+  const STEP_TIME: Record<string, string | null | undefined> = {
+    order_received: order.received_at ?? order.created_at,
+    order_confirmed: order.accepted_at,
+    preparing_items: order.prepared_at,
+    out_for_delivery: order.out_for_delivery_at,
+    delivered: order.completed_at,
+  };
+  const timeOf = (iso: string | null | undefined) =>
+    iso
+      ? new Date(iso).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })
+      : null;
+
+  // The "what's happening now / what's next" panel above the map.
+  const kmAway =
+    riderPoint && isOutForDelivery
+      ? calculateDistanceKm(
+          riderPoint.lat,
+          riderPoint.lng,
+          order.latitude,
+          order.longitude,
+        )
+      : null;
+  const etaMinutes = kmAway !== null ? Math.max(2, Math.round((kmAway / 25) * 60)) : null; // ~25 km/h by motorcycle
+  const NOW_TEXT: Record<string, { now: string; next: string }> = {
+    pending_payment: {
+      now: "Waiting for your payment to go through.",
+      next: "Once paid, the market receives your order.",
+    },
+    order_received: {
+      now: "The market has your order and will confirm it shortly.",
+      next: "Next: the market confirms and a shopper is assigned.",
+    },
+    order_confirmed: {
+      now: "Confirmed! A shopper will start picking your items soon.",
+      next: "Next: your shopper picks fresh items at the market.",
+    },
+    preparing_items: {
+      now: order.rider
+        ? `Your shopper is picking your items. ${order.rider.name} will deliver them.`
+        : "Your shopper is picking your fresh items at the market.",
+      next: "Next: live rider tracking starts as soon as the rider picks up your order.",
+    },
+    out_for_delivery: {
+      now:
+        kmAway !== null
+          ? `${order.rider?.name ?? "Your rider"} is ${kmAway.toFixed(1)} km away — about ${etaMinutes} min.`
+          : `${order.rider?.name ?? "Your rider"} is on the way.`,
+      next: "Keep your phone close — your rider may call when they arrive.",
+    },
+  };
+  const statusPanel = NOW_TEXT[canonical];
+  const secondsAgo = Math.max(0, Math.round((Date.now() - dataUpdatedAt) / 1000));
+
+  const palutoBundles = (order.recipe_bundles ?? []).filter(
+    (bundle) => bundle.paluto_stall_id !== null,
+  );
 
   return (
     <main className="inner-page account-bg">
@@ -184,53 +264,140 @@ export default function OrderDetailView() {
           <h1>{headline}</h1>
           <p>{subline}</p>
         </div>
-        <span className={`status ${statusClass(order.status)}`} style={statusStyle(order.status)}>
+        <span
+          className={`status ${statusClass(order.status)}`}
+          style={statusStyle(order.status)}
+        >
           {ORDER_STATUS_LABELS[canonical]}
         </span>
       </div>
 
       <div className="shell tracking-layout">
         <section className="tracking-main">
-          <div className="tracking-map">
-            <span className="road road-one"></span>
-            <span className="road road-two"></span>
-            <span className="road road-three"></span>
-            <div className="map-market">
-              <Icon name="bag" />
-              <small>Market</small>
+          {statusPanel && (
+            <div
+              role="status"
+              style={{
+                display: "flex",
+                gap: 12,
+                alignItems: "flex-start",
+                padding: "14px 16px",
+                marginBottom: 14,
+                background: isOutForDelivery ? "var(--teal)" : "white",
+                color: isOutForDelivery ? "white" : "var(--ink)",
+                border: "1px solid var(--line)",
+                borderRadius: 14,
+              }}
+            >
+              <span
+                style={{
+                  display: "grid",
+                  placeItems: "center",
+                  flex: "0 0 36px",
+                  height: 36,
+                  borderRadius: "50%",
+                  background: isOutForDelivery
+                    ? "rgba(255,255,255,0.2)"
+                    : "var(--teal-pale)",
+                  color: isOutForDelivery ? "white" : "var(--teal)",
+                }}
+              >
+                <Icon
+                  name={
+                    isOutForDelivery
+                      ? "truck"
+                      : canonical === "preparing_items"
+                        ? "bag"
+                        : "clock"
+                  }
+                  size={18}
+                />
+              </span>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}
+              >
+                <strong style={{ fontSize: 14 }}>{statusPanel.now}</strong>
+                <span style={{ fontSize: 12, opacity: 0.85 }}>{statusPanel.next}</span>
+                <small style={{ fontSize: 10, opacity: 0.7 }}>
+                  {isFetching
+                    ? "Checking for updates…"
+                    : `Updated ${secondsAgo < 5 ? "just now" : `${secondsAgo}s ago`} · refreshes automatically`}
+                </small>
+              </div>
             </div>
-            <div className="map-route">
-              <i></i>
-              <i></i>
-              <i></i>
-              <i></i>
-              <i></i>
-              <i></i>
-            </div>
-            <div className="map-home">
-              <Icon name="truck" />
-              <small>Your home</small>
-            </div>
-            <div className="eta-card">
-              <small>{canonical === "delivered" ? "Delivered" : "Status"}</small>
-              <strong>{ORDER_STATUS_LABELS[canonical]}</strong>
-              {order.distance_meters ? (
-                <span>
-                  <Icon name="truck" size={14} /> {(order.distance_meters / 1000).toFixed(1)} km from the market
-                </span>
-              ) : null}
-            </div>
-          </div>
+          )}
+
+          {!isCancelled &&
+            (marketPoint ? (
+              <CheckoutRouteMap
+                market={marketPoint}
+                destination={{
+                  lat: Number(order.latitude),
+                  lng: Number(order.longitude),
+                  label: order.delivery_address,
+                }}
+                rider={riderPoint}
+                height={300}
+              />
+            ) : (
+              <div className="tracking-map">
+                <span className="road road-one"></span>
+                <span className="road road-two"></span>
+                <span className="road road-three"></span>
+                <div className="map-market">
+                  <Icon name="bag" />
+                  <small>Market</small>
+                </div>
+                <div className="map-route">
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                </div>
+                <div className="map-home">
+                  <Icon name="truck" />
+                  <small>Your home</small>
+                </div>
+                <div className="eta-card">
+                  <small>{canonical === "delivered" ? "Delivered" : "Status"}</small>
+                  <strong>{ORDER_STATUS_LABELS[canonical]}</strong>
+                  {order.distance_meters ? (
+                    <span>
+                      <Icon name="truck" size={14} />{" "}
+                      {(order.distance_meters / 1000).toFixed(1)} km from the market
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            ))}
 
           {order.rider && (
             <article className="rider-card">
               <span>{order.rider.name.charAt(0).toUpperCase()}</span>
               <div>
-                <small>{isOutForDelivery ? "Your rider is on the way" : "Your rider"}</small>
+                <small>
+                  {isOutForDelivery ? "Your rider is on the way" : "Your rider"}
+                </small>
                 <strong>{order.rider.name}</strong>
                 <p>{riderDistance}</p>
               </div>
-              <a className="btn" href={`tel:${order.rider.phone}`} style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 11px", color: "var(--teal-dark)", background: "var(--teal-pale)", borderRadius: 9, fontSize: 9, fontWeight: 700 }}>
+              <a
+                className="btn"
+                href={`tel:${order.rider.phone}`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "9px 11px",
+                  color: "var(--teal-dark)",
+                  background: "var(--teal-pale)",
+                  borderRadius: 9,
+                  fontSize: 9,
+                  fontWeight: 700,
+                }}
+              >
                 <Icon name="message" size={17} /> Call rider
               </a>
             </article>
@@ -241,7 +408,11 @@ export default function OrderDetailView() {
               <div className="tracking-section-title">
                 <h2>Proof of delivery</h2>
               </div>
-              <img src={order.delivery_photo} alt="Delivery proof" style={{ height: "auto" }} />
+              <img
+                src={order.delivery_photo}
+                alt="Delivery proof"
+                style={{ height: "auto" }}
+              />
             </article>
           )}
 
@@ -254,8 +425,17 @@ export default function OrderDetailView() {
             </div>
             {order.items.map((item, index) => (
               <div className="tracked-item" key={index}>
-                <span>
-                  <Icon name="leaf" />
+                <span style={item.image ? { overflow: "hidden", padding: 0 } : undefined}>
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt=""
+                      loading="lazy"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  ) : (
+                    <Icon name="leaf" />
+                  )}
                 </span>
                 <div>
                   <strong>{item.item_name}</strong>
@@ -276,7 +456,8 @@ export default function OrderDetailView() {
                     {bundle.recipe_name} · cooked by {bundle.stall_name}
                   </strong>
                   <small>
-                    {Number(bundle.quantity)} {bundle.pricing_unit} · {COOKING_LABELS[bundle.cooking_status] ?? bundle.cooking_status}
+                    {Number(bundle.quantity)} {bundle.pricing_unit} ·{" "}
+                    {COOKING_LABELS[bundle.cooking_status] ?? bundle.cooking_status}
                   </small>
                 </div>
                 <b>{formatPeso(Number(bundle.cooking_fee))} fee</b>
@@ -293,7 +474,9 @@ export default function OrderDetailView() {
               </p>
               <p>
                 <span>Delivery fee (incl. VAT)</span>
-                <strong>{formatPeso(Number(order.delivery_fee) + Number(order.vat ?? 0))}</strong>
+                <strong>
+                  {formatPeso(Number(order.delivery_fee) + Number(order.vat ?? 0))}
+                </strong>
               </p>
               {Number(order.bulk_delivery_subsidy ?? 0) > 0 && (
                 <p>
@@ -303,7 +486,9 @@ export default function OrderDetailView() {
               )}
               {Number(order.voucher_discount) > 0 && (
                 <p>
-                  <span>Voucher discount{order.voucher_code ? ` (${order.voucher_code})` : ""}</span>
+                  <span>
+                    Voucher discount{order.voucher_code ? ` (${order.voucher_code})` : ""}
+                  </span>
                   <strong>-{formatPeso(Number(order.voucher_discount))}</strong>
                 </p>
               )}
@@ -315,7 +500,8 @@ export default function OrderDetailView() {
               )}
               <p>
                 <span>
-                  Total · {paymentMethodLabel(order.payment_method)} · {order.payment_status}
+                  Total · {paymentMethodLabel(order.payment_method)} ·{" "}
+                  {order.payment_status}
                 </span>
                 <strong>{formatPeso(Number(order.total_amount))}</strong>
               </p>
@@ -340,12 +526,20 @@ export default function OrderDetailView() {
               const done = index <= currentIndex;
               const current = index === currentIndex;
               return (
-                <div className={`${done ? "done" : ""} ${current ? "current" : ""}`} key={step}>
+                <div
+                  className={`${done ? "done" : ""} ${current ? "current" : ""}`}
+                  key={step}
+                >
                   <span>{done ? <Icon name="check" size={14} /> : ""}</span>
                   <section>
                     <strong>{ORDER_STATUS_LABELS[step]}</strong>
                     <p>{STEP_DETAIL[step]}</p>
-                    <small>{current ? "In progress" : done ? "Done" : "Up next"}</small>
+                    <small>
+                      {current ? "In progress" : done ? "Done" : "Up next"}
+                      {done && timeOf(STEP_TIME[step])
+                        ? ` · ${timeOf(STEP_TIME[step])}`
+                        : ""}
+                    </small>
                   </section>
                 </div>
               );
@@ -370,11 +564,20 @@ export default function OrderDetailView() {
             Need help with this order?
           </button>
           {isDelivered && (
-            <button type="button" className="btn support-order" onClick={() => setFeedbackOpen(true)}>
+            <button
+              type="button"
+              className="btn support-order"
+              onClick={() => setFeedbackOpen(true)}
+            >
               {feedback ? `Update your rating (${feedback.rating}★)` : "Rate this order"}
             </button>
           )}
-          <button type="button" className="btn support-order" disabled={downloading} onClick={handleDownloadInvoice}>
+          <button
+            type="button"
+            className="btn support-order"
+            disabled={downloading}
+            onClick={handleDownloadInvoice}
+          >
             {downloading ? "Downloading…" : "Download invoice"}
           </button>
           {isOrderCancellable(order.status, order.payment_method) && (

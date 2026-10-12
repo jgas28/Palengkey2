@@ -64,8 +64,12 @@ export default function PalutoDishDrawer({
   const ingredientsCost = estimateIngredientsCost(dish, quantity);
   const cookingFee = computeCookingFee(dish, quantity);
   const unavailable = hasUnavailableIngredient(dish);
-  const boughtIngredients = dish.ingredients.filter((ingredient) => !ingredient.is_provided);
-  const providedIngredients = dish.ingredients.filter((ingredient) => ingredient.is_provided);
+  const boughtIngredients = dish.ingredients.filter(
+    (ingredient) => !ingredient.is_provided,
+  );
+  const providedIngredients = dish.ingredients.filter(
+    (ingredient) => ingredient.is_provided,
+  );
   const total = ingredientsCost + cookingFee;
 
   return (
@@ -100,7 +104,9 @@ export default function PalutoDishDrawer({
     >
       <p className="kicker">Cooked by {stall.name}</p>
       <h2>{dish.name}</h2>
-      <p>{dish.description ?? "Cooked fresh by the stall from ingredients we buy for you."}</p>
+      <p>
+        {dish.description ?? "Cooked fresh by the stall from ingredients we buy for you."}
+      </p>
 
       <div className="quantity-row" style={{ marginTop: 18 }}>
         <div>
@@ -111,7 +117,11 @@ export default function PalutoDishDrawer({
           <button
             type="button"
             aria-label="Decrease quantity"
-            onClick={() => setQuantity(Math.max(quantitySettings.min, quantity - quantitySettings.step))}
+            onClick={() =>
+              setQuantity(
+                Math.max(quantitySettings.min, quantity - quantitySettings.step),
+              )
+            }
           >
             <Icon name="minus" size={16} />
           </button>
@@ -162,7 +172,10 @@ export default function PalutoDishDrawer({
           <Icon name="leaf" />
           <div>
             <strong>Already included by {stall.name}</strong>
-            <p>{providedIngredients.map((ingredient) => ingredient.name).join(", ")} — no extra charge.</p>
+            <p>
+              {providedIngredients.map((ingredient) => ingredient.name).join(", ")} — no
+              extra charge.
+            </p>
           </div>
         </div>
       )}
@@ -170,7 +183,8 @@ export default function PalutoDishDrawer({
       <h3>Price breakdown</h3>
       <ol>
         <li>
-          <span>1</span>Ingredients at today&apos;s market prices: {formatPeso(ingredientsCost)}
+          <span>1</span>Ingredients at today&apos;s market prices:{" "}
+          {formatPeso(ingredientsCost)}
         </li>
         <li>
           <span>2</span>Cooking fee: {formatPeso(cookingFee)}

@@ -9,21 +9,17 @@ export interface PkProductCardProps {
   onView: () => void;
 }
 
-function formatKg(kg: number): string {
-  return Number(kg.toFixed(3)).toString();
-}
-
 /** The design's product card (.product-card), bound to a real catalog item. */
 export default function PkProductCard({ item, onView }: PkProductCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const unavailable = item.price === null;
-  const tag = item.bulk_min_kg
-    ? `Bulk ${formatKg(item.bulk_min_kg)}kg+`
-    : (item.type ?? "Fresh today");
+  const tag = item.type ?? "Fresh today";
 
   return (
     <article className={`product-card ${unavailable ? "product-disabled" : ""}`}>
-      <div className={`product-image ${unavailable || item.is_cutoff ? "has-status" : ""}`}>
+      <div
+        className={`product-image ${unavailable || item.is_cutoff ? "has-status" : ""}`}
+      >
         {item.image && !imageFailed ? (
           <img
             src={item.image}
@@ -33,17 +29,17 @@ export default function PkProductCard({ item, onView }: PkProductCardProps) {
           />
         ) : (
           <div
-            style={{ display: "grid", placeItems: "center", height: "100%", color: "var(--teal)" }}
+            style={{
+              display: "grid",
+              placeItems: "center",
+              height: "100%",
+              color: "var(--teal)",
+            }}
           >
             <Icon name="leaf" size={34} />
           </div>
         )}
-        <span
-          className="fresh-tag"
-          style={item.bulk_min_kg ? { color: "#704a08", background: "#fef0c7" } : undefined}
-        >
-          {tag}
-        </span>
+        <span className="fresh-tag">{tag}</span>
         {unavailable && <span className="stock-badge unavailable">Unavailable</span>}
         {!unavailable && item.is_cutoff && (
           <span className="stock-badge" style={{ background: "var(--teal-dark)" }}>

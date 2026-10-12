@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Spinner } from "@/components/common/LoadingState";
 import EmptyState from "@/components/common/EmptyState";
@@ -19,6 +19,7 @@ export default function AdminSupport() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["adminSupportThreads", status],
     queryFn: () => listAdminSupportThreads(status),
+    placeholderData: keepPreviousData,
     refetchInterval: 15000,
   });
 

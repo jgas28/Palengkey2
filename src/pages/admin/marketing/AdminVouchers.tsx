@@ -1,5 +1,10 @@
 import { useState, type FormEvent } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
@@ -13,6 +18,7 @@ import {
   type VoucherPayload,
 } from "@/services/api/adminVouchers";
 import { listAdminMarkets } from "@/services/api/adminLookups";
+import AdminStepper from "@/components/admin/AdminStepper";
 import { useToastStore } from "@/stores/toastStore";
 import type { AdminVoucher, VoucherTarget } from "@/types/adminVoucher";
 
@@ -56,6 +62,12 @@ const emptyForm: FormState = {
   expires_at: "",
 };
 
+const VOUCHER_STEPS = [
+  { id: 1, title: "Discount", hint: "" },
+  { id: 2, title: "Limits", hint: "" },
+  { id: 3, title: "Schedule", hint: "" },
+] as const;
+
 export default function AdminVouchers() {
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
@@ -63,6 +75,10 @@ export default function AdminVouchers() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<AdminVoucher | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [formStep, setFormStep] = useState(1);
+  const discountValid = Boolean(
+    form.code.trim() && Number(form.discount_value) > 0 && form.applies_to.length,
+  );
 
   const {
     data: page,
@@ -72,6 +88,7 @@ export default function AdminVouchers() {
   } = useQuery({
     queryKey: ["adminVouchers", search],
     queryFn: () => listAdminVouchers(search),
+    placeholderData: keepPreviousData,
   });
 
   const { data: markets = [] } = useQuery({
@@ -149,6 +166,7 @@ export default function AdminVouchers() {
   function openCreateForm() {
     setEditing(null);
     setForm(emptyForm);
+    setFormStep(1);
     setFormOpen(true);
   }
 
@@ -170,6 +188,7 @@ export default function AdminVouchers() {
       starts_at: voucher.starts_at?.slice(0, 16) ?? "",
       expires_at: voucher.expires_at?.slice(0, 16) ?? "",
     });
+    setFormStep(1);
     setFormOpen(true);
   }
 
@@ -190,6 +209,14 @@ export default function AdminVouchers() {
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (formStep < VOUCHER_STEPS.length) {
+      if (formStep === 1 && !discountValid) {
+        showToast("Add a code, a discount and at least one target.", "error");
+        return;
+      }
+      setFormStep(formStep + 1);
+      return;
+    }
     if (form.applies_to.length === 0) {
       showToast("Choose at least one target.", "error");
       return;
@@ -304,173 +331,231 @@ export default function AdminVouchers() {
         title={editing ? "Edit voucher" : "Add voucher"}
       >
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <Input
-            label="Code"
-            value={form.code}
-            onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-            required
-          />
-          <Input
-            label="Description (optional)"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
+          <AdminStepper
+            compact
+            label="Voucher steps"
+            steps={VOUCHER_STEPS}
+            current={formStep}
+            done={{ 1: discountValid, 2: formStep > 2 }}
+            isLocked={(stepId) => stepId > 1 && !discountValid}
+            onSelect={setFormStep}
           />
 
-          <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
-              Discount type
-              <select
-                value={form.discount_type}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    discount_type: e.target.value as "percentage" | "fixed",
-                  })
-                }
-                className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
-              >
-                <option value="percentage">Percentage</option>
-                <option value="fixed">Fixed amount</option>
-              </select>
-            </label>
-            <Input
-              label={
-                form.discount_type === "percentage" ? "Discount (%)" : "Discount (₱)"
-              }
-              type="number"
-              min="0.01"
-              step="0.01"
-              value={form.discount_value}
-              onChange={(e) => setForm({ ...form, discount_value: e.target.value })}
-              required
-            />
-          </div>
+          {formStep === 1 && (
+            <>
+              <Input
+                label="Code"
+                value={form.code}
+                onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                required
+              />
+              <Input
+                label="Description (optional)"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+              />
 
-          <div className="flex flex-col gap-1.5 text-sm font-medium text-text">
-            Applies to
-            <div className="flex flex-wrap gap-3">
-              {(Object.keys(TARGET_LABELS) as VoucherTarget[]).map((target) => (
-                <label
-                  key={target}
-                  className="flex items-center gap-1.5 text-sm font-normal"
-                >
-                  <input
-                    type="checkbox"
-                    checked={form.applies_to.includes(target)}
-                    onChange={() => toggleTarget(target)}
-                  />
-                  {TARGET_LABELS[target]}
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
+                  Discount type
+                  <select
+                    value={form.discount_type}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        discount_type: e.target.value as "percentage" | "fixed",
+                      })
+                    }
+                    className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+                  >
+                    <option value="percentage">Percentage</option>
+                    <option value="fixed">Fixed amount</option>
+                  </select>
                 </label>
-              ))}
-            </div>
-          </div>
+                <Input
+                  label={
+                    form.discount_type === "percentage" ? "Discount (%)" : "Discount (₱)"
+                  }
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={form.discount_value}
+                  onChange={(e) => setForm({ ...form, discount_value: e.target.value })}
+                  required
+                />
+              </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Min order amount (optional)"
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.min_order_amount}
-              onChange={(e) => setForm({ ...form, min_order_amount: e.target.value })}
-            />
-            <Input
-              label="Max discount (optional)"
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.max_discount_amount}
-              onChange={(e) => setForm({ ...form, max_discount_amount: e.target.value })}
-            />
-          </div>
+              <div className="flex flex-col gap-1.5 text-sm font-medium text-text">
+                Applies to
+                <div className="flex flex-wrap gap-3">
+                  {(Object.keys(TARGET_LABELS) as VoucherTarget[]).map((target) => (
+                    <label
+                      key={target}
+                      className="flex items-center gap-1.5 text-sm font-normal"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.applies_to.includes(target)}
+                        onChange={() => toggleTarget(target)}
+                      />
+                      {TARGET_LABELS[target]}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Total usage limit (optional)"
-              type="number"
-              min="1"
-              value={form.usage_limit}
-              onChange={(e) => setForm({ ...form, usage_limit: e.target.value })}
-            />
-            <Input
-              label="Per-customer limit"
-              type="number"
-              min="1"
-              value={form.per_customer_limit}
-              onChange={(e) => setForm({ ...form, per_customer_limit: e.target.value })}
-            />
-          </div>
+          {formStep === 2 && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Min order amount (optional)"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.min_order_amount}
+                  onChange={(e) => setForm({ ...form, min_order_amount: e.target.value })}
+                />
+                <Input
+                  label="Max discount (optional)"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.max_discount_amount}
+                  onChange={(e) =>
+                    setForm({ ...form, max_discount_amount: e.target.value })
+                  }
+                />
+              </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Starts at (optional)"
-              type="datetime-local"
-              value={form.starts_at}
-              onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
-            />
-            <Input
-              label="Expires at (optional)"
-              type="datetime-local"
-              value={form.expires_at}
-              onChange={(e) => setForm({ ...form, expires_at: e.target.value })}
-            />
-          </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Total usage limit (optional)"
+                  type="number"
+                  min="1"
+                  value={form.usage_limit}
+                  onChange={(e) => setForm({ ...form, usage_limit: e.target.value })}
+                />
+                <Input
+                  label="Per-customer limit"
+                  type="number"
+                  min="1"
+                  value={form.per_customer_limit}
+                  onChange={(e) =>
+                    setForm({ ...form, per_customer_limit: e.target.value })
+                  }
+                />
+              </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
-              Visibility
-              <select
-                value={form.is_public ? "public" : "exclusive"}
-                onChange={(e) =>
-                  setForm({ ...form, is_public: e.target.value === "public" })
-                }
-                className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+              <p className="text-xs text-text-muted">Leave blank for no limit.</p>
+            </>
+          )}
+
+          {formStep === 3 && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Starts at (optional)"
+                  type="datetime-local"
+                  value={form.starts_at}
+                  onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
+                />
+                <Input
+                  label="Expires at (optional)"
+                  type="datetime-local"
+                  value={form.expires_at}
+                  onChange={(e) => setForm({ ...form, expires_at: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
+                  Visibility
+                  <select
+                    value={form.is_public ? "public" : "exclusive"}
+                    onChange={(e) =>
+                      setForm({ ...form, is_public: e.target.value === "public" })
+                    }
+                    className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+                  >
+                    <option value="public">
+                      Public — listed for customers to browse
+                    </option>
+                    <option value="exclusive">
+                      Exclusive — code must be entered manually
+                    </option>
+                  </select>
+                </label>
+
+                <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
+                  Market
+                  <select
+                    value={form.market_id}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        market_id: e.target.value ? Number(e.target.value) : "",
+                      })
+                    }
+                    className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+                  >
+                    <option value="">All markets</option>
+                    {markets.map((market) => (
+                      <option key={market.id} value={market.id}>
+                        {market.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <label className="flex items-center gap-2 text-sm text-text">
+                <input
+                  type="checkbox"
+                  checked={form.is_active}
+                  onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+                />
+                Active
+              </label>
+
+              <p className="rounded-lg bg-background p-3 text-xs text-text-muted">
+                <span className="font-semibold text-text">{form.code || "CODE"}</span> —{" "}
+                {form.discount_type === "percentage"
+                  ? `${form.discount_value || 0}% off`
+                  : `₱${form.discount_value || 0} off`}{" "}
+                {form.applies_to
+                  .map((target) => TARGET_LABELS[target].toLowerCase())
+                  .join(", ")}
+                {form.min_order_amount && `, min order ₱${form.min_order_amount}`}
+                {form.max_discount_amount && `, up to ₱${form.max_discount_amount}`}
+                {form.per_customer_limit && `, ${form.per_customer_limit}× per customer`}.
+              </p>
+            </>
+          )}
+
+          <div className="flex gap-2">
+            {formStep > 1 && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setFormStep(formStep - 1)}
               >
-                <option value="public">Public — listed for customers to browse</option>
-                <option value="exclusive">
-                  Exclusive — code must be entered manually
-                </option>
-              </select>
-            </label>
-
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
-              Market
-              <select
-                value={form.market_id}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    market_id: e.target.value ? Number(e.target.value) : "",
-                  })
-                }
-                className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
-              >
-                <option value="">All markets</option>
-                {markets.map((market) => (
-                  <option key={market.id} value={market.id}>
-                    {market.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+                ← Back
+              </Button>
+            )}
+            <Button
+              type="submit"
+              fullWidth
+              loading={createMutation.isPending || updateMutation.isPending}
+            >
+              {formStep < VOUCHER_STEPS.length
+                ? "Next →"
+                : editing
+                  ? "Save changes"
+                  : "Create voucher"}
+            </Button>
           </div>
-
-          <label className="flex items-center gap-2 text-sm text-text">
-            <input
-              type="checkbox"
-              checked={form.is_active}
-              onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-            />
-            Active
-          </label>
-
-          <Button
-            type="submit"
-            fullWidth
-            loading={createMutation.isPending || updateMutation.isPending}
-          >
-            {editing ? "Save changes" : "Create voucher"}
-          </Button>
         </form>
       </Modal>
     </div>

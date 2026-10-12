@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 class OrderItem extends Model
 {
@@ -21,8 +22,21 @@ class OrderItem extends Model
         'price_at_purchase',
         'is_bulk',
         'regular_price',
+        'vendor_list_price',
+        'vendor_price',
+        'vendor_note',
+        'vendor_price_by',
+        'vendor_price_at',
         'subtotal',
     ];
+
+    private static ?bool $hasVendorColumns = null;
+
+    /** Until the vendor-price migration runs, checkout must not write those columns. */
+    public static function hasVendorColumns(): bool
+    {
+        return self::$hasVendorColumns ??= Schema::hasColumn('order_items', 'vendor_list_price');
+    }
 
     protected function casts(): array
     {
@@ -32,6 +46,9 @@ class OrderItem extends Model
             'price' => 'decimal:2',
             'price_at_purchase' => 'decimal:2',
             'subtotal' => 'decimal:2',
+            'vendor_list_price' => 'decimal:2',
+            'vendor_price' => 'decimal:2',
+            'vendor_price_at' => 'datetime',
         ];
     }
 

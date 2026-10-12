@@ -1,5 +1,10 @@
 import { useState, type FormEvent } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
@@ -26,6 +31,7 @@ export default function AdminRecipeTypes() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["adminRecipeTypes", search],
     queryFn: () => listAdminRecipeTypes({ search: search || undefined }),
+    placeholderData: keepPreviousData,
   });
 
   const createMutation = useMutation({
@@ -122,8 +128,8 @@ export default function AdminRecipeTypes() {
     <div className="flex flex-col gap-4">
       <h1 className="text-lg font-semibold">Recipe Types</h1>
       <p className="text-sm text-text-muted">
-        Cooking-style tags for Paluto's filter chips (Soup, Fried, Grilled, etc.) — separate
-        from the shop's grocery categories.
+        Cooking-style tags for Paluto's filter chips (Soup, Fried, Grilled, etc.) —
+        separate from the shop's grocery categories.
       </p>
 
       <div className="flex items-center justify-between gap-3">
@@ -145,7 +151,10 @@ export default function AdminRecipeTypes() {
           </li>
         )}
         {data.data.map((recipeType) => (
-          <li key={recipeType.id} className="flex items-center justify-between gap-3 px-4 py-3">
+          <li
+            key={recipeType.id}
+            className="flex items-center justify-between gap-3 px-4 py-3"
+          >
             <button
               type="button"
               onClick={() => openEditForm(recipeType)}
@@ -181,9 +190,18 @@ export default function AdminRecipeTypes() {
         ))}
       </ul>
 
-      <Modal isOpen={formOpen} onClose={closeForm} title={editing ? "Edit recipe type" : "Add recipe type"}>
+      <Modal
+        isOpen={formOpen}
+        onClose={closeForm}
+        title={editing ? "Edit recipe type" : "Add recipe type"}
+      >
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} required />
+          <Input
+            label="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
           <Button
             type="submit"
             fullWidth

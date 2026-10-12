@@ -15,6 +15,8 @@ export const env = {
     messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as
       string | undefined,
     appId: import.meta.env.VITE_FIREBASE_APP_ID as string | undefined,
+    // Realtime Database — where the rider app writes live locations.
+    databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL as string | undefined,
     // Web Push certificate key pair — Firebase Console > Project Settings >
     // Cloud Messaging > Web Push certificates. Only needed for web push.
     vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY as string | undefined,
@@ -22,6 +24,10 @@ export const env = {
   // Public in the browser bundle by design — restricted via HTTP referrer
   // rules in Google Cloud Console, not by being secret.
   googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined,
+  // Google sign-in OAuth client IDs (public by design). The web client ID is also
+  // what Android uses; iOS needs its own client from Google Cloud Console.
+  googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined,
+  googleIosClientId: import.meta.env.VITE_GOOGLE_IOS_CLIENT_ID as string | undefined,
 };
 
 /** Push notifications are an enhancement — the app must work fine without them configured. */

@@ -3,6 +3,7 @@ import type {
   AdminActiveRider,
   AdminOrderCounts,
   AdminOrderDetail,
+  AdminOrderItem,
   AdminOrderPage,
   AdminOrderRecipeBundle,
   AdminOrderStatus,
@@ -47,6 +48,54 @@ export async function updateAdminOrderStatus(
   const { data } = await adminApiClient.patch<{ message: string; order: AdminOrderDetail }>(
     `/admin/orders/${orderId}/status`,
     { status },
+  );
+  return data;
+}
+
+export interface OrderItemChangeResult {
+  message: string;
+  /** New total minus old total (negative = cheaper). */
+  total_difference: number;
+  /** Amount to refund when a paid order got cheaper. */
+  refund_due: number;
+  order: AdminOrderDetail;
+}
+
+/** Changes a line's quantity/price (e.g. partly out of stock); totals are recalculated. */
+export async function updateAdminOrderItem(
+  orderId: number,
+  orderItemId: number,
+  payload: { quantity: number; price: number; reason?: string },
+): Promise<OrderItemChangeResult> {
+  const { data } = await adminApiClient.patch<OrderItemChangeResult>(
+    `/admin/orders/${orderId}/items/${orderItemId}`,
+    payload,
+  );
+  return data;
+}
+
+/** Removes a line the market couldn't supply. */
+export async function removeAdminOrderItem(
+  orderId: number,
+  orderItemId: number,
+  reason?: string,
+): Promise<OrderItemChangeResult> {
+  const { data } = await adminApiClient.delete<OrderItemChangeResult>(
+    `/admin/orders/${orderId}/items/${orderItemId}`,
+    { data: { reason } },
+  );
+  return data;
+}
+
+/** Records the vendor's actual (haggled) price per unit and an admin note on one ordered line. */
+export async function updateAdminOrderItemVendorPrice(
+  orderId: number,
+  orderItemId: number,
+  payload: { vendor_price: number | null; vendor_note: string | null },
+): Promise<{ message: string; item: AdminOrderItem }> {
+  const { data } = await adminApiClient.patch<{ message: string; item: AdminOrderItem }>(
+    `/admin/orders/${orderId}/items/${orderItemId}/vendor-price`,
+    payload,
   );
   return data;
 }

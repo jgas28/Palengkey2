@@ -1,10 +1,15 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { Spinner } from "@/components/common/LoadingState";
 import ErrorState from "@/components/common/ErrorState";
+import AdminStepper, {
+  AdminFormHeader,
+  AdminStepCard,
+} from "@/components/admin/AdminStepper";
+import useWizardStep from "@/hooks/useWizardStep";
 import {
   createAdminItem,
   deactivateAdminItem,
@@ -23,6 +28,13 @@ import {
 } from "@/services/api/adminLookups";
 import { useAdminAuthStore } from "@/stores/adminAuthStore";
 import { useToastStore } from "@/stores/toastStore";
+
+const WIZARD_STEPS = [
+  { id: 1, title: "Details", hint: "Name, category, unit" },
+  { id: 2, title: "Price & stock", hint: "Market price, cutoff, bulk" },
+  { id: 3, title: "Photos", hint: "Cover and gallery" },
+  { id: 4, title: "Review", hint: "Check and save" },
+] as const;
 
 export default function AdminItemForm() {
   const { itemId } = useParams<{ itemId: string }>();
@@ -77,12 +89,24 @@ export default function AdminItemForm() {
   const [typeId, setTypeId] = useState<number | "">(item?.type_id ?? "");
   const [unitId, setUnitId] = useState<number | "">(item?.unit_id ?? "");
   const [bulkMinKg, setBulkMinKg] = useState("");
+  const [bulkDiscountPerKg, setBulkDiscountPerKg] = useState("");
   const [price, setPrice] = useState(item?.market?.price?.toString() ?? "");
   const [isAvailable, setIsAvailable] = useState(item?.market?.is_available ?? true);
   const [cutoffTime, setCutoffTime] = useState(item?.market?.cutoff_time ?? "");
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [newImages, setNewImages] = useState<File[]>([]);
+  const coverPreview = useMemo(
+    () => (coverImage ? URL.createObjectURL(coverImage) : null),
+    [coverImage],
+  );
+  useEffect(
+    () => () => {
+      if (coverPreview) URL.revokeObjectURL(coverPreview);
+    },
+    [coverPreview],
+  );
   const [hydratedFromItem, setHydratedFromItem] = useState(false);
+  const [hydratedMarketId, setHydratedMarketId] = useState<number | undefined>(undefined);
 
   if (item && !hydratedFromItem) {
     setName(item.name);
@@ -91,11 +115,32 @@ export default function AdminItemForm() {
     setTypeId(item.type_id ?? "");
     setUnitId(item.unit_id);
     setBulkMinKg(item.bulk_min_kg ? String(Number(item.bulk_min_kg)) : "");
+    setBulkDiscountPerKg(
+      item.bulk_discount_per_kg !== null && item.bulk_discount_per_kg !== undefined
+        ? String(Number(item.bulk_discount_per_kg))
+        : "",
+    );
+    setHydratedFromItem(true);
+  }
+
+  if (item && hydratedMarketId !== (item.market?.market_id ?? marketId)) {
     setPrice(item.market?.price?.toString() ?? "");
     setIsAvailable(item.market?.is_available ?? true);
     setCutoffTime(item.market?.cutoff_time ?? "");
-    setHydratedFromItem(true);
+    setHydratedMarketId(item.market?.market_id ?? marketId);
   }
+
+  // A new item is only created at the Review step, so each step must be valid before the next.
+  const detailsValid = Boolean(name.trim() && categoryId && unitId);
+  const listingValid =
+    (!isSuperAdmin || Boolean(marketId)) && (!isAvailable || Number(price) > 0);
+  const photosValid = isEditing || Boolean(coverImage);
+  const isStepLocked = (stepId: number) =>
+    !isEditing &&
+    ((stepId > 1 && !detailsValid) ||
+      (stepId > 2 && !listingValid) ||
+      (stepId > 3 && !photosValid));
+  const [step, goToStep] = useWizardStep(WIZARD_STEPS.length, isStepLocked);
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -107,6 +152,7 @@ export default function AdminItemForm() {
         type_id: typeId ? Number(typeId) : undefined,
         unit_id: Number(unitId),
         bulk_min_kg: bulkMinKg ? Number(bulkMinKg) : null,
+        bulk_discount_per_kg: bulkDiscountPerKg !== "" ? Number(bulkDiscountPerKg) : null,
         price: Number(price),
         is_available: isAvailable,
         cutoff_time: cutoffTime || undefined,
@@ -114,9 +160,9 @@ export default function AdminItemForm() {
       }),
     onSuccess: (created) => {
       void queryClient.invalidateQueries({ queryKey: ["adminItems"] });
-      showToast("Item created.", "success");
+      showToast("Item created. Add more gallery photos if you like.", "success");
       navigate(
-        `/admin/items/${created.id}/edit${marketId ? `?market_id=${marketId}` : ""}`,
+        `/admin/items/${created.id}/edit?step=3${marketId ? `&market_id=${marketId}` : ""}`,
         {
           replace: true,
         },
@@ -139,6 +185,7 @@ export default function AdminItemForm() {
         type_id: typeId ? Number(typeId) : undefined,
         unit_id: Number(unitId),
         bulk_min_kg: bulkMinKg ? Number(bulkMinKg) : null,
+        bulk_discount_per_kg: bulkDiscountPerKg !== "" ? Number(bulkDiscountPerKg) : null,
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["adminItems"] });
@@ -207,7 +254,10 @@ export default function AdminItemForm() {
       showToast(data.message, "success");
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not deactivate item.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not deactivate item.",
+        "error",
+      );
     },
   });
 
@@ -219,21 +269,35 @@ export default function AdminItemForm() {
       showToast(data.message, "success");
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not restore item.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not restore item.",
+        "error",
+      );
     },
   });
 
-  function handleCreateSubmit(event: FormEvent) {
-    event.preventDefault();
-    if (!coverImage) {
-      showToast("Add a cover image.", "error");
-      return;
+  /** Edit mode saves as you go; create mode only validates until Review. */
+  function continueFrom(current: number) {
+    if (current === 1) {
+      if (!detailsValid)
+        return showToast("Fill in the name, category and unit.", "error");
+      if (isEditing)
+        return updateMutation.mutate(undefined, { onSuccess: () => goToStep(2) });
     }
-    if (isSuperAdmin && !marketId) {
-      showToast("Choose a market for this item.", "error");
-      return;
+    if (current === 2) {
+      if (isSuperAdmin && !marketId)
+        return showToast("Choose a market for this item.", "error");
+      if (isAvailable && !(Number(price) > 0))
+        return showToast("Enter a price, or mark it unavailable.", "error");
+      if (isEditing) {
+        return updateMutation.mutate(undefined, {
+          onSuccess: () =>
+            marketMutation.mutate(undefined, { onSuccess: () => goToStep(3) }),
+        });
+      }
     }
-    createMutation.mutate();
+    if (current === 3 && !photosValid) return showToast("Add a cover image.", "error");
+    goToStep(current + 1);
   }
 
   if (isEditing && itemLoading) {
@@ -248,287 +312,425 @@ export default function AdminItemForm() {
     return <ErrorState onRetry={() => void refetchItem()} />;
   }
 
+  const category = categories.find((c) => c.id === categoryId);
+  const unit = units.find((u) => u.id === unitId);
+  const marketName = isSuperAdmin
+    ? markets.find((m) => m.id === marketId)?.name
+    : "Your market";
+  const stepDone: Record<number, boolean> = {
+    1: isEditing,
+    2: Boolean(item?.market?.price),
+    3: Boolean(item?.image_url),
+    4: Boolean(item?.status),
+  };
+
   return (
-    <div className="flex max-w-2xl flex-col gap-8">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-lg font-semibold">{isEditing ? "Edit item" : "Add item"}</h1>
-        {isEditing && item && (
-          <span
-            className={`text-xs font-semibold ${
-              item.status ? "text-status-delivered" : "text-text-muted"
-            }`}
-          >
-            {item.status ? "Active" : "Deactivated"}
-          </span>
-        )}
-      </div>
+    <div className="flex max-w-3xl flex-col gap-6">
+      <AdminFormHeader
+        title={isEditing ? item?.name || "Edit item" : "New item"}
+        onBack={() => navigate("/admin/items")}
+        backLabel="Back to items"
+        status={isEditing && item ? item.status : undefined}
+      />
 
-      {isSuperAdmin && (
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
-          Market
-          <select
-            value={marketId ?? ""}
-            onChange={(event) =>
-              setMarketId(event.target.value ? Number(event.target.value) : undefined)
-            }
-            className="h-12 rounded-lg border border-border bg-surface px-4 text-base text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
-          >
-            <option value="">Select a market</option>
-            {markets.map((market) => (
-              <option key={market.id} value={market.id}>
-                {market.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
+      <AdminStepper
+        label="Item steps"
+        steps={WIZARD_STEPS}
+        current={step}
+        done={stepDone}
+        isLocked={isStepLocked}
+        onSelect={goToStep}
+      />
 
-      <form
-        onSubmit={isEditing ? (e) => e.preventDefault() : handleCreateSubmit}
-        className="flex flex-col gap-4"
-      >
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
-          Catalog details
-        </h2>
-
-        <Input
-          label="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
-          Description
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            className="rounded-lg border border-border bg-surface p-3 text-sm font-normal text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
-          />
-        </label>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
-            Category
-            <select
-              value={categoryId}
-              onChange={(e) =>
-                setCategoryId(e.target.value ? Number(e.target.value) : "")
-              }
-              required
-              className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
-            >
-              <option value="">Select</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
-            Type
-            <select
-              value={typeId}
-              onChange={(e) => setTypeId(e.target.value ? Number(e.target.value) : "")}
-              className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
-            >
-              <option value="">Select</option>
-              {types.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
-            Unit
-            <select
-              value={unitId}
-              onChange={(e) => setUnitId(e.target.value ? Number(e.target.value) : "")}
-              required
-              className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
-            >
-              <option value="">Select</option>
-              {units.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <Input
-          label="Bulk order minimum (kg) — optional override"
-          type="number"
-          min="0"
-          step="0.25"
-          value={bulkMinKg}
-          onChange={(e) => setBulkMinKg(e.target.value)}
-          placeholder={
-            item?.category_bulk_min_kg
-              ? `Category default: ${Number(item.category_bulk_min_kg)} kg`
-              : "Uses the category's bulk minimum"
+      {step === 1 && (
+        <AdminStepCard
+          title="Step 1 · Details"
+          intro="What customers see in the catalog."
+          footer={
+            <>
+              <span />
+              <Button
+                type="button"
+                loading={updateMutation.isPending}
+                onClick={() => continueFrom(1)}
+              >
+                {isEditing ? "Save & continue →" : "Continue →"}
+              </Button>
+            </>
           }
-          helperText="Only for items sold by weight. Leave blank to use the category's bulk minimum."
-        />
+        >
+          <Input
+            label="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
 
-        {!isEditing && (
           <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
-            Cover image
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setCoverImage(e.target.files?.[0] ?? null)}
-              required
-              className="text-sm text-text-muted"
+            Description
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className="rounded-lg border border-border bg-surface p-3 text-sm font-normal text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
             />
           </label>
-        )}
 
-        {isEditing && item && (
-          <img
-            src={item.image_url}
-            alt={item.name}
-            className="h-32 w-32 rounded-card object-cover"
-          />
-        )}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
+              Category
+              <select
+                value={categoryId}
+                onChange={(e) =>
+                  setCategoryId(e.target.value ? Number(e.target.value) : "")
+                }
+                required
+                className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+              >
+                <option value="">Select</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-        <h2 className="mt-2 text-sm font-semibold uppercase tracking-wide text-text-muted">
-          Market listing
-        </h2>
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
+              Type
+              <select
+                value={typeId}
+                onChange={(e) => setTypeId(e.target.value ? Number(e.target.value) : "")}
+                className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+              >
+                <option value="">Select</option>
+                {types.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-        <Input
-          label="Price (₱)"
-          type="number"
-          min="0"
-          step="0.01"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          required={isAvailable}
-        />
-
-        <label className="flex items-center gap-2 text-sm text-text">
-          <input
-            type="checkbox"
-            checked={isAvailable}
-            onChange={(e) => setIsAvailable(e.target.checked)}
-          />
-          Available for order
-        </label>
-
-        <Input
-          label="Cutoff time (optional)"
-          type="time"
-          value={cutoffTime}
-          onChange={(e) => setCutoffTime(e.target.value)}
-          helperText="Orders placed after this time are reserved for the next available slot."
-        />
-
-        {isEditing ? (
-          <div className="flex gap-3">
-            <Button
-              type="button"
-              loading={updateMutation.isPending}
-              onClick={() => updateMutation.mutate()}
-            >
-              Save details
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              loading={marketMutation.isPending}
-              onClick={() => marketMutation.mutate()}
-            >
-              Save market listing
-            </Button>
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
+              Unit
+              <select
+                value={unitId}
+                onChange={(e) => setUnitId(e.target.value ? Number(e.target.value) : "")}
+                required
+                className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+              >
+                <option value="">Select</option>
+                {units.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
-        ) : (
-          <Button type="submit" loading={createMutation.isPending}>
-            Create item
-          </Button>
-        )}
-      </form>
+        </AdminStepCard>
+      )}
 
-      {isEditing && item && (
-        <div className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
-            Gallery images
-          </h2>
+      {step === 2 && (
+        <AdminStepCard
+          title="Step 2 · Price & stock"
+          intro="Prices are per market — this is the vendor price before the app markup."
+          footer={
+            <>
+              <Button type="button" variant="secondary" onClick={() => goToStep(1)}>
+                ← Back
+              </Button>
+              <Button
+                type="button"
+                loading={updateMutation.isPending || marketMutation.isPending}
+                onClick={() => continueFrom(2)}
+              >
+                {isEditing ? "Save & continue →" : "Continue →"}
+              </Button>
+            </>
+          }
+        >
+          {isSuperAdmin && (
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
+              Market
+              <select
+                value={marketId ?? ""}
+                onChange={(event) =>
+                  setMarketId(event.target.value ? Number(event.target.value) : undefined)
+                }
+                className="h-12 rounded-lg border border-border bg-surface px-4 text-base text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+              >
+                <option value="">Select a market</option>
+                {markets.map((market) => (
+                  <option key={market.id} value={market.id}>
+                    {market.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <Input
+            label="Price (₱)"
+            type="number"
+            min="0"
+            step="0.01"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            required={isAvailable}
+          />
 
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-            {item.images.map((image) => (
-              <div key={image.id} className="relative">
+          <label className="flex items-center gap-2 text-sm text-text">
+            <input
+              type="checkbox"
+              checked={isAvailable}
+              onChange={(e) => setIsAvailable(e.target.checked)}
+            />
+            Available for order
+          </label>
+
+          <Input
+            label="Cutoff time (optional)"
+            type="time"
+            value={cutoffTime}
+            onChange={(e) => setCutoffTime(e.target.value)}
+            helperText="Orders placed after this time are reserved for the next available slot."
+          />
+
+          <details
+            className="rounded-lg border border-border p-3"
+            open={Boolean(bulkMinKg || bulkDiscountPerKg)}
+          >
+            <summary className="cursor-pointer text-sm font-medium text-text">
+              Bulk pricing overrides (optional)
+            </summary>
+            <p className="mt-1 text-xs text-text-muted">
+              Only applies when this item's category has bulk pricing turned on (Admin →
+              Categories).
+            </p>
+            <div className="mt-3 flex flex-col gap-4">
+              <Input
+                label="Bulk order minimum (kg) — optional override"
+                type="number"
+                min="0"
+                step="0.25"
+                value={bulkMinKg}
+                onChange={(e) => setBulkMinKg(e.target.value)}
+                placeholder={
+                  item?.category_bulk_min_kg
+                    ? `Category default: ${Number(item.category_bulk_min_kg)} kg`
+                    : "Uses the category's bulk minimum"
+                }
+                helperText="Only for items sold by weight. Leave blank to use the category's bulk minimum."
+              />
+
+              <Input
+                label="Bulk discount (₱ off per kg) — optional override"
+                type="number"
+                min="0"
+                step="0.5"
+                value={bulkDiscountPerKg}
+                onChange={(e) => setBulkDiscountPerKg(e.target.value)}
+                placeholder={
+                  item?.category_bulk_discount_per_kg
+                    ? `Category default: ₱${Number(item.category_bulk_discount_per_kg)}/kg`
+                    : "Uses the category's ₱/kg discount"
+                }
+                helperText="Taken off this item's per-kg price in bulk. Leave blank to use the category's amount."
+              />
+            </div>
+          </details>
+        </AdminStepCard>
+      )}
+
+      {step === 3 && (
+        <AdminStepCard
+          title="Step 3 · Photos"
+          intro="A clear cover photo on a plain background works best."
+          footer={
+            <>
+              <Button type="button" variant="secondary" onClick={() => goToStep(2)}>
+                ← Back
+              </Button>
+              <Button type="button" onClick={() => continueFrom(3)}>
+                Continue →
+              </Button>
+            </>
+          }
+        >
+          {isEditing && item ? (
+            <>
+              <div className="flex items-center gap-4">
                 <img
-                  src={image.url}
-                  alt=""
-                  className="aspect-square w-full rounded-card object-cover"
+                  src={item.image_url}
+                  alt={item.name}
+                  className="h-28 w-28 rounded-card object-cover"
                 />
+                <p className="text-sm text-text-muted">Cover photo</p>
+              </div>
+              <h3 className="text-sm font-semibold text-text">Gallery</h3>
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                {item.images.map((image) => (
+                  <div key={image.id} className="relative">
+                    <img
+                      src={image.url}
+                      alt=""
+                      className="aspect-square w-full rounded-card object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => deleteImageMutation.mutate(image.id)}
+                      aria-label="Remove image"
+                      className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-xs text-white"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => setNewImages(Array.from(e.target.files ?? []))}
+                className="text-sm text-text-muted"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={newImages.length === 0}
+                loading={uploadImagesMutation.isPending}
+                onClick={() => uploadImagesMutation.mutate()}
+              >
+                Upload images
+              </Button>
+            </>
+          ) : (
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
+              Cover image
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setCoverImage(e.target.files?.[0] ?? null)}
+                className="text-sm text-text-muted"
+              />
+              {coverPreview && (
+                <img
+                  src={coverPreview}
+                  alt=""
+                  className="mt-2 h-28 w-28 rounded-card object-cover"
+                />
+              )}
+              <span className="text-xs font-normal text-text-muted">
+                You can add more gallery photos after the item is created.
+              </span>
+            </label>
+          )}
+        </AdminStepCard>
+      )}
+
+      {step === 4 && (
+        <AdminStepCard
+          title="Step 4 · Review"
+          footer={
+            <>
+              <Button type="button" variant="secondary" onClick={() => goToStep(3)}>
+                ← Back
+              </Button>
+              <div className="flex gap-2">
+                {isEditing && item ? (
+                  <>
+                    {item.status ? (
+                      <Button
+                        type="button"
+                        variant="danger"
+                        loading={deactivateMutation.isPending}
+                        onClick={() => deactivateMutation.mutate()}
+                      >
+                        Deactivate
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        loading={restoreMutation.isPending}
+                        onClick={() => restoreMutation.mutate()}
+                      >
+                        Restore
+                      </Button>
+                    )}
+                    <Button type="button" onClick={() => navigate("/admin/items")}>
+                      Done
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    type="button"
+                    loading={createMutation.isPending}
+                    onClick={() => createMutation.mutate()}
+                  >
+                    Create item
+                  </Button>
+                )}
+              </div>
+            </>
+          }
+        >
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+            {[
+              ["Name", name || "—", 1],
+              ["Category", category?.name ?? "—", 1],
+              ["Type", types.find((t) => t.id === typeId)?.name ?? "—", 1],
+              ["Unit", unit?.name ?? "—", 1],
+              ["Market", marketName ?? "—", 2],
+              [
+                "Vendor price",
+                price
+                  ? `₱${Number(price).toFixed(2)} / ${unit?.short_name ?? "unit"}`
+                  : "—",
+                2,
+              ],
+              ["Availability", isAvailable ? "Available" : "Unavailable", 2],
+              ["Cutoff", cutoffTime || "None", 2],
+              [
+                "Bulk overrides",
+                bulkMinKg || bulkDiscountPerKg
+                  ? `${bulkMinKg ? `${bulkMinKg} kg+` : "category min"} · ${bulkDiscountPerKg !== "" ? `₱${bulkDiscountPerKg}/kg off` : "category ₱/kg"}`
+                  : "Uses category",
+                2,
+              ],
+              [
+                "Photos",
+                isEditing
+                  ? `Cover + ${item?.images.length ?? 0} gallery`
+                  : coverImage
+                    ? "Cover selected"
+                    : "Missing cover",
+                3,
+              ],
+            ].map(([label, value, fix]) => (
+              <div
+                key={label as string}
+                className="flex items-start justify-between gap-3 border-b border-border pb-2"
+              >
+                <div>
+                  <dt className="text-xs text-text-muted">{label}</dt>
+                  <dd className="font-medium text-text">{value}</dd>
+                </div>
                 <button
                   type="button"
-                  onClick={() => deleteImageMutation.mutate(image.id)}
-                  aria-label="Remove image"
-                  className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-xs text-white"
+                  onClick={() => goToStep(fix as number)}
+                  className="text-xs font-medium text-primary hover:underline"
                 >
-                  ✕
+                  Edit
                 </button>
               </div>
             ))}
-          </div>
-
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={(e) => setNewImages(Array.from(e.target.files ?? []))}
-            className="text-sm text-text-muted"
-          />
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            disabled={newImages.length === 0}
-            loading={uploadImagesMutation.isPending}
-            onClick={() => uploadImagesMutation.mutate()}
-          >
-            Upload images
-          </Button>
-        </div>
-      )}
-
-      {isEditing && item && (
-        <div className="flex flex-col gap-2 border-t border-border pt-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
-            Danger zone
-          </h2>
-          {item.status ? (
-            <Button
-              type="button"
-              variant="danger"
-              size="sm"
-              className="self-start"
-              loading={deactivateMutation.isPending}
-              onClick={() => deactivateMutation.mutate()}
-            >
-              Deactivate item
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="self-start"
-              loading={restoreMutation.isPending}
-              onClick={() => restoreMutation.mutate()}
-            >
-              Restore item
-            </Button>
-          )}
-        </div>
+          </dl>
+          {description && <p className="text-sm text-text-muted">{description}</p>}
+        </AdminStepCard>
       )}
     </div>
   );

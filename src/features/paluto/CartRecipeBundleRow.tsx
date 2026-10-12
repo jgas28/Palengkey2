@@ -13,7 +13,11 @@ export interface CartRecipeBundleRowProps {
 }
 
 /** A Paluto dish or Buy Raw recipe in the basket, as a design .cart-line. */
-export default function CartRecipeBundleRow({ bundle, selected, onToggleSelect }: CartRecipeBundleRowProps) {
+export default function CartRecipeBundleRow({
+  bundle,
+  selected,
+  onToggleSelect,
+}: CartRecipeBundleRowProps) {
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
 
@@ -29,14 +33,24 @@ export default function CartRecipeBundleRow({ bundle, selected, onToggleSelect }
 
   return (
     <article className="cart-line" style={selected ? undefined : { opacity: 0.6 }}>
-      <label className="cart-thumb" style={{ position: "relative", overflow: "hidden", cursor: "pointer" }}>
+      <label
+        className="cart-thumb"
+        style={{ position: "relative", overflow: "hidden", cursor: "pointer" }}
+      >
         {bundle.image ? <img src={bundle.image} alt="" /> : <Icon name="sparkle" />}
         <input
           type="checkbox"
           checked={selected}
           onChange={onToggleSelect}
           aria-label={`Include ${bundle.recipe_name} in this order`}
-          style={{ position: "absolute", left: 4, top: 4, width: 16, height: 16, accentColor: "var(--teal)" }}
+          style={{
+            position: "absolute",
+            left: 4,
+            top: 4,
+            width: 16,
+            height: 16,
+            accentColor: "var(--teal)",
+          }}
         />
       </label>
       <div className="cart-info">
@@ -54,7 +68,11 @@ export default function CartRecipeBundleRow({ bundle, selected, onToggleSelect }
             {bundle.ingredients.map((ingredient) => ingredient.name).join(", ")}
           </small>
         )}
-        <button type="button" disabled={removeMutation.isPending} onClick={() => removeMutation.mutate()}>
+        <button
+          type="button"
+          disabled={removeMutation.isPending}
+          onClick={() => removeMutation.mutate()}
+        >
           Remove
         </button>
       </div>

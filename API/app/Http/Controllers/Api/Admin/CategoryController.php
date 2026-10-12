@@ -37,6 +37,7 @@ class CategoryController extends Controller
             'name' => 'required|string|max:255',
             'image' => 'nullable|image|max:2048',
             'bulk_min_kg' => 'nullable|numeric|min:0.001|max:9999',
+            'bulk_discount_per_kg' => 'nullable|numeric|min:0|max:99999',
         ]);
 
         $category = DB::transaction(function () use ($request) {
@@ -44,7 +45,11 @@ class CategoryController extends Controller
                 abort(422, 'Category already exists.');
             }
 
-            $data = ['name' => $request->name, 'bulk_min_kg' => $request->input('bulk_min_kg')];
+            $data = [
+                'name' => $request->name,
+                'bulk_min_kg' => $request->input('bulk_min_kg'),
+                'bulk_discount_per_kg' => $request->input('bulk_discount_per_kg'),
+            ];
 
             if ($request->hasFile('image')) {
                 $data['image'] = $request->file('image')->store('categories', $this->disk());
@@ -69,14 +74,18 @@ class CategoryController extends Controller
             'image' => 'nullable|image|max:2048',
             // Blank clears it — the category stops qualifying for bulk pricing.
             'bulk_min_kg' => 'nullable|numeric|min:0.001|max:9999',
+            // ₱ off per kg in bulk; blank = the global default.
+            'bulk_discount_per_kg' => 'nullable|numeric|min:0|max:99999',
         ]);
 
         DB::transaction(function () use ($request, $category) {
             $old = $category->toArray();
             $data = ['name' => $request->name];
 
-            if ($request->has('bulk_min_kg')) {
-                $data['bulk_min_kg'] = $request->input('bulk_min_kg');
+            foreach (['bulk_min_kg', 'bulk_discount_per_kg'] as $field) {
+                if ($request->has($field)) {
+                    $data[$field] = $request->input($field);
+                }
             }
 
             if ($request->hasFile('image')) {

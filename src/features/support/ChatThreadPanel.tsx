@@ -5,7 +5,13 @@ import { getSupportMessages, sendSupportMessage } from "@/services/api/support";
 import { useToastStore } from "@/stores/toastStore";
 
 /** Shortcuts that fill the message box — the conversation itself is with a real person. */
-const QUICK_REPLIES = ["Where is my order?", "Payment problem", "Missing item", "Item quality issue", "Paluto help"];
+const QUICK_REPLIES = [
+  "Where is my order?",
+  "Payment problem",
+  "Missing item",
+  "Item quality issue",
+  "Paluto help",
+];
 
 /**
  * A live support conversation (messages polled every 8s, quick replies, compose box) in
@@ -18,7 +24,12 @@ export default function ChatThreadPanel({ threadId }: { threadId: number }) {
   const [body, setBody] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
 
-  const { data: messages = [], isLoading, isError, refetch } = useQuery({
+  const {
+    data: messages = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["supportMessages", threadId],
     queryFn: () => getSupportMessages(threadId),
     refetchInterval: 8000,
@@ -36,7 +47,10 @@ export default function ChatThreadPanel({ threadId }: { threadId: number }) {
       void queryClient.invalidateQueries({ queryKey: ["support"] });
     },
     onError: (error) =>
-      showToast(error instanceof Error ? error.message : "Could not send message.", "error"),
+      showToast(
+        error instanceof Error ? error.message : "Could not send message.",
+        "error",
+      ),
   });
 
   function handleSend(event: FormEvent) {
@@ -49,20 +63,32 @@ export default function ChatThreadPanel({ threadId }: { threadId: number }) {
     <>
       <section className="chat-messages">
         <div className="chat-date">Conversation</div>
-        {isLoading && <p style={{ textAlign: "center", color: "var(--muted)", fontSize: 10 }}>Loading messages…</p>}
+        {isLoading && (
+          <p style={{ textAlign: "center", color: "var(--muted)", fontSize: 10 }}>
+            Loading messages…
+          </p>
+        )}
         {isError && (
           <p style={{ textAlign: "center", fontSize: 10 }}>
             Couldn&apos;t load messages.{" "}
-            <button type="button" onClick={() => void refetch()} style={{ color: "var(--teal-dark)", background: "none", border: 0 }}>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              style={{ color: "var(--teal-dark)", background: "none", border: 0 }}
+            >
               Try again
             </button>
           </p>
         )}
         {!isLoading && messages.length === 0 && (
           <article className="bot">
-            <span>PK</span>
+            <span className="chat-avatar">
+              <img src="/palengkey-mark.png" alt="" />
+            </span>
             <div>
-              <p>Kumusta! Tell us what you need help with and our team will reply here.</p>
+              <p>
+                Kumusta! Tell us what you need help with and our team will reply here.
+              </p>
             </div>
           </article>
         )}
@@ -70,7 +96,9 @@ export default function ChatThreadPanel({ threadId }: { threadId: number }) {
           const mine = message.sender_type === "customer";
           return (
             <article className={mine ? "user" : "bot"} key={message.id}>
-              {!mine && <span>{message.sender_name.charAt(0).toUpperCase() || "PK"}</span>}
+              {!mine && (
+                <span>{message.sender_name.charAt(0).toUpperCase() || "PK"}</span>
+              )}
               <div>
                 <p>{message.body}</p>
                 <small>
@@ -105,7 +133,9 @@ export default function ChatThreadPanel({ threadId }: { threadId: number }) {
         <button
           type="button"
           aria-label="Add order details"
-          onClick={() => setBody((current) => `${current}${current ? " " : ""}Order details: `)}
+          onClick={() =>
+            setBody((current) => `${current}${current ? " " : ""}Order details: `)
+          }
         >
           <Icon name="plus" />
         </button>
@@ -116,7 +146,12 @@ export default function ChatThreadPanel({ threadId }: { threadId: number }) {
           placeholder="Type your message..."
           aria-label="Chat message"
         />
-        <button type="submit" className="btn send-chat" disabled={!body.trim() || sendMutation.isPending} aria-label="Send">
+        <button
+          type="submit"
+          className="btn send-chat"
+          disabled={!body.trim() || sendMutation.isPending}
+          aria-label="Send"
+        >
           <Icon name="arrow" />
         </button>
       </form>

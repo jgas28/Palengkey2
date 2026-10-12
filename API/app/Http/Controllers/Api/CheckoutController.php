@@ -10,6 +10,7 @@ use App\Models\ItemPrice;
 use App\Models\Market;
 use App\Models\MarketPriceSnapshot;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\PalutoDish;
 use App\Models\PalutoStall;
 use App\Models\Setting;
@@ -22,6 +23,7 @@ use App\Support\PriceDisplay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -64,12 +66,14 @@ class CheckoutController extends Controller
         return '7:00 AM';
     }
 
-    private function buildOrderLaterDeliveryTime($item, ?string $slot = null)
+    private function buildOrderLaterDeliveryTime($item, ?string $slot = null, ?Market $market = null)
     {
         $slot = $this->normalizeOrderLaterSlot($slot);
-        $base = $item?->getNextAvailableDeliverySlot() ?? now('Asia/Manila')->addDay()->startOfDay();
+        $base = $item?->getNextAvailableDeliverySlot($market) ?? now('Asia/Manila')->addDay()->startOfDay();
 
-        return $base->copy()->setTimeFromTimeString($slot);
+        // Built in the market's timezone (Manila); convert to the app timezone (UTC)
+        // before saving, or 8:00 AM Manila is stored as 8:00 UTC (= 4:00 PM).
+        return $base->copy()->setTimeFromTimeString($slot)->timezone(config('app.timezone'));
     }
 
     public function checkout(Request $request)
@@ -231,7 +235,7 @@ class CheckoutController extends Controller
                 $isBulk = $bulk[$cartItem->item_id]['qualifies'] ?? false;
                 $regularPrice = number_format(PriceDisplay::markedUp($effectivePrice), 2, '.', '');
                 $price = $isBulk
-                    ? number_format(BulkPricing::unitPrice($effectivePrice), 2, '.', '')
+                    ? number_format(BulkPricing::unitPrice($item, $effectivePrice), 2, '.', '')
                     : $regularPrice;
                 $priceEach = $hasWeightSelection
                     ? $this->priceForWeight($unit, (float) $price, $weightKg)
@@ -261,7 +265,7 @@ class CheckoutController extends Controller
                     'regular_price' => $isBulk ? $regularPrice : null,
                     'subtotal' => $itemSubtotal,
                     'customer_note' => $cartItem->customer_note,
-                ];
+                ] + $this->vendorListPrice($effectivePrice);
             }
 
             // BULK-FREESHIP: min(delivery fee, cap), taken off delivery before any
@@ -309,7 +313,7 @@ class CheckoutController extends Controller
                         'price_at_purchase' => $unitPrice,
                         'subtotal' => $lineSubtotal,
                         'customer_note' => $ingredientItem->customer_note,
-                    ];
+                    ] + $this->vendorListPrice($effectivePrice);
                 }
 
                 $subtotal += $bundleIngredientsSubtotal;
@@ -396,7 +400,7 @@ class CheckoutController extends Controller
                     return $cartItem->item?->isPastCutoffForMarketData($pivot, $market);
                 });
                 $orderLaterSlot = $this->normalizeOrderLaterSlot($data['order_later_slot'] ?? null);
-                $scheduledDeliveryTime = $this->buildOrderLaterDeliveryTime($reservationItem?->item, $orderLaterSlot);
+                $scheduledDeliveryTime = $this->buildOrderLaterDeliveryTime($reservationItem?->item, $orderLaterSlot, $market);
                 $deliverySlot = 'Order Later '.$this->orderLaterSlotLabel($orderLaterSlot);
             }
 
@@ -629,6 +633,14 @@ class CheckoutController extends Controller
     private function orderQuantityForWeight($unit, float $weightKg, int $itemQty): float
     {
         return round($this->priceQuantityForWeight($unit, $weightKg) * max(1, $itemQty), 3);
+    }
+
+    /** Vendor's listed price per unit (before markup), kept so staff can record a haggled price against it. */
+    private function vendorListPrice(mixed $basePrice): array
+    {
+        return OrderItem::hasVendorColumns() && $basePrice !== null
+            ? ['vendor_list_price' => round((float) $basePrice, 2)]
+            : [];
     }
 
     private function priceForWeight($unit, float $unitPrice, float $weightKg): float

@@ -1,5 +1,16 @@
 import { useState, type FormEvent } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
+import AdminTable, {
+  AdminStatusPill,
+  AdminThumb,
+  adminTd,
+  adminTdStrong,
+} from "@/components/admin/AdminTable";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
@@ -26,6 +37,11 @@ export default function AdminCategories() {
   const [name, setName] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [bulkMinKg, setBulkMinKg] = useState("");
+  const [bulkDiscountPerKg, setBulkDiscountPerKg] = useState("");
+  // Not every category sells in bulk — off sends a blank minimum, which disables it.
+  const [bulkEnabled, setBulkEnabled] = useState(false);
+  const bulkMinKgToSave = bulkEnabled ? bulkMinKg : "";
+  const bulkDiscountToSave = bulkEnabled ? bulkDiscountPerKg : "";
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["adminCategories", search, statusFilter, page],
@@ -35,10 +51,12 @@ export default function AdminCategories() {
         status: statusFilter || undefined,
         page,
       }),
+    placeholderData: keepPreviousData,
   });
 
   const createMutation = useMutation({
-    mutationFn: () => createAdminCategory(name, image ?? undefined, bulkMinKg),
+    mutationFn: () =>
+      createAdminCategory(name, image ?? undefined, bulkMinKgToSave, bulkDiscountToSave),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["adminCategories"] });
       showToast("Category created.", "success");
@@ -54,7 +72,13 @@ export default function AdminCategories() {
 
   const updateMutation = useMutation({
     mutationFn: () =>
-      updateAdminCategory(editing!.id, name, image ?? undefined, bulkMinKg),
+      updateAdminCategory(
+        editing!.id,
+        name,
+        image ?? undefined,
+        bulkMinKgToSave,
+        bulkDiscountToSave,
+      ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["adminCategories"] });
       showToast("Category updated.", "success");
@@ -95,6 +119,8 @@ export default function AdminCategories() {
     setName("");
     setImage(null);
     setBulkMinKg("");
+    setBulkDiscountPerKg("");
+    setBulkEnabled(false);
     setFormOpen(true);
   }
 
@@ -103,6 +129,13 @@ export default function AdminCategories() {
     setName(category.name);
     setImage(null);
     setBulkMinKg(category.bulk_min_kg ? String(Number(category.bulk_min_kg)) : "");
+    setBulkEnabled(Boolean(category.bulk_min_kg));
+    setBulkDiscountPerKg(
+      category.bulk_discount_per_kg !== null &&
+        category.bulk_discount_per_kg !== undefined
+        ? String(Number(category.bulk_discount_per_kg))
+        : "",
+    );
     setFormOpen(true);
   }
 
@@ -167,58 +200,61 @@ export default function AdminCategories() {
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+      <AdminTable head={["Category", "Active items", "Bulk pricing", "Status", ""]}>
         {data.data.map((category) => (
-          <div
-            key={category.id}
-            className="flex flex-col overflow-hidden rounded-card border border-border bg-surface"
-          >
-            <img
-              src={category.image_url}
-              alt={category.name}
-              className="aspect-square w-full object-cover"
-            />
-            <div className="flex flex-col gap-2 p-3">
-              <span className="text-sm font-medium text-text">{category.name}</span>
-              <span className="text-xs text-text-muted">
-                {category.active_items_count} active item
-                {category.active_items_count === 1 ? "" : "s"}
-              </span>
-              <span className="text-xs font-medium text-[#B26A00]">
-                {category.bulk_min_kg
-                  ? `Bulk at ${Number(category.bulk_min_kg)} kg+`
-                  : "No bulk pricing"}
-              </span>
-              <div className="flex flex-wrap gap-2 text-xs">
+          <tr key={category.id} className="hover:bg-background/60">
+            <td className={adminTdStrong}>
+              <div className="flex items-center gap-3">
+                <AdminThumb src={category.image_url} />
+                {category.name}
+              </div>
+            </td>
+            <td className={adminTd}>{category.active_items_count}</td>
+            <td className={adminTd}>
+              {category.bulk_min_kg ? (
+                <span className="font-medium text-[#B26A00]">
+                  {Number(category.bulk_min_kg)} kg+ ·{" "}
+                  {category.bulk_discount_per_kg !== null &&
+                  category.bulk_discount_per_kg !== undefined
+                    ? `₱${Number(category.bulk_discount_per_kg)}/kg off`
+                    : "default ₱/kg off"}
+                </span>
+              ) : (
+                "Off"
+              )}
+            </td>
+            <td className={adminTd}>
+              <AdminStatusPill active={category.status} inactiveLabel="Deactivated" />
+            </td>
+            <td className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => openEditForm(category)}
+                className="text-primary hover:underline"
+              >
+                Edit
+              </button>
+              {category.status ? (
                 <button
                   type="button"
-                  onClick={() => openEditForm(category)}
-                  className="text-primary"
+                  onClick={() => deactivateMutation.mutate(category.id)}
+                  className="ml-3 text-status-cancelled hover:underline"
                 >
-                  Edit
+                  Deactivate
                 </button>
-                {category.status ? (
-                  <button
-                    type="button"
-                    onClick={() => deactivateMutation.mutate(category.id)}
-                    className="text-status-cancelled"
-                  >
-                    Deactivate
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => restoreMutation.mutate(category.id)}
-                    className="text-status-delivered"
-                  >
-                    Restore
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => restoreMutation.mutate(category.id)}
+                  className="ml-3 text-status-delivered hover:underline"
+                >
+                  Restore
+                </button>
+              )}
+            </td>
+          </tr>
         ))}
-      </div>
+      </AdminTable>
 
       <div className="flex items-center justify-between">
         <Button
@@ -255,16 +291,50 @@ export default function AdminCategories() {
             required
           />
 
-          <Input
-            label="Bulk order minimum (kg)"
-            type="number"
-            min="0"
-            step="0.25"
-            value={bulkMinKg}
-            onChange={(e) => setBulkMinKg(e.target.value)}
-            placeholder="e.g. 6 for meat, 10 for vegetables"
-            helperText="One item at this weight or more gets the wholesale price + delivery subsidy. Leave blank for no bulk pricing. Items can override this."
-          />
+          <fieldset className="flex flex-col gap-4 rounded-xl border border-border p-4">
+            <label className="flex items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={bulkEnabled}
+                onChange={(e) => setBulkEnabled(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-primary"
+              />
+              <span>
+                <span className="block font-medium text-text">Offer bulk pricing</span>
+                <span className="text-xs text-text-muted">
+                  Only for categories sold by weight (e.g. meat, seafood, vegetables). Off
+                  = no bulk price or delivery subsidy for anything in this category.
+                </span>
+              </span>
+            </label>
+
+            {bulkEnabled && (
+              <>
+                <Input
+                  label="Bulk order minimum (kg)"
+                  type="number"
+                  min="0.001"
+                  step="0.25"
+                  value={bulkMinKg}
+                  onChange={(e) => setBulkMinKg(e.target.value)}
+                  placeholder="e.g. 6 for meat, 10 for vegetables"
+                  helperText="One item at this weight or more gets the bulk price + delivery subsidy. Items can override this."
+                  required
+                />
+
+                <Input
+                  label="Bulk discount (₱ off per kg)"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={bulkDiscountPerKg}
+                  onChange={(e) => setBulkDiscountPerKg(e.target.value)}
+                  placeholder="e.g. 5 — meat ₱5 less per kilo"
+                  helperText="Taken off the per-kg selling price once the minimum is reached. Leave blank to use the default in Settings → Bulk Orders. Items can override this."
+                />
+              </>
+            )}
+          </fieldset>
 
           <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
             {editing ? "Replace image (optional)" : "Image (optional)"}

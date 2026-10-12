@@ -60,7 +60,7 @@
 :where(body.pk) .footer-address svg {
   flex: 0 0 auto;
   margin-top: 1px;
-  color: var(--amber);
+  color: white;
 }
 
 :where(body.pk) .footer-address a:hover {
@@ -79,4 +79,337 @@
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ---------------------------------------------------------------------------
+ * Chat widget (ChatFab panel + support thread): brand teal, readable sizes, and
+ * nothing cut off — quick questions wrap instead of scrolling off the edge.
+ * ------------------------------------------------------------------------- */
+:where(body.pk) .chat {
+  background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+  box-shadow: 0 10px 28px rgba(0, 92, 101, 0.35);
+  transition: transform 0.15s ease;
+}
+
+:where(body.pk) .chat:hover {
+  transform: scale(1.06);
+}
+
+:where(body.pk) .chat-widget {
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+}
+
+:where(body.pk) .chat-widget .chat-header {
+  background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+}
+
+:where(body.pk) .chat-widget .chat-header strong {
+  font-size: 15px;
+}
+
+:where(body.pk) .chat-widget .chat-header small {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 11px;
+}
+
+:where(body.pk) .chat-widget .chat-messages {
+  padding: 16px;
+}
+
+:where(body.pk) .chat-widget .chat-messages article {
+  max-width: 88%;
+}
+
+:where(body.pk) .chat-widget .chat-messages article p {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+:where(body.pk) .chat-widget .chat-messages article small {
+  font-size: 10px;
+}
+
+:where(body.pk) .chat-widget .chat-messages article > span {
+  font-size: 11px;
+}
+
+:where(body.pk) .chat-widget .chat-date {
+  font-size: 10px;
+}
+
+/* Quick questions: wrap onto lines (scrolls if there are many) — never off-screen. */
+:where(body.pk) .chat-widget .quick-replies {
+  flex-wrap: wrap;
+  align-content: flex-start;
+  max-height: 150px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 10px 14px;
+  background: white;
+}
+
+:where(body.pk) .chat-widget .quick-replies-label {
+  flex: 0 0 100%;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+:where(body.pk) .chat-widget .quick-replies button {
+  flex: 0 1 auto;
+  max-width: 100%;
+  padding: 7px 12px;
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: left;
+  white-space: normal;
+}
+
+:where(body.pk) .chat-widget .quick-replies button:hover {
+  color: white;
+  background: var(--teal);
+  border-color: var(--teal);
+}
+
+:where(body.pk) .chat-widget .chat-compose input {
+  font-size: 13px;
+}
+
+:where(body.pk) .chat-widget .chat-safety {
+  font-size: 10px;
+}
+
+/* Conversation shortcuts and the order picker inside the bot bubble. */
+:where(body.pk) .chat-widget .chat-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 11px;
+  color: var(--teal-dark);
+  background: var(--teal-pale);
+  border: 1px solid #acd8db;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+}
+
+:where(body.pk) .chat-widget .chat-option:hover {
+  color: white;
+  background: var(--teal);
+}
+
+:where(body.pk) .chat-widget .chat-option span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+:where(body.pk) .chat-widget .chat-order-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+:where(body.pk) .chat-widget .chat-order-picker select {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 0 8px;
+  color: var(--ink);
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 12px;
+}
+
+:where(body.pk) .chat-widget .chat-order-picker .btn {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 12px;
+}
+
+@media (max-width: 520px) {
+  /* Full-screen sheet on phones. */
+  :where(body.pk) .chat-widget {
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Brand colours from the logo: green, teal and red-orange.
+ * ------------------------------------------------------------------------- */
+:where(body.pk) {
+  --brand-green: #0a9137;
+  --brand-teal: #0097a7;
+  --brand-red: #ef3b18;
+  --brand-gradient: linear-gradient(135deg, var(--brand-teal) 0%, #00838f 55%, var(--brand-green) 130%);
+  --brand-deep: linear-gradient(160deg, #00525a 0%, #003f46 60%, #0b3a26 100%);
+}
+
+/* Chat: brand gradient bubble, logo mark in the header and as the assistant avatar. */
+:where(body.pk) .chat {
+  background: var(--brand-gradient);
+}
+
+:where(body.pk) .chat span {
+  background: var(--brand-green);
+}
+
+:where(body.pk) .chat-widget .chat-header {
+  background: var(--brand-gradient);
+}
+
+:where(body.pk) .chat-header > .chat-brand-mark {
+  padding: 4px;
+  background: white;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+:where(body.pk) .chat-brand-mark img,
+:where(body.pk) .chat-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+:where(body.pk) .chat-messages article > span.chat-avatar {
+  padding: 3px;
+  background: white;
+  border: 1.5px solid var(--brand-green);
+}
+
+/* Staff initials in a conversation. */
+:where(body.pk) .chat-messages article.bot > span:not(.chat-avatar) {
+  background: var(--brand-green);
+}
+
+:where(body.pk) .chat-messages article.user > div,
+:where(body.pk) .send-chat {
+  background: var(--brand-teal);
+  border-color: var(--brand-teal);
+}
+
+/* Footer: deep brand teal→green instead of grey slate; logo sits on a white chip. */
+:where(body.pk) footer {
+  background: var(--brand-deep);
+}
+
+:where(body.pk) footer .logo {
+  width: fit-content;
+  background: transparent;
+}
+
+:where(body.pk) footer .logo img {
+  width: 160px;
+  height: 50px;
+  /* All-white logo on the dark brand footer. */
+  filter: brightness(0) invert(1);
+}
+
+:where(body.pk) .footer-form {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+:where(body.pk) .footer-grid > div:not(:first-child) > a:hover,
+:where(body.pk) .footer-bottom a:hover,
+:where(body.pk) .footer-address a:hover {
+  color: #8ee6c0;
+}
+
+:where(body.pk) .footer-bottom {
+  border-top-color: rgba(255, 255, 255, 0.14);
+}
+
+:where(body.pk) .footer-form .submit,
+:where(body.pk) footer .socials a:hover {
+  color: white;
+  background: var(--brand-green);
+}
+
+/* Official-style black store badges. */
+:where(body.pk) .store-badges .store-badge {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-width: 132px;
+  padding: 7px 12px;
+  color: white;
+  background: #000;
+  border: 1px solid #a6a6a6;
+  border-radius: 9px;
+}
+
+:where(body.pk) .store-badges .store-badge > span {
+  /* The design's ".store-badges span" box rule must not hit the inner text. */
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  line-height: 1.1;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+:where(body.pk) .store-badges .store-badge > svg {
+  flex: 0 0 auto;
+}
+
+:where(body.pk) .store-badge small {
+  color: white;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+:where(body.pk) .store-badge strong {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Header account avatar: brand gradient instead of amber. */
+:where(body.pk) .account-avatar {
+  color: white !important;
+  background: var(--brand-gradient) !important;
+}
+
+/* Login / sign-up: brand-tinted photo, logo on a white chip, proper Google button. */
+:where(body.pk) .auth-photo::after {
+  background: linear-gradient(0deg, rgba(0, 70, 60, 0.85), rgba(0, 151, 167, 0.15));
+}
+
+:where(body.pk) .auth-photo .logo {
+  width: fit-content;
+  background: transparent;
+}
+
+:where(body.pk) .auth-photo .logo img {
+  width: 170px;
+  height: 52px;
+  /* White logo over the photo, same as the footer. */
+  filter: brightness(0) invert(1) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.35));
+}
+
+:where(body.pk) .auth-card {
+  border-top: 4px solid var(--brand-teal);
+}
+
+:where(body.pk) .social-login {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-weight: 600;
+}
+
+:where(body.pk) .social-login:hover:not(:disabled) {
+  border-color: var(--brand-teal);
+  background: #f7fdfd;
 }

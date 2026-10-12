@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { Spinner } from "@/components/common/LoadingState";
@@ -14,7 +19,10 @@ import {
   rejectAdminVerificationAccount,
 } from "@/services/api/adminVerifications";
 import { useToastStore } from "@/stores/toastStore";
-import type { AdminVerificationEntry, VerificationFilter } from "@/types/adminVerification";
+import type {
+  AdminVerificationEntry,
+  VerificationFilter,
+} from "@/types/adminVerification";
 
 const FILTERS: { value: VerificationFilter; label: string }[] = [
   { value: "pending", label: "Pending" },
@@ -36,6 +44,7 @@ export default function AdminVerifications() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["adminVerifications", filter, search],
     queryFn: () => listAdminVerifications(filter, search || undefined),
+    placeholderData: keepPreviousData,
   });
 
   const { data: detail, isLoading: isDetailLoading } = useQuery({
@@ -122,10 +131,7 @@ export default function AdminVerifications() {
       {isError && <ErrorState onRetry={() => void refetch()} />}
 
       {data && data.entries.data.length === 0 && (
-        <EmptyState
-          title="Nothing here."
-          description="No customers match this filter."
-        />
+        <EmptyState title="Nothing here." description="No customers match this filter." />
       )}
 
       {data && data.entries.data.length > 0 && (
@@ -142,7 +148,9 @@ export default function AdminVerifications() {
                     {entry.fname} {entry.lname}
                   </span>
                   <span className="text-xs font-semibold capitalize text-text-muted">
-                    {entry.latest_verification?.status ?? entry.verification_status ?? "pending"}
+                    {entry.latest_verification?.status ??
+                      entry.verification_status ??
+                      "pending"}
                   </span>
                 </div>
                 <span className="text-xs text-text-muted">
@@ -159,7 +167,11 @@ export default function AdminVerifications() {
         </ul>
       )}
 
-      <Modal isOpen={selectedEntry !== null} onClose={closeModal} title="Verification review">
+      <Modal
+        isOpen={selectedEntry !== null}
+        onClose={closeModal}
+        title="Verification review"
+      >
         {selectedEntry && (
           <div className="flex flex-col gap-4">
             <div>
@@ -287,7 +299,10 @@ export default function AdminVerifications() {
                       >
                         Confirm rejection
                       </Button>
-                      <Button variant="secondary" onClick={() => setShowRejectForm(false)}>
+                      <Button
+                        variant="secondary"
+                        onClick={() => setShowRejectForm(false)}
+                      >
                         Cancel
                       </Button>
                     </div>

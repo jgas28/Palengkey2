@@ -19,9 +19,112 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        return $user->role === 'admin'
-            ? response()->json($this->marketDashboard($user))
-            : response()->json($this->platformDashboard());
+        $days = $this->periodDays($request);
+        $marketId = $user->role === 'admin' ? $user->market_id : null;
+
+        $payload = $user->role === 'admin'
+            ? $this->marketDashboard($user)
+            : $this->platformDashboard();
+
+        return response()->json($payload + [
+            'period_days' => $days,
+            'overview' => $this->overview($days, $marketId),
+        ]);
+    }
+
+    /** Paginated newest-first orders in the selected period, for the "Recent orders" table. */
+    public function orders(Request $request)
+    {
+        $user = $request->user();
+        $marketId = $user->role === 'admin' ? $user->market_id : null;
+        [$from, $to] = $this->periodRange($this->periodDays($request));
+
+        $page = Order::query()
+            ->when($marketId, fn ($q) => $q->where('market_id', $marketId))
+            ->whereBetween('created_at', [$from, $to])
+            ->with(['customer:id,fname,lname,email', 'market:id,name'])
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate(8, ['id', 'order_number', 'customer_id', 'market_id', 'contact_name', 'status', 'payment_status', 'total_amount', 'created_at']);
+
+        $page->getCollection()->transform(fn (Order $order) => $this->formatLatestOrder($order));
+
+        return response()->json($page);
+    }
+
+    /**
+     * Headline KPIs for the last N days vs the N days before, for the
+     * "Overview" cards (revenue, orders, customers, average order value).
+     */
+    /** 0 = today (since midnight, Manila — the default), 1 = last 24 hours, or 7/30/90 days. */
+    private function periodDays(Request $request): int
+    {
+        $days = (int) $request->query('days', 0);
+
+        return in_array($days, [0, 1, 7, 30, 90], true) ? $days : 0;
+    }
+
+    /** [from, to] for a period; "today" runs from Manila midnight to now. */
+    private function periodRange(int $days): array
+    {
+        $start = $days === 0
+            ? now('Asia/Manila')->startOfDay()->timezone(config('app.timezone'))
+            : now()->subDays($days);
+
+        return [$start, now()];
+    }
+
+    private function overview(int $days, ?int $marketId): array
+    {
+        [$start, $end] = $this->periodRange($days);
+        // Compare with the same-length stretch just before (today → yesterday up to this time).
+        $prevStart = $start->copy()->sub($start->diff($end));
+
+        $orders = fn ($from, $to) => Order::query()
+            ->when($marketId, fn ($q) => $q->where('market_id', $marketId))
+            ->whereBetween('created_at', [$from, $to]);
+
+        $period = function ($from, $to) use ($orders, $marketId) {
+            $placed = (clone $orders($from, $to))->where('status', '!=', 'cancelled');
+            $revenue = (float) (clone $orders($from, $to))->whereIn('status', ['delivered', 'completed'])->sum('total_amount');
+            $count = (int) (clone $placed)->count();
+            $customers = $marketId
+                ? (int) (clone $placed)->distinct('customer_id')->count('customer_id')
+                : (int) Customer::whereBetween('created_at', [$from, $to])->count();
+
+            return [
+                'revenue' => round($revenue, 2),
+                'orders' => $count,
+                'customers' => $customers,
+                'average_order' => $count > 0 ? round((float) (clone $placed)->sum('total_amount') / $count, 2) : 0.0,
+            ];
+        };
+
+        $current = $period($start, $end);
+        $previous = $period($prevStart, $start);
+
+        $change = fn ($now, $before) => $before > 0 ? round(($now - $before) / $before * 100, 1) : ($now > 0 ? 100.0 : 0.0);
+
+        return collect($current)->map(fn ($value, $key) => [
+            'value' => $value,
+            'previous' => $previous[$key],
+            'change' => $change($value, $previous[$key]),
+        ])->all() + ['customers_label' => $marketId ? 'Customers ordering' : 'New customers'];
+    }
+
+    private function formatLatestOrder(Order $order): array
+    {
+        return [
+            'id' => $order->id,
+            'order_number' => $order->order_number,
+            'customer_name' => trim(($order->customer?->fname ?? '').' '.($order->customer?->lname ?? '')) ?: $order->contact_name,
+            'customer_email' => $order->customer?->email,
+            'market_name' => $order->market?->name,
+            'status' => $order->status,
+            'payment_status' => $order->payment_status,
+            'total_amount' => (float) $order->total_amount,
+            'created_at' => $order->created_at?->toIso8601String(),
+        ];
     }
 
     private function marketDashboard(User $user): array
@@ -90,7 +193,9 @@ class DashboardController extends Controller
 
         $totalItemsSold = DB::table('order_items')->sum('quantity');
 
+        // Only markets that are live (status 1) — not "coming soon" or deactivated ones.
         $salesPerMarket = Market::select(['id', 'name'])
+            ->where('status', 1)
             ->withSum(['orders as total_sales' => fn ($q) => $q->where('status', 'delivered')], 'total_amount')
             ->orderByDesc('total_sales')
             ->take(5)
@@ -106,7 +211,7 @@ class DashboardController extends Controller
 
         return [
             'scope' => 'platform',
-            'total_markets' => Market::count(),
+            'total_markets' => Market::where('status', 1)->count(), // active markets only
             'total_admins' => User::where('role', 'admin')->count(),
             'total_riders' => Rider::count(),
             'total_orders' => $totalOrders,

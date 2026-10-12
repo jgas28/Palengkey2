@@ -30,6 +30,7 @@ export default function OrderConfirmation() {
   const delivery =
     order?.is_reservation && order.scheduled_delivery_time
       ? new Date(order.scheduled_delivery_time).toLocaleString("en-PH", {
+          timeZone: "Asia/Manila",
           weekday: "short",
           month: "short",
           day: "numeric",
@@ -47,8 +48,8 @@ export default function OrderConfirmation() {
         <p className="kicker">Order confirmed</p>
         <h1>Salamat{firstName ? `, ${firstName}` : ""}!</h1>
         <p>
-          Your market shopper is getting ready. We’ll notify you when they start picking your fresh
-          items.
+          Your market shopper is getting ready. We’ll notify you when they start picking
+          your fresh items.
         </p>
         <div>
           <small>Order number</small>
@@ -60,7 +61,9 @@ export default function OrderConfirmation() {
               <small>Total</small>
               <small>Payment</small>
               <strong>{formatPeso(Number(order.total_amount))}</strong>
-              <strong style={{ textTransform: "capitalize" }}>{order.payment_status}</strong>
+              <strong style={{ textTransform: "capitalize" }}>
+                {order.payment_status}
+              </strong>
             </>
           )}
         </div>

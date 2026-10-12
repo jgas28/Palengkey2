@@ -22,11 +22,13 @@ class InvoiceService
             return Storage::disk('s3')->get($order->invoice_pdf_path);
         }
 
-        $order->loadMissing(['items', 'market', 'customer']);
+        $order->loadMissing(['items.item.unit', 'market', 'customer']);
 
         $pdf = Pdf::loadView('invoice.download', [
             'order' => $order,
             'appName' => 'Palengkey',
+            'logo' => public_path('login/name.png'),
+            'watermark' => public_path('login/logo.png'),
         ]);
 
         $binary = $pdf->output();

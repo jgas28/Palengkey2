@@ -42,8 +42,10 @@ class OrderController extends Controller
     {
         $this->authorizeOwnership($request, $order);
 
-        $order->load(['items.item.unit', 'cashlessPayment', 'rider', 'recipeBundles.stall']);
+        $order->load(['items.item.unit', 'cashlessPayment', 'rider', 'recipeBundles.stall', 'market:id,name,latitude,longitude']);
         $order->setAttribute('received_at', $order->created_at);
+        // Photo per line for the order page (the item may since have been removed from the catalog).
+        $order->items->each(fn ($line) => $line->setAttribute('image', $line->item?->image_full_url));
         $order->setAttribute(
             'delivery_photo',
             $order->delivery_photo && config('filesystems.disks.s3.key')

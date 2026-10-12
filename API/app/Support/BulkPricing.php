@@ -10,9 +10,10 @@ use App\Models\Setting;
  * threshold, that item gets the wholesale price and the order gets the automatic
  * delivery subsidy (BULK-FREESHIP-49).
  *
- * Wholesale price keeps the peso markup intact — only the vendor cost side is
- * reduced: base × (1 − bulk %) + base × markup %. E.g. ₱100 base, 5% bulk, 10%
- * markup → ₱95 + ₱10 = ₱105 (vs. ₱110 retail).
+ * Wholesale price is the retail price less a flat peso amount per kilo, set per
+ * category (items can override; the "bulk_discount_per_kg" setting is the
+ * fallback). E.g. ₱110/kg retail, ₱5/kg bulk → ₱105/kg. Per-gram units get the
+ * proportional amount (₱5/kg → ₱0.005/g).
  *
  * Shared by the cart preview, checkout and catalog so all three always agree.
  */
@@ -27,9 +28,18 @@ class BulkPricing
         return (bool) (float) Setting::get('bulk_pricing_enabled', 1);
     }
 
-    public static function discountPercent(): float
+    /** Global fallback ₱ off per kg when neither the item nor its category sets one. */
+    public static function defaultDiscountPerKg(): float
     {
-        return max(0, min(100, (float) Setting::get('bulk_discount_percent', 5)));
+        return max(0, (float) Setting::get('bulk_discount_per_kg', 5));
+    }
+
+    /** ₱ off per kg for this item in bulk: item override → category → global default. */
+    public static function discountPerKg(?Item $item): float
+    {
+        $amount = $item?->bulk_discount_per_kg ?? $item?->category?->bulk_discount_per_kg;
+
+        return $amount !== null ? max(0, (float) $amount) : self::defaultDiscountPerKg();
     }
 
     public static function subsidyCap(): float
@@ -49,15 +59,13 @@ class BulkPricing
         return $threshold !== null && (float) $threshold > 0 ? (float) $threshold : null;
     }
 
-    /** Customer-facing wholesale price per unit for a vendor base price. */
-    public static function unitPrice(mixed $basePrice): float
+    /** Customer-facing wholesale price per unit (kg or g) for a vendor base price. */
+    public static function unitPrice(?Item $item, mixed $basePrice): float
     {
-        $base = max(0, (float) $basePrice);
+        $retail = PriceDisplay::markedUp($basePrice);
+        $kgPerUnit = self::isGramUnit($item?->unit) ? 0.001 : 1;
 
-        return round(
-            $base * (1 - self::discountPercent() / 100) + $base * (PriceDisplay::markupPercent() / 100),
-            2,
-        );
+        return round(max(0, $retail - self::discountPerKg($item) * $kgPerUnit), 4);
     }
 
     /**
@@ -112,8 +120,16 @@ class BulkPricing
 
     public static function isWeightUnit($unit): bool
     {
-        $label = preg_replace('/[^a-z]/', '', strtolower(trim($unit?->short_name ?? $unit?->name ?? ''))) ?? '';
+        return in_array(self::unitLabel($unit), self::WEIGHT_UNITS, true);
+    }
 
-        return in_array($label, self::WEIGHT_UNITS, true);
+    private static function isGramUnit($unit): bool
+    {
+        return in_array(self::unitLabel($unit), ['g', 'gr', 'gram', 'grams'], true);
+    }
+
+    private static function unitLabel($unit): string
+    {
+        return preg_replace('/[^a-z]/', '', strtolower(trim($unit?->short_name ?? $unit?->name ?? ''))) ?? '';
     }
 }

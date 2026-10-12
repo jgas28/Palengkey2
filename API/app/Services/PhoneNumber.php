@@ -61,4 +61,28 @@ class PhoneNumber
             '0'.substr($normalized, 3),
         ]));
     }
+
+    /** Splits a pasted list (commas, spaces, new lines) into valid PH mobiles and rejected entries. */
+    public static function splitMany(string $value): array
+    {
+        $tokens = preg_split('/[\s,;]+/', trim($value), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $valid = [];
+        $invalid = [];
+
+        foreach ($tokens as $token) {
+            $normalized = self::normalizePhilippineMobile($token);
+
+            if ($normalized && self::isValidPhilippineMobile($normalized)) {
+                $valid[$normalized] = $normalized;
+                continue;
+            }
+
+            $invalid[] = $token;
+        }
+
+        return [
+            'valid' => array_values($valid),
+            'invalid' => array_values(array_unique($invalid)),
+        ];
+    }
 }

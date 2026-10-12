@@ -10,7 +10,12 @@ export interface ProfileSubPageProps {
 }
 
 /** Edit profile / change password / delete account — the design's page title + card. */
-export default function ProfileSubPage({ kicker, title, description, children }: ProfileSubPageProps) {
+export default function ProfileSubPage({
+  kicker,
+  title,
+  description,
+  children,
+}: ProfileSubPageProps) {
   const navigate = useNavigate();
 
   return (

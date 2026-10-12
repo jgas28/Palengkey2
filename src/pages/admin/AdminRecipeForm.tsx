@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
+import AdminStepper, { AdminFormHeader } from "@/components/admin/AdminStepper";
+import useWizardStep from "@/hooks/useWizardStep";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { Spinner } from "@/components/common/LoadingState";
@@ -41,6 +43,14 @@ interface IngredientRow {
   note: string;
 }
 
+/** The wizard: details → ingredients → how to cook → review. */
+const WIZARD_STEPS = [
+  { id: 1, title: "Details", hint: "Name, type, pricing, photo" },
+  { id: 2, title: "Ingredients", hint: "What to buy, per base quantity" },
+  { id: 3, title: "How to cook", hint: "Steps and chef's tip" },
+  { id: 4, title: "Review", hint: "Check and publish" },
+] as const;
+
 interface StepRow {
   key: string;
   text: string;
@@ -59,6 +69,9 @@ export default function AdminRecipeForm() {
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  // A new recipe has no id yet, so ingredients/steps unlock only after step 1 saves it.
+  const isStepLocked = (stepId: number) => !isEditing && stepId > 1;
+  const [step, goToStep] = useWizardStep(WIZARD_STEPS.length, isStepLocked);
   const showToast = useToastStore((state) => state.showToast);
 
   const { data: recipeTypes = [] } = useQuery({
@@ -113,7 +126,8 @@ export default function AdminRecipeForm() {
       recipe.ingredients
         .slice()
         .sort(
-          (a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.sort_order - b.sort_order,
+          (a, b) =>
+            KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.sort_order - b.sort_order,
         )
         .map((ingredient) => ({
           key: nextRowKey(),
@@ -210,7 +224,7 @@ export default function AdminRecipeForm() {
     onSuccess: (created) => {
       void queryClient.invalidateQueries({ queryKey: ["adminRecipes"] });
       showToast("Recipe created. Now add its ingredients.", "success");
-      navigate(`/admin/recipes/${created.id}/edit`, { replace: true });
+      navigate(`/admin/recipes/${created.id}/edit?step=2`, { replace: true });
     },
     onError: (error) => {
       showToast(
@@ -236,7 +250,7 @@ export default function AdminRecipeForm() {
       void queryClient.invalidateQueries({ queryKey: ["adminRecipes"] });
       void queryClient.invalidateQueries({ queryKey: ["adminRecipe", id] });
       setImage(null);
-      showToast("Recipe details saved.", "success");
+      showToast("Saved.", "success");
     },
     onError: (error) => {
       showToast(
@@ -301,9 +315,21 @@ export default function AdminRecipeForm() {
     },
   });
 
-  function handleCreateSubmit(event: FormEvent) {
+  function handleDetailsSubmit(event: FormEvent) {
     event.preventDefault();
-    createMutation.mutate();
+    if (isEditing) {
+      updateMutation.mutate(undefined, { onSuccess: () => goToStep(2) });
+    } else {
+      createMutation.mutate();
+    }
+  }
+
+  function handleIngredientsContinue() {
+    if (ingredients.length === 0) {
+      goToStep(3);
+      return;
+    }
+    saveIngredientsMutation.mutate(undefined, { onSuccess: () => goToStep(3) });
   }
 
   const ingredientsInvalid = ingredients.some(
@@ -322,169 +348,140 @@ export default function AdminRecipeForm() {
     return <ErrorState onRetry={() => void refetchRecipe()} />;
   }
 
+  const stepDone: Record<number, boolean> = {
+    1: Boolean(recipe),
+    2: Boolean(recipe && recipe.ingredients.length > 0),
+    3: Boolean(recipe && recipe.steps.length > 0),
+    4: Boolean(recipe?.status),
+  };
+  const typeName = recipeTypes.find((rt) => rt.id === recipeTypeId)?.name;
+
   return (
-    <div className="flex max-w-2xl flex-col gap-8">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-lg font-semibold">{isEditing ? "Edit recipe" : "Add recipe"}</h1>
-        {isEditing && recipe && (
-          <span
-            className={`text-xs font-semibold ${
-              recipe.status ? "text-status-delivered" : "text-text-muted"
-            }`}
-          >
-            {recipe.status ? "Active" : "Deactivated"}
-          </span>
-        )}
-      </div>
+    <div className="flex max-w-3xl flex-col gap-6">
+      <AdminFormHeader
+        title={isEditing ? recipe?.name || "Edit recipe" : "New recipe"}
+        onBack={() => navigate("/admin/recipes")}
+        backLabel="Back to recipes"
+        status={isEditing && recipe ? recipe.status : undefined}
+      />
 
-      <form
-        onSubmit={isEditing ? (e) => e.preventDefault() : handleCreateSubmit}
-        className="flex flex-col gap-4"
-      >
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
-          Recipe details
-        </h2>
+      <AdminStepper
+        label="Recipe steps"
+        steps={WIZARD_STEPS}
+        current={step}
+        done={stepDone}
+        isLocked={isStepLocked}
+        onSelect={goToStep}
+      />
 
-        <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} required />
-
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
-          Description
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            className="rounded-lg border border-border bg-surface p-3 text-sm font-normal text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
-          />
-        </label>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
-            Recipe type
-            <select
-              value={recipeTypeId}
-              onChange={(e) => setRecipeTypeId(e.target.value ? Number(e.target.value) : "")}
-              className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
-            >
-              <option value="">None</option>
-              {recipeTypes.map((rt) => (
-                <option key={rt.id} value={rt.id}>
-                  {rt.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
-            Pricing unit
-            <select
-              value={pricingUnit}
-              onChange={(e) => setPricingUnit(e.target.value as RecipePricingUnit)}
-              required
-              className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
-            >
-              <option value="kg">Per kg</option>
-              <option value="serving">Per serving</option>
-            </select>
-          </label>
-
+      {step === 1 && (
+        <form
+          onSubmit={handleDetailsSubmit}
+          className="flex flex-col gap-4 rounded-card border border-border bg-surface p-5"
+        >
+          <h2 className="text-base font-semibold text-text">Step 1 · Recipe details</h2>
           <Input
-            label={pricingUnit === "kg" ? "Base quantity (kg)" : "Base quantity (servings)"}
-            type="number"
-            min="0"
-            step="0.01"
-            value={baseQuantity}
-            onChange={(e) => setBaseQuantity(e.target.value)}
-            helperText="The quantity the ingredient list below is written for."
+            label="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             required
           />
-        </div>
 
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
-          {isEditing ? "Replace cover image (optional)" : "Cover image (optional)"}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setImage(e.target.files?.[0] ?? null)}
-            className="text-sm text-text-muted"
-          />
-        </label>
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
+            Description
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className="rounded-lg border border-border bg-surface p-3 text-sm font-normal text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+            />
+          </label>
 
-        {isEditing && recipe?.image_url && !image && (
-          <img
-            src={recipe.image_url}
-            alt={recipe.name}
-            className="h-32 w-32 rounded-card object-cover"
-          />
-        )}
-
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
-          How to cook
-        </h2>
-
-        <div className="flex flex-col gap-2">
-          {steps.length === 0 && (
-            <p className="text-sm text-text-muted">
-              No steps yet. Add steps to show a cooking guide to customers.
-            </p>
-          )}
-          {steps.map((row, index) => (
-            <div key={row.key} className="flex items-start gap-2">
-              <span className="mt-2.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-50 text-xs font-bold text-primary-700">
-                {index + 1}
-              </span>
-              <textarea
-                value={row.text}
-                onChange={(e) => updateStep(row.key, e.target.value)}
-                rows={2}
-                placeholder={`Step ${index + 1}`}
-                className="flex-1 rounded-lg border border-border bg-surface p-2.5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
-              />
-              <button
-                type="button"
-                onClick={() => removeStep(row.key)}
-                className="mt-2 shrink-0 text-xs font-medium text-status-cancelled"
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
+              Recipe type
+              <select
+                value={recipeTypeId}
+                onChange={(e) =>
+                  setRecipeTypeId(e.target.value ? Number(e.target.value) : "")
+                }
+                className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
               >
-                Remove
-              </button>
-            </div>
-          ))}
-          <Button type="button" variant="secondary" size="sm" onClick={addStep} className="self-start">
-            Add step
-          </Button>
-        </div>
+                <option value="">None</option>
+                {recipeTypes.map((rt) => (
+                  <option key={rt.id} value={rt.id}>
+                    {rt.name}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
-          Chef's tip
-          <textarea
-            value={tips}
-            onChange={(e) => setTips(e.target.value)}
-            rows={2}
-            placeholder="Optional cooking tip shown alongside the steps"
-            className="rounded-lg border border-border bg-surface p-3 text-sm font-normal text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
-          />
-        </label>
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
+              Pricing unit
+              <select
+                value={pricingUnit}
+                onChange={(e) => setPricingUnit(e.target.value as RecipePricingUnit)}
+                required
+                className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+              >
+                <option value="kg">Per kg</option>
+                <option value="serving">Per serving</option>
+              </select>
+            </label>
 
-        {isEditing ? (
-          <Button
-            type="button"
-            loading={updateMutation.isPending}
-            onClick={() => updateMutation.mutate()}
-            className="self-start"
-          >
-            Save details
-          </Button>
-        ) : (
-          <Button type="submit" loading={createMutation.isPending} className="self-start">
-            Create recipe
-          </Button>
-        )}
-      </form>
+            <Input
+              label={
+                pricingUnit === "kg" ? "Base quantity (kg)" : "Base quantity (servings)"
+              }
+              type="number"
+              min="0"
+              step="0.01"
+              value={baseQuantity}
+              onChange={(e) => setBaseQuantity(e.target.value)}
+              helperText="The quantity the ingredient list below is written for."
+              required
+            />
+          </div>
 
-      {isEditing && recipe && (
-        <div className="flex flex-col gap-4 border-t border-border pt-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
-            Ingredients
-          </h2>
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
+            {isEditing ? "Replace cover image (optional)" : "Cover image (optional)"}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setImage(e.target.files?.[0] ?? null)}
+              className="text-sm text-text-muted"
+            />
+          </label>
+
+          {isEditing && recipe?.image_url && !image && (
+            <img
+              src={recipe.image_url}
+              alt={recipe.name}
+              className="h-32 w-32 rounded-card object-cover"
+            />
+          )}
+
+          <div className="flex justify-end border-t border-border pt-4">
+            <Button
+              type="submit"
+              loading={createMutation.isPending || updateMutation.isPending}
+            >
+              {isEditing ? "Save & continue" : "Create & add ingredients"} →
+            </Button>
+          </div>
+        </form>
+      )}
+
+      {step === 2 && isEditing && recipe && (
+        <div className="flex flex-col gap-4 rounded-card border border-border bg-surface p-5">
+          <div>
+            <h2 className="text-base font-semibold text-text">Step 2 · Ingredients</h2>
+            <p className="text-sm text-text-muted">
+              Quantities are for {baseQuantity || "1"}{" "}
+              {pricingUnit === "kg" ? "kg" : "serving(s)"} — customers scale from there,
+              priced at their selected market.
+            </p>
+          </div>
 
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-text" htmlFor="ingredient-market">
@@ -588,11 +585,13 @@ export default function AdminRecipeForm() {
                           }
                           className="h-9 rounded-lg border border-border bg-surface px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
                         >
-                          {(Object.keys(KIND_LABELS) as RecipeIngredientKind[]).map((kind) => (
-                            <option key={kind} value={kind}>
-                              {KIND_LABELS[kind]}
-                            </option>
-                          ))}
+                          {(Object.keys(KIND_LABELS) as RecipeIngredientKind[]).map(
+                            (kind) => (
+                              <option key={kind} value={kind}>
+                                {KIND_LABELS[kind]}
+                              </option>
+                            ),
+                          )}
                         </select>
                       </td>
                       <td className="px-3 py-2">
@@ -629,7 +628,9 @@ export default function AdminRecipeForm() {
                         <input
                           type="text"
                           value={row.note}
-                          onChange={(e) => updateIngredient(row.key, { note: e.target.value })}
+                          onChange={(e) =>
+                            updateIngredient(row.key, { note: e.target.value })
+                          }
                           placeholder="Optional note"
                           className="h-9 w-32 rounded-lg border border-border bg-surface px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
                         />
@@ -650,46 +651,205 @@ export default function AdminRecipeForm() {
             </div>
           )}
 
-          <Button
-            type="button"
-            loading={saveIngredientsMutation.isPending}
-            disabled={ingredients.length === 0 || ingredientsInvalid}
-            onClick={() => saveIngredientsMutation.mutate()}
-            className="self-start"
-          >
-            Save ingredients
-          </Button>
+          <div className="flex justify-between gap-2 border-t border-border pt-4">
+            <Button type="button" variant="secondary" onClick={() => goToStep(1)}>
+              ← Back
+            </Button>
+            <Button
+              type="button"
+              loading={saveIngredientsMutation.isPending}
+              disabled={ingredientsInvalid}
+              onClick={handleIngredientsContinue}
+            >
+              {ingredients.length === 0 ? "Skip for now →" : "Save & continue →"}
+            </Button>
+          </div>
         </div>
       )}
 
-      {isEditing && recipe && (
-        <div className="flex flex-col gap-2 border-t border-border pt-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
-            Danger zone
-          </h2>
-          {recipe.status ? (
-            <Button
-              type="button"
-              variant="danger"
-              size="sm"
-              className="self-start"
-              loading={deactivateMutation.isPending}
-              onClick={() => deactivateMutation.mutate()}
-            >
-              Deactivate recipe
-            </Button>
-          ) : (
+      {step === 3 && isEditing && recipe && (
+        <div className="flex flex-col gap-4 rounded-card border border-border bg-surface p-5">
+          <div>
+            <h2 className="text-base font-semibold text-text">Step 3 · How to cook</h2>
+            <p className="text-sm text-text-muted">One instruction per step, in order.</p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            {steps.length === 0 && (
+              <p className="text-sm text-text-muted">
+                No steps yet. Add steps to show a cooking guide to customers.
+              </p>
+            )}
+            {steps.map((row, index) => (
+              <div key={row.key} className="flex items-start gap-2">
+                <span className="mt-2.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-50 text-xs font-bold text-primary-700">
+                  {index + 1}
+                </span>
+                <textarea
+                  value={row.text}
+                  onChange={(e) => updateStep(row.key, e.target.value)}
+                  rows={2}
+                  placeholder={`Step ${index + 1}`}
+                  className="flex-1 rounded-lg border border-border bg-surface p-2.5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeStep(row.key)}
+                  className="mt-2 shrink-0 text-xs font-medium text-status-cancelled"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
             <Button
               type="button"
               variant="secondary"
               size="sm"
+              onClick={addStep}
               className="self-start"
-              loading={restoreMutation.isPending}
-              onClick={() => restoreMutation.mutate()}
             >
-              Restore recipe
+              Add step
             </Button>
+          </div>
+
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
+            Chef's tip
+            <textarea
+              value={tips}
+              onChange={(e) => setTips(e.target.value)}
+              rows={2}
+              placeholder="Optional cooking tip shown alongside the steps"
+              className="rounded-lg border border-border bg-surface p-3 text-sm font-normal text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+            />
+          </label>
+
+          <div className="flex justify-between gap-2 border-t border-border pt-4">
+            <Button type="button" variant="secondary" onClick={() => goToStep(2)}>
+              ← Back
+            </Button>
+            <Button
+              type="button"
+              loading={updateMutation.isPending}
+              onClick={() =>
+                updateMutation.mutate(undefined, { onSuccess: () => goToStep(4) })
+              }
+            >
+              Save & review →
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {step === 4 && isEditing && recipe && (
+        <div className="flex flex-col gap-5 rounded-card border border-border bg-surface p-5">
+          <h2 className="text-base font-semibold text-text">Step 4 · Review</h2>
+
+          <div className="flex gap-4">
+            {recipe.image_url ? (
+              <img
+                src={recipe.image_url}
+                alt={recipe.name}
+                className="h-24 w-24 shrink-0 rounded-card object-cover"
+              />
+            ) : (
+              <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-card bg-background text-xs text-text-muted">
+                No photo
+              </div>
+            )}
+            <div className="flex flex-col gap-1">
+              <p className="font-semibold text-text">{recipe.name}</p>
+              <p className="text-sm text-text-muted">
+                {typeName ?? "No type"} · priced per{" "}
+                {recipe.pricing_unit === "kg" ? "kg" : "serving"} · base{" "}
+                {Number(recipe.base_quantity)}
+              </p>
+              {recipe.description && (
+                <p className="text-sm text-text">{recipe.description}</p>
+              )}
+            </div>
+          </div>
+
+          <ul className="flex flex-col gap-2 text-sm">
+            {[
+              {
+                ok: Boolean(recipe.image_url),
+                label: "Cover photo",
+                fix: 1,
+              },
+              {
+                ok: recipe.ingredients.length > 0,
+                label: `${recipe.ingredients.length} ingredient${recipe.ingredients.length === 1 ? "" : "s"}`,
+                fix: 2,
+              },
+              {
+                ok: recipe.steps.length > 0,
+                label: `${recipe.steps.length} cooking step${recipe.steps.length === 1 ? "" : "s"}`,
+                fix: 3,
+              },
+            ].map((check) => (
+              <li
+                key={check.label}
+                className="flex items-center justify-between gap-3 rounded-lg bg-background px-3 py-2"
+              >
+                <span className={check.ok ? "text-text" : "text-status-cancelled"}>
+                  {check.ok ? "✓" : "!"} {check.label}
+                  {!check.ok && " — missing"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => goToStep(check.fix)}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  Edit
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {recipe.ingredients.length > 0 && (
+            <div>
+              <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                Buy list
+              </h3>
+              <p className="text-sm text-text">
+                {recipe.ingredients
+                  .map(
+                    (ingredient) =>
+                      `${Number(ingredient.quantity)} ${units.find((u) => u.id === ingredient.unit_id)?.short_name ?? ""} ${ingredient.item_name}${ingredient.is_optional ? " (optional)" : ""}`,
+                  )
+                  .join(" · ")}
+              </p>
+            </div>
           )}
+
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
+            <Button type="button" variant="secondary" onClick={() => goToStep(3)}>
+              ← Back
+            </Button>
+            <div className="flex gap-2">
+              {recipe.status ? (
+                <Button
+                  type="button"
+                  variant="danger"
+                  loading={deactivateMutation.isPending}
+                  onClick={() => deactivateMutation.mutate()}
+                >
+                  Deactivate
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  loading={restoreMutation.isPending}
+                  onClick={() => restoreMutation.mutate()}
+                >
+                  Publish (restore)
+                </Button>
+              )}
+              <Button type="button" onClick={() => navigate("/admin/recipes")}>
+                Done
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

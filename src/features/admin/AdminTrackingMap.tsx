@@ -22,9 +22,11 @@ export default function AdminTrackingMap({
   const { isLoaded, loadError } = useGoogleMapsLoader();
 
   const locatedRiders = useMemo(
-    () => riders.filter((r): r is AdminRiderTrackingEntry & { latitude: number; longitude: number } =>
-      r.latitude !== null && r.longitude !== null,
-    ),
+    () =>
+      riders.filter(
+        (r): r is AdminRiderTrackingEntry & { latitude: number; longitude: number } =>
+          r.latitude !== null && r.longitude !== null,
+      ),
     [riders],
   );
 
@@ -73,7 +75,11 @@ export default function AdminTrackingMap({
         mapContainerStyle={MAP_CONTAINER_STYLE}
         center={center}
         zoom={selectedRiderId ? 15 : 12}
-        options={{ streetViewControl: false, mapTypeControl: false, fullscreenControl: false }}
+        options={{
+          streetViewControl: false,
+          mapTypeControl: false,
+          fullscreenControl: false,
+        }}
       >
         {markets.map((market) => (
           <MarkerF

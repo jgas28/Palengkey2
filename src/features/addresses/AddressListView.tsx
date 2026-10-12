@@ -17,7 +17,12 @@ export default function AddressListView() {
   const showToast = useToastStore((state) => state.showToast);
   const queryClient = useQueryClient();
 
-  const { data: addresses = [], isLoading, isError, refetch } = useQuery({
+  const {
+    data: addresses = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["addresses"],
     queryFn: listAddresses,
   });
@@ -30,7 +35,8 @@ export default function AddressListView() {
       void invalidate();
       showToast("Default address updated", "success");
     },
-    onError: (error) => showToast(error instanceof Error ? error.message : "Could not update.", "error"),
+    onError: (error) =>
+      showToast(error instanceof Error ? error.message : "Could not update.", "error"),
   });
 
   const deleteMutation = useMutation({
@@ -39,7 +45,8 @@ export default function AddressListView() {
       void invalidate();
       showToast(message, "success");
     },
-    onError: (error) => showToast(error instanceof Error ? error.message : "Could not delete.", "error"),
+    onError: (error) =>
+      showToast(error instanceof Error ? error.message : "Could not delete.", "error"),
   });
 
   function handleDelete(address: Address) {
@@ -54,7 +61,11 @@ export default function AddressListView() {
           <h1>Saved addresses</h1>
           <p>Choose where your market goods should be delivered.</p>
         </div>
-        <button type="button" className="btn primary" onClick={() => setFormState({ mode: "create" })}>
+        <button
+          type="button"
+          className="btn primary"
+          onClick={() => setFormState({ mode: "create" })}
+        >
           <Icon name="plus" /> Add address
         </button>
       </div>
@@ -80,7 +91,11 @@ export default function AddressListView() {
             <Icon name="truck" size={34} />
             <h3>No saved addresses yet</h3>
             <p>Add where we should bring your market goods.</p>
-            <button type="button" className="btn primary" onClick={() => setFormState({ mode: "create" })}>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => setFormState({ mode: "create" })}
+            >
               Add address
             </button>
           </div>
@@ -109,7 +124,10 @@ export default function AddressListView() {
                 {address.contact_name} · {address.contact_phone}
               </small>
               <div className="address-actions">
-                <button type="button" onClick={() => setFormState({ mode: "edit", address })}>
+                <button
+                  type="button"
+                  onClick={() => setFormState({ mode: "edit", address })}
+                >
                   Edit
                 </button>
                 {!address.is_default && (
@@ -122,7 +140,11 @@ export default function AddressListView() {
                     Set as default
                   </button>
                 )}
-                <button type="button" disabled={deleteMutation.isPending} onClick={() => handleDelete(address)}>
+                <button
+                  type="button"
+                  disabled={deleteMutation.isPending}
+                  onClick={() => handleDelete(address)}
+                >
                   Remove
                 </button>
               </div>
@@ -138,7 +160,9 @@ export default function AddressListView() {
       <PkSheet
         isOpen={formState !== null}
         onClose={() => setFormState(null)}
-        kicker={formState?.mode === "edit" ? "Delivery location" : "New delivery location"}
+        kicker={
+          formState?.mode === "edit" ? "Delivery location" : "New delivery location"
+        }
         title={formState?.mode === "edit" ? "Edit address" : "Add an address"}
       >
         <AddressForm

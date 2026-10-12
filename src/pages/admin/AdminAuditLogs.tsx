@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { Spinner } from "@/components/common/LoadingState";
@@ -29,6 +29,7 @@ export default function AdminAuditLogs() {
         userId: userId ? Number(userId) : undefined,
         page,
       }),
+    placeholderData: keepPreviousData,
   });
 
   return (

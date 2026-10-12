@@ -150,25 +150,35 @@ export default function Profile() {
               <Icon name="chevron" />
             </button>
           ))}
-          <button type="button" className="signout" disabled={loggingOut !== null} onClick={() => void handleLogout("one")}>
-            {loggingOut === "one" ? "Signing out…" : "Sign out of this device"}
+          <button type="button" disabled={loggingOut !== null} onClick={() => void handleLogout("one")}>
+            <span style={{ color: "#b82f2f", background: "#fdecec" }}>
+              <Icon name="arrow" />
+            </span>
+            <div>
+              <strong style={{ color: "#b82f2f" }}>{loggingOut === "one" ? "Signing out…" : "Sign out"}</strong>
+              <small>Log out of this device</small>
+            </div>
+            <Icon name="chevron" />
           </button>
-          <button
-            type="button"
-            className="signout"
-            style={{ marginTop: 0, color: "var(--muted)" }}
-            disabled={loggingOut !== null}
-            onClick={() => void handleLogout("all")}
-          >
-            {loggingOut === "all" ? "Signing out…" : "Sign out of all devices"}
+          <button type="button" disabled={loggingOut !== null} onClick={() => void handleLogout("all")}>
+            <span>
+              <Icon name="shield" />
+            </span>
+            <div>
+              <strong>{loggingOut === "all" ? "Signing out…" : "Sign out of all devices"}</strong>
+              <small>End every session, on phones and computers</small>
+            </div>
+            <Icon name="chevron" />
           </button>
-          <button
-            type="button"
-            className="signout"
-            style={{ marginTop: 0, fontSize: 10 }}
-            onClick={() => navigate("/profile/delete-account")}
-          >
-            Delete my account
+          <button type="button" onClick={() => navigate("/profile/delete-account")}>
+            <span style={{ color: "#c2410c", background: "#fdecec" }}>
+              <Icon name="x" />
+            </span>
+            <div>
+              <strong style={{ color: "#c2410c" }}>Delete my account</strong>
+              <small>Permanently remove your account and data</small>
+            </div>
+            <Icon name="chevron" />
           </button>
         </section>
       </div>

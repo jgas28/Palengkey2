@@ -7,6 +7,8 @@ export interface AdminCategory {
   active_items_count: number;
   /** Bulk tier threshold (kg) for items in this category; null = no bulk pricing. */
   bulk_min_kg: string | null;
+  /** ₱ off per kg once bought in bulk; null = the global default setting. */
+  bulk_discount_per_kg: string | null;
 }
 
 export interface AdminCategoryPage {

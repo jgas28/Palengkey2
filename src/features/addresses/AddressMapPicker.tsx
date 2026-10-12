@@ -21,17 +21,20 @@ export default function AddressMapPicker({ lat, lng, onChange }: AddressMapPicke
   const hasPin = lat !== 0 || lng !== 0;
   const center = hasPin ? { lat, lng } : DEFAULT_CENTER;
 
-  const reverseGeocode = useCallback((coords: { lat: number; lng: number }) => {
-    if (!geocoderRef.current) {
-      geocoderRef.current = new google.maps.Geocoder();
-    }
-    setGeocoding(true);
-    geocoderRef.current.geocode({ location: coords }, (results, status) => {
-      setGeocoding(false);
-      const formatted = status === "OK" ? results?.[0]?.formatted_address : undefined;
-      onChange(coords, formatted);
-    });
-  }, [onChange]);
+  const reverseGeocode = useCallback(
+    (coords: { lat: number; lng: number }) => {
+      if (!geocoderRef.current) {
+        geocoderRef.current = new google.maps.Geocoder();
+      }
+      setGeocoding(true);
+      geocoderRef.current.geocode({ location: coords }, (results, status) => {
+        setGeocoding(false);
+        const formatted = status === "OK" ? results?.[0]?.formatted_address : undefined;
+        onChange(coords, formatted);
+      });
+    },
+    [onChange],
+  );
 
   function handleMapClick(event: google.maps.MapMouseEvent) {
     if (!event.latLng) return;
@@ -73,11 +76,7 @@ export default function AddressMapPicker({ lat, lng, onChange }: AddressMapPicke
         }}
       >
         {hasPin && (
-          <Marker
-            position={{ lat, lng }}
-            draggable
-            onDragEnd={handleMarkerDragEnd}
-          />
+          <Marker position={{ lat, lng }} draggable onDragEnd={handleMarkerDragEnd} />
         )}
       </GoogleMap>
       {geocoding && (
