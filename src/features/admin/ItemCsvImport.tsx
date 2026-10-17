@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import Button from "@/components/ui/Button";
@@ -19,7 +19,12 @@ function saveBlob(blob: Blob, filename: string) {
 }
 
 /** "Import CSV" on the Items page — batch-creates catalog items, then points to Inventory for prices. */
-export default function ItemCsvImport() {
+/** `trigger` replaces the default small button (e.g. a styled page-header button). */
+export default function ItemCsvImport({
+  trigger,
+}: {
+  trigger?: (open: () => void) => ReactNode;
+}) {
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
   const [open, setOpen] = useState(false);
@@ -66,9 +71,13 @@ export default function ItemCsvImport() {
 
   return (
     <>
-      <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
-        Import CSV
-      </Button>
+      {trigger ? (
+        trigger(() => setOpen(true))
+      ) : (
+        <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
+          Import CSV
+        </Button>
+      )}
 
       <Modal isOpen={open} onClose={close} title="Import items from CSV">
         <div className="flex flex-col gap-4 text-sm">

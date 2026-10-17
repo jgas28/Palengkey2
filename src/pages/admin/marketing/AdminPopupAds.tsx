@@ -215,7 +215,7 @@ export default function AdminPopupAds() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search popup ads…"
-          className="h-10 w-64 rounded-lg border border-border bg-surface px-3 text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-300"
+          className="h-10 w-64 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
         />
         <Button size="sm" onClick={openCreateForm}>
           Add popup ad
@@ -272,7 +272,7 @@ export default function AdminPopupAds() {
             <select
               value={form.type}
               onChange={(e) => setForm({ ...form, type: e.target.value as PopupAdType })}
-              className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
             >
               {(Object.keys(TYPE_LABELS) as PopupAdType[]).map((type) => (
                 <option key={type} value={type}>
@@ -292,7 +292,7 @@ export default function AdminPopupAds() {
                   voucher_id: e.target.value ? Number(e.target.value) : "",
                 })
               }
-              className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
             >
               <option value="">None</option>
               {vouchers.map((voucher) => (

@@ -1,11 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import AdminTable, {
-  AdminStatusPill,
-  AdminThumb,
-  adminTd,
-  adminTdStrong,
-} from "@/components/admin/AdminTable";
+import { Plus } from "lucide-react";
+import { Card, EmptyPanel } from "@/components/admin/AdminUi";
+import { ManageTabs } from "@/components/admin/AdminManageList";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
@@ -171,28 +168,48 @@ export default function AdminHeroContent() {
     }
   }
 
+  const toggleMutation = useMutation({
+    mutationFn: (hero: AdminHeroContentEntry) =>
+      updateAdminHeroContent(hero.id, {
+        page_name: hero.page_name,
+        title: hero.title,
+        subtitle: hero.subtitle ?? undefined,
+        description: hero.description ?? undefined,
+        cta_text: hero.cta_text,
+        cta_link: hero.cta_link,
+        cta_text_2: hero.cta_text_2 ?? undefined,
+        cta_link_2: hero.cta_link_2 ?? undefined,
+        is_active: !hero.is_active,
+        stats: hero.stats_json ?? [],
+      }),
+    onSuccess: (_data, hero) => {
+      void queryClient.invalidateQueries({ queryKey: ["adminHeroContent"] });
+      showToast(hero.is_active ? "Moved to draft." : "Published.", "success");
+    },
+    onError: (error) => {
+      showToast(error instanceof Error ? error.message : "Could not update.", "error");
+    },
+  });
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-1 rounded-pill bg-background p-1">
-          {(["home", "global"] as HeroPageName[]).map((name) => (
-            <button
-              key={name}
-              type="button"
-              onClick={() => setPageName(name)}
-              className={`rounded-pill px-4 py-1.5 text-sm font-medium capitalize ${
-                pageName === name
-                  ? "bg-gradient-brand text-white shadow-soft"
-                  : "text-text-muted"
-              }`}
-            >
-              {name}
-            </button>
-          ))}
-        </div>
-        <Button size="sm" onClick={openCreateForm}>
-          Add hero
-        </Button>
+        <ManageTabs
+          label="Page"
+          tabs={[
+            { value: "home" as HeroPageName, label: "Homepage" },
+            { value: "global" as HeroPageName, label: "Other pages" },
+          ]}
+          value={pageName}
+          onChange={setPageName}
+        />
+        <button
+          type="button"
+          onClick={openCreateForm}
+          className="flex h-10 items-center gap-2 rounded-xl bg-primary-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-primary-700"
+        >
+          <Plus size={16} aria-hidden="true" /> New campaign
+        </button>
       </div>
 
       {isLoading && (
@@ -203,46 +220,79 @@ export default function AdminHeroContent() {
 
       {isError && <ErrorState onRetry={() => void refetch()} />}
 
-      {heroes && (
-        <AdminTable head={["Banner", "Buttons", "Order", "Status", ""]}>
+      {heroes && heroes.length === 0 && (
+        <Card>
+          <EmptyPanel
+            title="No hero banners yet."
+            description="Add a banner to headline this page."
+          />
+        </Card>
+      )}
+
+      {heroes && heroes.length > 0 && (
+        <div className="grid gap-4 lg:grid-cols-2">
           {heroes.map((hero) => (
-            <tr key={hero.id} className="hover:bg-background/60">
-              <td className={adminTdStrong}>
-                <button
-                  type="button"
-                  onClick={() => openEditForm(hero)}
-                  className="flex items-center gap-3 text-left hover:text-primary"
+            <Card key={hero.id} className="flex overflow-hidden">
+              <button
+                type="button"
+                onClick={() => openEditForm(hero)}
+                className="w-2/5 shrink-0 bg-slate-100"
+                aria-label={`Edit ${hero.title}`}
+              >
+                <img
+                  src={hero.image_url}
+                  alt=""
+                  loading="lazy"
+                  className="h-full min-h-[150px] w-full object-cover"
+                />
+              </button>
+              <div className="flex min-w-0 flex-1 flex-col p-4">
+                <span
+                  className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                    hero.is_active
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "bg-amber-50 text-amber-700"
+                  }`}
                 >
-                  <AdminThumb src={hero.image_url} />
-                  <span className="flex flex-col">
-                    <span className="line-clamp-1">{hero.title}</span>
-                    {hero.subtitle && (
-                      <span className="line-clamp-1 text-xs font-normal text-text-muted">
-                        {hero.subtitle}
-                      </span>
-                    )}
-                  </span>
-                </button>
-              </td>
-              <td className={adminTd}>
-                {[hero.cta_text, hero.cta_text_2].filter(Boolean).join(" · ") || "—"}
-              </td>
-              <td className={adminTd}>{hero.is_active ? `#${hero.sequence}` : "—"}</td>
-              <td className={adminTd}>
-                <AdminStatusPill active={hero.is_active} />
-              </td>
-              <td className="px-4 py-3 text-right">
-                <button
-                  type="button"
-                  onClick={() => openEditForm(hero)}
-                  className="text-xs font-semibold text-primary hover:underline"
-                >
-                  Edit
-                </button>
-              </td>
-            </tr>
+                  {hero.is_active ? `Published · #${hero.sequence}` : "Draft"}
+                </span>
+                <h3 className="mt-2 line-clamp-2 font-display text-lg font-semibold text-slate-900">
+                  {hero.title}
+                </h3>
+                <p className="line-clamp-2 text-xs text-slate-500">
+                  {hero.subtitle ||
+                    [hero.cta_text, hero.cta_text_2].filter(Boolean).join(" · ")}
+                </p>
+                <div className="mt-auto flex items-center justify-between pt-3">
+                  <button
+                    type="button"
+                    onClick={() => openEditForm(hero)}
+                    className="text-xs font-semibold text-primary-700 hover:underline"
+                  >
+                    Edit content
+                  </button>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={hero.is_active}
+                    aria-label={hero.is_active ? "Unpublish" : "Publish"}
+                    disabled={toggleMutation.isPending}
+                    onClick={() => toggleMutation.mutate(hero)}
+                    className={`relative h-6 w-11 rounded-full transition-colors disabled:opacity-50 ${
+                      hero.is_active ? "bg-primary-600" : "bg-slate-300"
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+                        hero.is_active ? "left-[22px]" : "left-0.5"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            </Card>
           ))}
-        </AdminTable>
+        </div>
       )}
 
       <Modal
@@ -334,7 +384,7 @@ export default function AdminHeroContent() {
                   }
                   placeholder="50+"
                   aria-label={`Stat ${index + 1} number`}
-                  className="h-10 w-24 rounded-lg border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+                  className="h-10 w-24 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
                 />
                 <input
                   value={stat.value}
@@ -348,7 +398,7 @@ export default function AdminHeroContent() {
                   }
                   placeholder="Local markets"
                   aria-label={`Stat ${index + 1} label`}
-                  className="h-10 flex-1 rounded-lg border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+                  className="h-10 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
                 />
                 <button
                   type="button"

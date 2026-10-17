@@ -18,6 +18,7 @@ import {
   PaymentsPanel,
   ProductsPanel,
 } from "@/pages/admin/reports/ExtraReportPanels";
+import { ManageHeader, ManageTabs } from "@/components/admin/AdminManageList";
 
 function peso(amount: number): string {
   return `₱${amount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
@@ -61,24 +62,22 @@ export default function AdminReports() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-lg font-semibold">Reports</h1>
+      <ManageHeader
+        eyebrow="Administration"
+        title="Reports"
+        description="Sales, orders and market performance for any date range."
+      />
 
-      <div className="flex gap-1 overflow-x-auto border-b border-border">
-        {TABS.map(({ value, label }) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setTab(value)}
-            className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium ${
-              tab === value
-                ? "border-primary text-primary"
-                : "border-transparent text-text-muted hover:text-text"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <ManageTabs
+        label="Report"
+        tabs={TABS.map((item) => ({
+          value: item.value,
+          label: item.label,
+          count: null,
+        }))}
+        value={tab}
+        onChange={setTab}
+      />
 
       <div className="flex flex-wrap items-end gap-3">
         <Input
@@ -170,21 +169,29 @@ function SalesPanel({ startDate, endDate }: PanelProps) {
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="flex flex-col gap-1 rounded-card bg-gradient-brand p-4 text-white shadow-soft">
-          <span className="text-2xl font-bold">{data.total_orders}</span>
-          <span className="text-xs text-white/80">Total orders</span>
+        <div className="flex flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <span className="font-display text-2xl font-semibold text-slate-900">
+            {data.total_orders}
+          </span>
+          <span className="text-xs text-slate-500">Total orders</span>
         </div>
-        <div className="flex flex-col gap-1 rounded-card bg-gradient-brand p-4 text-white shadow-soft">
-          <span className="text-2xl font-bold">{peso(data.total_sales)}</span>
-          <span className="text-xs text-white/80">Total sales</span>
+        <div className="flex flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <span className="font-display text-2xl font-semibold text-slate-900">
+            {peso(data.total_sales)}
+          </span>
+          <span className="text-xs text-slate-500">Total sales</span>
         </div>
-        <div className="flex flex-col gap-1 rounded-card bg-gradient-brand p-4 text-white shadow-soft">
-          <span className="text-2xl font-bold">{data.total_items}</span>
-          <span className="text-xs text-white/80">Items sold</span>
+        <div className="flex flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <span className="font-display text-2xl font-semibold text-slate-900">
+            {data.total_items}
+          </span>
+          <span className="text-xs text-slate-500">Items sold</span>
         </div>
-        <div className="flex flex-col gap-1 rounded-card bg-gradient-brand p-4 text-white shadow-soft">
-          <span className="text-2xl font-bold">{peso(data.average_order_value)}</span>
-          <span className="text-xs text-white/80">Avg. order value</span>
+        <div className="flex flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <span className="font-display text-2xl font-semibold text-slate-900">
+            {peso(data.average_order_value)}
+          </span>
+          <span className="text-xs text-slate-500">Avg. order value</span>
         </div>
       </div>
 
@@ -192,9 +199,9 @@ function SalesPanel({ startDate, endDate }: PanelProps) {
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
           Sales by market
         </h2>
-        <div className="overflow-x-auto rounded-card border border-border">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
           <table className="w-full text-left text-sm">
-            <thead className="bg-background text-xs uppercase text-text-muted">
+            <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-4 py-3">Market</th>
                 <th className="px-4 py-3">Orders</th>
@@ -225,9 +232,9 @@ function SalesPanel({ startDate, endDate }: PanelProps) {
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
           Orders
         </h2>
-        <div className="overflow-x-auto rounded-card border border-border">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
           <table className="w-full text-left text-sm">
-            <thead className="bg-background text-xs uppercase text-text-muted">
+            <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-4 py-3">Order #</th>
                 <th className="px-4 py-3">Date</th>
@@ -314,27 +321,35 @@ function VerificationsPanel({ startDate, endDate }: PanelProps) {
       </Button>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="flex flex-col gap-1 rounded-card bg-gradient-brand p-4 text-white shadow-soft">
-          <span className="text-2xl font-bold">{data.total_submissions}</span>
-          <span className="text-xs text-white/80">Total submissions</span>
+        <div className="flex flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <span className="font-display text-2xl font-semibold text-slate-900">
+            {data.total_submissions}
+          </span>
+          <span className="text-xs text-slate-500">Total submissions</span>
         </div>
-        <div className="flex flex-col gap-1 rounded-card bg-gradient-brand p-4 text-white shadow-soft">
-          <span className="text-2xl font-bold">{data.approved}</span>
-          <span className="text-xs text-white/80">Approved</span>
+        <div className="flex flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <span className="font-display text-2xl font-semibold text-slate-900">
+            {data.approved}
+          </span>
+          <span className="text-xs text-slate-500">Approved</span>
         </div>
-        <div className="flex flex-col gap-1 rounded-card bg-gradient-brand p-4 text-white shadow-soft">
-          <span className="text-2xl font-bold">{data.rejected}</span>
-          <span className="text-xs text-white/80">Rejected</span>
+        <div className="flex flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <span className="font-display text-2xl font-semibold text-slate-900">
+            {data.rejected}
+          </span>
+          <span className="text-xs text-slate-500">Rejected</span>
         </div>
-        <div className="flex flex-col gap-1 rounded-card bg-gradient-brand p-4 text-white shadow-soft">
-          <span className="text-2xl font-bold">{data.approval_rate}%</span>
-          <span className="text-xs text-white/80">Approval rate</span>
+        <div className="flex flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <span className="font-display text-2xl font-semibold text-slate-900">
+            {data.approval_rate}%
+          </span>
+          <span className="text-xs text-slate-500">Approval rate</span>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-card border border-border">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         <table className="w-full text-left text-sm">
-          <thead className="bg-background text-xs uppercase text-text-muted">
+          <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] uppercase tracking-wide text-slate-400">
             <tr>
               <th className="px-4 py-3">Customer</th>
               <th className="px-4 py-3">ID Type</th>
@@ -422,9 +437,9 @@ function ActivitiesPanel({ startDate, endDate }: PanelProps) {
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
           Market activity
         </h2>
-        <div className="overflow-x-auto rounded-card border border-border">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
           <table className="w-full text-left text-sm">
-            <thead className="bg-background text-xs uppercase text-text-muted">
+            <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-4 py-3">Market</th>
                 <th className="px-4 py-3">Orders</th>
@@ -461,9 +476,9 @@ function ActivitiesPanel({ startDate, endDate }: PanelProps) {
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
           Rider activity
         </h2>
-        <div className="overflow-x-auto rounded-card border border-border">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
           <table className="w-full text-left text-sm">
-            <thead className="bg-background text-xs uppercase text-text-muted">
+            <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-4 py-3">Rider</th>
                 <th className="px-4 py-3">Deliveries</th>

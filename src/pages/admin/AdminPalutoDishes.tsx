@@ -7,6 +7,7 @@ import ErrorState from "@/components/common/ErrorState";
 import EmptyState from "@/components/common/EmptyState";
 import { listAdminPalutoDishes } from "@/services/api/adminPalutoDishes";
 import { formatPeso } from "@/utils/currency";
+import {} from "@/components/admin/AdminManageList";
 
 /** One stall's own menu — every dish here has its own ingredient list and cooking fee. */
 export default function AdminPalutoDishes() {
@@ -26,16 +27,16 @@ export default function AdminPalutoDishes() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
           <Link to="/admin/paluto-stalls" className="text-xs font-medium text-primary">
             ← Back to stalls
           </Link>
-          <h1 className="text-lg font-semibold">
+          <h2 className="font-display text-3xl font-semibold text-slate-900">
             {data ? `${data.stall.name} — Menu` : "Menu"}
-          </h1>
+          </h2>
           {data && (
-            <p className="text-xs text-text-muted">
+            <p className="text-sm text-slate-500">
               {data.stall.market_name ?? "No market"} · ingredient prices come from this
               market
             </p>
@@ -50,7 +51,7 @@ export default function AdminPalutoDishes() {
         value={statusFilter}
         onChange={(event) => setStatusFilter(event.target.value as "" | "0" | "1")}
         aria-label="Filter by status"
-        className="h-10 self-start rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+        className="h-10 self-startrounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
       >
         <option value="">All statuses</option>
         <option value="1">Active</option>
@@ -73,9 +74,9 @@ export default function AdminPalutoDishes() {
       )}
 
       {dishes.length > 0 && (
-        <div className="overflow-x-auto rounded-card border border-border">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
           <table className="w-full text-left text-sm">
-            <thead className="bg-background text-xs uppercase text-text-muted">
+            <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-4 py-3">Dish</th>
                 <th className="px-4 py-3">Batch</th>

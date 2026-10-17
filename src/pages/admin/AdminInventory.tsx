@@ -14,6 +14,7 @@ import { listAdminMarkets } from "@/services/api/adminLookups";
 import { useAdminAuthStore } from "@/stores/adminAuthStore";
 import { useToastStore } from "@/stores/toastStore";
 import type { AdminInventoryRow } from "@/types/adminInventory";
+import {} from "@/components/admin/AdminManageList";
 
 function triggerDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -139,8 +140,18 @@ export default function AdminInventory() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-lg font-semibold">Inventory &amp; Pricing</h1>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-700">
+            Catalog
+          </p>
+          <h2 className="font-display text-3xl font-semibold text-slate-900">
+            Inventory &amp; Pricing
+          </h2>
+          <p className="text-sm text-slate-500">
+            Update market prices and stock in bulk, then save once.
+          </p>
+        </div>
         <div className="flex flex-wrap gap-2">
           <Button
             variant="secondary"
@@ -168,7 +179,7 @@ export default function AdminInventory() {
             onChange={(e) =>
               setMarketId(e.target.value ? Number(e.target.value) : undefined)
             }
-            className="h-10 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+            className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
           >
             <option value="">Choose a market</option>
             {markets.map((market) => (
@@ -183,14 +194,19 @@ export default function AdminInventory() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search items..."
-          className="h-10 flex-1 rounded-lg border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+          className="h-10 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
         />
-        <input
-          type="file"
-          accept=".csv"
-          onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
-          className="text-sm text-text-muted"
-        />
+        <label className="flex h-10 max-w-[220px] cursor-pointer items-center gap-2 truncate rounded-xl border border-dashed border-primary-300 bg-white px-3 text-xs font-semibold text-primary-800 hover:bg-primary-50">
+          <input
+            type="file"
+            accept=".csv"
+            onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+            className="sr-only"
+          />
+          <span className="truncate">
+            {importFile ? importFile.name : "Choose CSV file"}
+          </span>
+        </label>
         <Button
           variant="secondary"
           size="sm"
@@ -228,9 +244,9 @@ export default function AdminInventory() {
       {isError && <ErrorState onRetry={() => void refetch()} />}
 
       {data && (
-        <div className="overflow-x-auto rounded-card border border-border">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
           <table className="w-full text-left text-sm">
-            <thead className="bg-background text-xs uppercase text-text-muted">
+            <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-4 py-3">Item</th>
                 <th className="px-4 py-3">Unit</th>

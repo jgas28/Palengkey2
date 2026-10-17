@@ -34,12 +34,12 @@ function StatCard({
   tone?: "brand" | "plain";
 }) {
   return tone === "brand" ? (
-    <div className="flex flex-col gap-1 rounded-card bg-gradient-brand p-4 text-white shadow-soft">
-      <span className="text-2xl font-bold">{value}</span>
-      <span className="text-xs text-white/80">{label}</span>
+    <div className="flex flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <span className="font-display text-2xl font-semibold text-slate-900">{value}</span>
+      <span className="text-xs text-slate-500">{label}</span>
     </div>
   ) : (
-    <div className="flex flex-col gap-1 rounded-card border border-border bg-surface p-4">
+    <div className="flex flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-4">
       <span className="text-xl font-bold text-text">{value}</span>
       <span className="text-xs text-text-muted">{label}</span>
     </div>

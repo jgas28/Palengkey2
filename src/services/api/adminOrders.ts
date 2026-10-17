@@ -1,10 +1,12 @@
 import { adminApiClient } from "@/services/api/adminClient";
 import type {
+  AdminShopper,
   AdminActiveRider,
   AdminOrderCounts,
   AdminOrderDetail,
   AdminOrderItem,
   AdminOrderPage,
+  AdminOrderSummaryStats,
   AdminOrderRecipeBundle,
   AdminOrderStatus,
   CookingStatus,
@@ -20,10 +22,15 @@ export interface AdminOrderFilter {
 
 export async function listAdminOrders(
   filter: AdminOrderFilter,
-): Promise<{ orders: AdminOrderPage; counts: AdminOrderCounts }> {
+): Promise<{
+  orders: AdminOrderPage;
+  counts: AdminOrderCounts;
+  summary?: AdminOrderSummaryStats;
+}> {
   const { data } = await adminApiClient.get<{
     orders: AdminOrderPage;
     counts: AdminOrderCounts;
+    summary?: AdminOrderSummaryStats;
   }>("/admin/orders", {
     params: {
       status: filter.status,
@@ -45,10 +52,10 @@ export async function updateAdminOrderStatus(
   orderId: number,
   status: AdminOrderStatus,
 ): Promise<{ message: string; order: AdminOrderDetail }> {
-  const { data } = await adminApiClient.patch<{ message: string; order: AdminOrderDetail }>(
-    `/admin/orders/${orderId}/status`,
-    { status },
-  );
+  const { data } = await adminApiClient.patch<{
+    message: string;
+    order: AdminOrderDetail;
+  }>(`/admin/orders/${orderId}/status`, { status });
   return data;
 }
 
@@ -91,7 +98,10 @@ export async function removeAdminOrderItem(
 export async function updateAdminOrderItemVendorPrice(
   orderId: number,
   orderItemId: number,
-  payload: { vendor_price: number | null; vendor_note: string | null },
+  payload: {
+    vendor_price: number | null;
+    vendor_note: string | null;
+  },
 ): Promise<{ message: string; item: AdminOrderItem }> {
   const { data } = await adminApiClient.patch<{ message: string; item: AdminOrderItem }>(
     `/admin/orders/${orderId}/items/${orderItemId}/vendor-price`,
@@ -118,10 +128,10 @@ export async function cancelAdminOrder(
   orderId: number,
   reason: string,
 ): Promise<{ message: string; order: AdminOrderDetail }> {
-  const { data } = await adminApiClient.post<{ message: string; order: AdminOrderDetail }>(
-    `/admin/orders/${orderId}/cancel`,
-    { reason },
-  );
+  const { data } = await adminApiClient.post<{
+    message: string;
+    order: AdminOrderDetail;
+  }>(`/admin/orders/${orderId}/cancel`, { reason });
   return data;
 }
 
@@ -129,15 +139,41 @@ export async function assignAdminOrderRider(
   orderId: number,
   riderId: number,
 ): Promise<{ message: string; order: AdminOrderDetail }> {
-  const { data } = await adminApiClient.post<{ message: string; order: AdminOrderDetail }>(
-    `/admin/orders/${orderId}/assign-rider`,
-    { rider_id: riderId },
-  );
+  const { data } = await adminApiClient.post<{
+    message: string;
+    order: AdminOrderDetail;
+  }>(`/admin/orders/${orderId}/assign-rider`, { rider_id: riderId });
   return data;
 }
 
 export async function listActiveAdminRiders(): Promise<AdminActiveRider[]> {
-  const { data } = await adminApiClient.get<AdminActiveRider[]>("/admin/orders/riders/active");
+  const { data } = await adminApiClient.get<AdminActiveRider[]>(
+    "/admin/orders/riders/active",
+  );
+  return data;
+}
+
+export async function listActiveAdminShoppers(
+  marketId?: number,
+): Promise<AdminShopper[]> {
+  const { data } = await adminApiClient.get<AdminShopper[]>(
+    "/admin/orders/shoppers/active",
+    {
+      params: marketId ? { market_id: marketId } : undefined,
+    },
+  );
+  return data;
+}
+
+/** Sets (or clears) the staff member shopping this order. */
+export async function assignAdminOrderShopper(
+  orderId: number,
+  shopperId: number | null,
+): Promise<{ message: string }> {
+  const { data } = await adminApiClient.patch<{ message: string }>(
+    `/admin/orders/${orderId}/shopper`,
+    { shopper_id: shopperId },
+  );
   return data;
 }
 

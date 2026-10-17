@@ -9,18 +9,18 @@ export default function AdminTable({
   children: ReactNode;
 }) {
   return (
-    <div className="overflow-x-auto rounded-card border border-border bg-surface">
+    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
       <table className="w-full text-left text-sm">
-        <thead className="bg-background text-xs uppercase text-text-muted">
+        <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] uppercase tracking-wide text-slate-400">
           <tr>
             {head.map((label, index) => (
-              <th key={index} className="whitespace-nowrap px-4 py-3 font-semibold">
+              <th key={index} className="whitespace-nowrap px-5 py-3 font-semibold">
                 {label}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-border">{children}</tbody>
+        <tbody className="divide-y divide-slate-100">{children}</tbody>
       </table>
     </div>
   );
@@ -61,8 +61,8 @@ export function AdminStatusPill({
 }) {
   return (
     <span
-      className={`inline-flex whitespace-nowrap rounded-pill px-2 py-0.5 text-xs font-semibold ${
-        active ? "bg-primary-50 text-status-delivered" : "bg-background text-text-muted"
+      className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+        active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
       }`}
     >
       {active ? activeLabel : inactiveLabel}
@@ -70,5 +70,5 @@ export function AdminStatusPill({
   );
 }
 
-export const adminTd = "px-4 py-3 align-middle text-text-muted";
-export const adminTdStrong = "px-4 py-3 align-middle font-medium text-text";
+export const adminTd = "px-5 py-3 align-middle text-slate-500";
+export const adminTdStrong = "px-5 py-3 align-middle font-semibold text-slate-900";

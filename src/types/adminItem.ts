@@ -7,15 +7,22 @@ export interface AdminItemImage {
 export interface AdminItemMarketListing {
   market_id: number;
   price: number | null;
+  /** Vendor price with the app markup applied (what customers pay). */
+  customer_price?: number | null;
+  market_name?: string | null;
   is_available: boolean;
   cutoff_time: string | null;
 }
 
 export interface AdminItem {
   id: number;
+  sku?: string;
   name: string;
   description: string | null;
   image_url: string;
+  updated_at?: string | null;
+  markets_count?: number | null;
+  markup_percent?: number;
   status: boolean;
   category_id: number;
   category: string | null;
@@ -37,6 +44,15 @@ export interface AdminItemListPage {
   data: AdminItem[];
   current_page: number;
   last_page: number;
+  total?: number;
+  summary?: AdminItemSummary;
+}
+
+export interface AdminItemSummary {
+  total: number;
+  active: number;
+  needs_attention: number;
+  updated_today: number;
 }
 
 export interface LookupOption {

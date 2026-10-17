@@ -67,6 +67,7 @@ class Order extends Model
         'status',
 
         'rider_id',
+        'shopper_id',
         'assigned_at',
         'accepted_at',
         'prepared_at',
@@ -125,6 +126,12 @@ class Order extends Model
     public function rider()
     {
         return $this->belongsTo(Rider::class);
+    }
+
+    /** Market staff member shopping this order. */
+    public function shopper()
+    {
+        return $this->belongsTo(User::class, 'shopper_id');
     }
 
     public function voucher()

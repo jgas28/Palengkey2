@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import AdminTable, {
   AdminStatusPill,
   AdminThumb,
@@ -13,8 +13,10 @@ import EmptyState from "@/components/common/EmptyState";
 import ErrorState from "@/components/common/ErrorState";
 import { listAdminRecipes } from "@/services/api/adminRecipes";
 import { listAdminRecipeTypes } from "@/services/api/adminLookups";
+import { ManageHeader } from "@/components/admin/AdminManageList";
 
 export default function AdminRecipes() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [recipeTypeId, setRecipeTypeId] = useState<number | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState<"" | "0" | "1">("");
@@ -44,12 +46,13 @@ export default function AdminRecipes() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-lg font-semibold">Recipes</h1>
-        <Link to="/admin/recipes/new">
-          <Button size="sm">Add recipe</Button>
-        </Link>
-      </div>
+      <ManageHeader
+        eyebrow="Paluto & recipes"
+        title="Recipes"
+        description="Recipes customers can buy the raw ingredients for."
+        actionLabel="Add recipe"
+        onAction={() => navigate("/admin/recipes/new")}
+      />
 
       <div className="flex flex-wrap gap-3">
         <input
@@ -59,7 +62,7 @@ export default function AdminRecipes() {
             setPage(1);
           }}
           placeholder="Search recipes…"
-          className="h-10 flex-1 rounded-lg border border-border bg-surface px-3 text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-300"
+          className="h-10 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
         />
         <select
           value={recipeTypeId ?? ""}
@@ -67,7 +70,7 @@ export default function AdminRecipes() {
             setRecipeTypeId(event.target.value ? Number(event.target.value) : undefined);
             setPage(1);
           }}
-          className="h-10 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+          className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
         >
           <option value="">All recipe types</option>
           {recipeTypes.map((recipeType) => (
@@ -82,7 +85,7 @@ export default function AdminRecipes() {
             setStatusFilter(event.target.value as "" | "0" | "1");
             setPage(1);
           }}
-          className="h-10 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+          className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
         >
           <option value="">All statuses</option>
           <option value="1">Active</option>

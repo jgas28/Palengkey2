@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import {
   useMutation,
   useQuery,
@@ -8,8 +8,18 @@ import {
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
-import { Spinner } from "@/components/common/LoadingState";
+import { Scale, Tag } from "lucide-react";
 import ErrorState from "@/components/common/ErrorState";
+import { Card, EmptyPanel, SkeletonRows } from "@/components/admin/AdminUi";
+import {
+  ManageHeader,
+  ManageIcon,
+  ManageList,
+  ManagePill,
+  ManageRow,
+  ManageToolbar,
+  RowAction,
+} from "@/components/admin/AdminManageList";
 import {
   createAdminType,
   createAdminUnit,
@@ -30,33 +40,70 @@ type Tab = "types" | "units";
 export default function AdminTypesUnits() {
   const [tab, setTab] = useState<Tab>("types");
 
+  const tabs = (
+    <div className="flex gap-1 rounded-xl bg-slate-100 p-1">
+      {(["types", "units"] as Tab[]).map((value) => (
+        <button
+          key={value}
+          type="button"
+          onClick={() => setTab(value)}
+          className={`rounded-lg px-4 py-1.5 text-xs font-semibold capitalize ${
+            tab === value
+              ? "bg-primary-600 text-white shadow-sm"
+              : "text-slate-600 hover:text-primary-700"
+          }`}
+        >
+          {value}
+        </button>
+      ))}
+    </div>
+  );
+
+  return tab === "types" ? <TypesPanel tabs={tabs} /> : <UnitsPanel tabs={tabs} />;
+}
+
+function PanelShell({
+  tabs,
+  onAdd,
+  addLabel,
+  search,
+  onSearch,
+  placeholder,
+  children,
+}: {
+  tabs: ReactNode;
+  onAdd: () => void;
+  addLabel: string;
+  search: string;
+  onSearch: (value: string) => void;
+  placeholder: string;
+  children: ReactNode;
+}) {
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-lg font-semibold">Types &amp; Units</h1>
-
-      <div className="flex gap-1 border-b border-border">
-        {(["types", "units"] as Tab[]).map((value) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setTab(value)}
-            className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium capitalize ${
-              tab === value
-                ? "border-primary text-primary"
-                : "border-transparent text-text-muted hover:text-text"
-            }`}
-          >
-            {value}
-          </button>
-        ))}
-      </div>
-
-      {tab === "types" ? <TypesPanel /> : <UnitsPanel />}
+    <div className="flex flex-col gap-6">
+      <ManageHeader
+        title="Types & Units"
+        description="Manage Palengkey types & units from one place."
+        actionLabel={addLabel}
+        onAction={onAdd}
+      />
+      <ManageToolbar search={search} onSearch={onSearch} placeholder={placeholder}>
+        {tabs}
+      </ManageToolbar>
+      {children}
     </div>
   );
 }
 
-function TypesPanel() {
+function itemsPill(count: number) {
+  return (
+    <ManagePill tone="info">
+      {count} item{count === 1 ? "" : "s"}
+    </ManagePill>
+  );
+}
+
+function TypesPanel({ tabs }: { tabs: ReactNode }) {
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
   const [search, setSearch] = useState("");
@@ -147,73 +194,68 @@ function TypesPanel() {
     else createMutation.mutate();
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-8">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (isError || !data) {
-    return <ErrorState onRetry={() => void refetch()} />;
-  }
-
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search types..."
-          className="h-10 flex-1 rounded-lg border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
-        />
-        <Button size="sm" onClick={openCreateForm}>
-          Add type
-        </Button>
-      </div>
-
-      <ul className="flex flex-col divide-y divide-border rounded-card border border-border">
-        {data.data.map((type) => (
-          <li key={type.id} className="flex items-center justify-between gap-3 px-4 py-3">
-            <button
-              type="button"
-              onClick={() => openEditForm(type)}
-              className="flex-1 text-left"
-            >
-              <span className="font-medium text-text">{type.name}</span>
-              <span className="ml-2 text-xs text-text-muted">
-                {type.active_items_count} active item
-                {type.active_items_count === 1 ? "" : "s"}
-              </span>
-            </button>
-            <span
-              className={`text-xs font-semibold ${type.status ? "text-status-delivered" : "text-text-muted"}`}
-            >
-              {type.status ? "Active" : "Inactive"}
-            </span>
-            {type.status ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                loading={deactivateMutation.isPending}
-                onClick={() => deactivateMutation.mutate(type.id)}
-              >
-                Deactivate
-              </Button>
-            ) : (
-              <Button
-                variant="secondary"
-                size="sm"
-                loading={restoreMutation.isPending}
-                onClick={() => restoreMutation.mutate(type.id)}
-              >
-                Restore
-              </Button>
-            )}
-          </li>
-        ))}
-      </ul>
+    <PanelShell
+      tabs={tabs}
+      onAdd={openCreateForm}
+      addLabel="Add type"
+      search={search}
+      onSearch={setSearch}
+      placeholder="Search types"
+    >
+      {isLoading && (
+        <Card>
+          <SkeletonRows rows={4} />
+        </Card>
+      )}
+      {isError && <ErrorState onRetry={() => void refetch()} />}
+      {data && data.data.length === 0 && (
+        <Card>
+          <EmptyPanel
+            title="No types found."
+            description="Types describe how an item is sold, like Fresh today or Dry goods."
+          />
+        </Card>
+      )}
+      {data && data.data.length > 0 && (
+        <ManageList>
+          {data.data.map((type) => (
+            <ManageRow
+              key={type.id}
+              onOpen={() => openEditForm(type)}
+              dimmed={!type.status}
+              leading={<ManageIcon icon={<Tag size={18} />} />}
+              title={type.name}
+              subtitle="Product type"
+              actions={
+                type.status ? (
+                  <RowAction
+                    tone="danger"
+                    disabled={deactivateMutation.isPending}
+                    onClick={() => deactivateMutation.mutate(type.id)}
+                  >
+                    Deactivate
+                  </RowAction>
+                ) : (
+                  <RowAction
+                    tone="success"
+                    disabled={restoreMutation.isPending}
+                    onClick={() => restoreMutation.mutate(type.id)}
+                  >
+                    Restore
+                  </RowAction>
+                )
+              }
+              pills={
+                <>
+                  {itemsPill(type.active_items_count)}
+                  {!type.status && <ManagePill tone="muted">Inactive</ManagePill>}
+                </>
+              }
+            />
+          ))}
+        </ManageList>
+      )}
 
       <Modal
         isOpen={formOpen}
@@ -236,11 +278,11 @@ function TypesPanel() {
           </Button>
         </form>
       </Modal>
-    </div>
+    </PanelShell>
   );
 }
 
-function UnitsPanel() {
+function UnitsPanel({ tabs }: { tabs: ReactNode }) {
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
   const [search, setSearch] = useState("");
@@ -335,75 +377,68 @@ function UnitsPanel() {
     else createMutation.mutate();
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-8">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (isError || !data) {
-    return <ErrorState onRetry={() => void refetch()} />;
-  }
-
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search units..."
-          className="h-10 flex-1 rounded-lg border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
-        />
-        <Button size="sm" onClick={openCreateForm}>
-          Add unit
-        </Button>
-      </div>
-
-      <ul className="flex flex-col divide-y divide-border rounded-card border border-border">
-        {data.data.map((unit) => (
-          <li key={unit.id} className="flex items-center justify-between gap-3 px-4 py-3">
-            <button
-              type="button"
-              onClick={() => openEditForm(unit)}
-              className="flex-1 text-left"
-            >
-              <span className="font-medium text-text">
-                {unit.name} <span className="text-text-muted">({unit.short_name})</span>
-              </span>
-              <span className="ml-2 text-xs text-text-muted">
-                {unit.active_items_count} active item
-                {unit.active_items_count === 1 ? "" : "s"}
-              </span>
-            </button>
-            <span
-              className={`text-xs font-semibold ${unit.status ? "text-status-delivered" : "text-text-muted"}`}
-            >
-              {unit.status ? "Active" : "Inactive"}
-            </span>
-            {unit.status ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                loading={deactivateMutation.isPending}
-                onClick={() => deactivateMutation.mutate(unit.id)}
-              >
-                Deactivate
-              </Button>
-            ) : (
-              <Button
-                variant="secondary"
-                size="sm"
-                loading={restoreMutation.isPending}
-                onClick={() => restoreMutation.mutate(unit.id)}
-              >
-                Restore
-              </Button>
-            )}
-          </li>
-        ))}
-      </ul>
+    <PanelShell
+      tabs={tabs}
+      onAdd={openCreateForm}
+      addLabel="Add unit"
+      search={search}
+      onSearch={setSearch}
+      placeholder="Search units"
+    >
+      {isLoading && (
+        <Card>
+          <SkeletonRows rows={4} />
+        </Card>
+      )}
+      {isError && <ErrorState onRetry={() => void refetch()} />}
+      {data && data.data.length === 0 && (
+        <Card>
+          <EmptyPanel
+            title="No units found."
+            description="Units are how items are sold, like Kilogram or Piece."
+          />
+        </Card>
+      )}
+      {data && data.data.length > 0 && (
+        <ManageList>
+          {data.data.map((unit) => (
+            <ManageRow
+              key={unit.id}
+              onOpen={() => openEditForm(unit)}
+              dimmed={!unit.status}
+              leading={<ManageIcon icon={<Scale size={18} />} />}
+              title={unit.name}
+              subtitle={`Selling unit · shown as “${unit.short_name}”`}
+              actions={
+                unit.status ? (
+                  <RowAction
+                    tone="danger"
+                    disabled={deactivateMutation.isPending}
+                    onClick={() => deactivateMutation.mutate(unit.id)}
+                  >
+                    Deactivate
+                  </RowAction>
+                ) : (
+                  <RowAction
+                    tone="success"
+                    disabled={restoreMutation.isPending}
+                    onClick={() => restoreMutation.mutate(unit.id)}
+                  >
+                    Restore
+                  </RowAction>
+                )
+              }
+              pills={
+                <>
+                  {itemsPill(unit.active_items_count)}
+                  {!unit.status && <ManagePill tone="muted">Inactive</ManagePill>}
+                </>
+              }
+            />
+          ))}
+        </ManageList>
+      )}
 
       <Modal
         isOpen={formOpen}
@@ -433,6 +468,6 @@ function UnitsPanel() {
           </Button>
         </form>
       </Modal>
-    </div>
+    </PanelShell>
   );
 }

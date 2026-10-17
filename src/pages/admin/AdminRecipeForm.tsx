@@ -377,7 +377,7 @@ export default function AdminRecipeForm() {
       {step === 1 && (
         <form
           onSubmit={handleDetailsSubmit}
-          className="flex flex-col gap-4 rounded-card border border-border bg-surface p-5"
+          className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-5"
         >
           <h2 className="text-base font-semibold text-text">Step 1 · Recipe details</h2>
           <Input
@@ -405,7 +405,7 @@ export default function AdminRecipeForm() {
                 onChange={(e) =>
                   setRecipeTypeId(e.target.value ? Number(e.target.value) : "")
                 }
-                className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+                className="h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
               >
                 <option value="">None</option>
                 {recipeTypes.map((rt) => (
@@ -422,7 +422,7 @@ export default function AdminRecipeForm() {
                 value={pricingUnit}
                 onChange={(e) => setPricingUnit(e.target.value as RecipePricingUnit)}
                 required
-                className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+                className="h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
               >
                 <option value="kg">Per kg</option>
                 <option value="serving">Per serving</option>
@@ -473,7 +473,7 @@ export default function AdminRecipeForm() {
       )}
 
       {step === 2 && isEditing && recipe && (
-        <div className="flex flex-col gap-4 rounded-card border border-border bg-surface p-5">
+        <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-5">
           <div>
             <h2 className="text-base font-semibold text-text">Step 2 · Ingredients</h2>
             <p className="text-sm text-text-muted">
@@ -493,7 +493,7 @@ export default function AdminRecipeForm() {
               onChange={(e) =>
                 setIngredientMarketId(e.target.value ? Number(e.target.value) : "")
               }
-              className="h-11 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
             >
               <option value="">All markets</option>
               {markets.map((market) => (
@@ -517,7 +517,7 @@ export default function AdminRecipeForm() {
               value={itemSearch}
               onChange={(e) => setItemSearch(e.target.value)}
               placeholder="Search items by name…"
-              className="h-11 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
             />
             {debouncedItemSearch.length > 1 && (
               <div className="absolute top-full z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-surface shadow-lifted">
@@ -558,9 +558,9 @@ export default function AdminRecipeForm() {
               No ingredients yet. Search the catalog above to add some.
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-card border border-border">
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
               <table className="w-full text-left text-sm">
-                <thead className="bg-background text-xs uppercase text-text-muted">
+                <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] uppercase tracking-wide text-slate-400">
                   <tr>
                     <th className="px-3 py-2">Item</th>
                     <th className="px-3 py-2">Category</th>
@@ -668,7 +668,7 @@ export default function AdminRecipeForm() {
       )}
 
       {step === 3 && isEditing && recipe && (
-        <div className="flex flex-col gap-4 rounded-card border border-border bg-surface p-5">
+        <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-5">
           <div>
             <h2 className="text-base font-semibold text-text">Step 3 · How to cook</h2>
             <p className="text-sm text-text-muted">One instruction per step, in order.</p>
@@ -741,7 +741,7 @@ export default function AdminRecipeForm() {
       )}
 
       {step === 4 && isEditing && recipe && (
-        <div className="flex flex-col gap-5 rounded-card border border-border bg-surface p-5">
+        <div className="flex flex-col gap-5 rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-5">
           <h2 className="text-base font-semibold text-text">Step 4 · Review</h2>
 
           <div className="flex gap-4">

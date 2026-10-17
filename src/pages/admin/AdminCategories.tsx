@@ -5,17 +5,23 @@ import {
   useQueryClient,
   keepPreviousData,
 } from "@tanstack/react-query";
-import AdminTable, {
-  AdminStatusPill,
-  AdminThumb,
-  adminTd,
-  adminTdStrong,
-} from "@/components/admin/AdminTable";
+import { ShieldCheck } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
-import { Spinner } from "@/components/common/LoadingState";
 import ErrorState from "@/components/common/ErrorState";
+import { Card, EmptyPanel, SkeletonRows } from "@/components/admin/AdminUi";
+import {
+  ManageHeader,
+  ManageIcon,
+  ManageList,
+  ManagePager,
+  ManagePill,
+  ManageRow,
+  ManageToolbar,
+  RowAction,
+  manageSelect,
+} from "@/components/admin/AdminManageList";
 import {
   createAdminCategory,
   deactivateAdminCategory,
@@ -155,128 +161,118 @@ export default function AdminCategories() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-8">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (isError || !data) {
-    return <ErrorState onRetry={() => void refetch()} />;
-  }
+  const categories = data?.data ?? [];
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Categories</h1>
-        <Button size="sm" onClick={openCreateForm}>
-          Add category
-        </Button>
-      </div>
+    <div className="flex flex-col gap-6">
+      <ManageHeader
+        title="Categories"
+        description="Manage Palengkey categories from one place."
+        onAction={openCreateForm}
+      />
 
-      <div className="flex flex-wrap gap-3">
-        <input
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          placeholder="Search categories…"
-          className="h-10 flex-1 rounded-lg border border-border bg-surface px-3 text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-300"
-        />
+      <ManageToolbar
+        search={search}
+        onSearch={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
+        placeholder="Search categories"
+      >
         <select
+          aria-label="Status"
           value={statusFilter}
           onChange={(e) => {
             setStatusFilter(e.target.value as "" | "0" | "1");
             setPage(1);
           }}
-          className="h-10 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+          className={manageSelect}
         >
           <option value="">All statuses</option>
           <option value="1">Active</option>
           <option value="0">Deactivated</option>
         </select>
-      </div>
+      </ManageToolbar>
 
-      <AdminTable head={["Category", "Active items", "Bulk pricing", "Status", ""]}>
-        {data.data.map((category) => (
-          <tr key={category.id} className="hover:bg-background/60">
-            <td className={adminTdStrong}>
-              <div className="flex items-center gap-3">
-                <AdminThumb src={category.image_url} />
-                {category.name}
-              </div>
-            </td>
-            <td className={adminTd}>{category.active_items_count}</td>
-            <td className={adminTd}>
-              {category.bulk_min_kg ? (
-                <span className="font-medium text-[#B26A00]">
-                  {Number(category.bulk_min_kg)} kg+ ·{" "}
-                  {category.bulk_discount_per_kg !== null &&
-                  category.bulk_discount_per_kg !== undefined
-                    ? `₱${Number(category.bulk_discount_per_kg)}/kg off`
-                    : "default ₱/kg off"}
-                </span>
-              ) : (
-                "Off"
-              )}
-            </td>
-            <td className={adminTd}>
-              <AdminStatusPill active={category.status} inactiveLabel="Deactivated" />
-            </td>
-            <td className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => openEditForm(category)}
-                className="text-primary hover:underline"
-              >
-                Edit
-              </button>
-              {category.status ? (
-                <button
-                  type="button"
-                  onClick={() => deactivateMutation.mutate(category.id)}
-                  className="ml-3 text-status-cancelled hover:underline"
-                >
-                  Deactivate
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => restoreMutation.mutate(category.id)}
-                  className="ml-3 text-status-delivered hover:underline"
-                >
-                  Restore
-                </button>
-              )}
-            </td>
-          </tr>
-        ))}
-      </AdminTable>
+      {isLoading && (
+        <Card>
+          <SkeletonRows rows={5} />
+        </Card>
+      )}
+      {isError && <ErrorState onRetry={() => void refetch()} />}
 
-      <div className="flex items-center justify-between">
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={page <= 1}
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
+      {data && categories.length === 0 && (
+        <Card>
+          <EmptyPanel
+            title={search || statusFilter ? "No categories match." : "No categories yet."}
+            description="Categories group items in the shop, like Gulay, Isda and Karne."
+          />
+        </Card>
+      )}
+
+      {data && categories.length > 0 && (
+        <ManageList
+          footer={
+            data.last_page > 1 ? (
+              <ManagePager
+                page={data.current_page}
+                lastPage={data.last_page}
+                onPage={setPage}
+              />
+            ) : undefined
+          }
         >
-          Previous
-        </Button>
-        <span className="text-sm text-text-muted">
-          Page {data.current_page} of {data.last_page}
-        </span>
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={data.current_page >= data.last_page}
-          onClick={() => setPage((p) => p + 1)}
-        >
-          Next
-        </Button>
-      </div>
+          {categories.map((category) => (
+            <ManageRow
+              key={category.id}
+              onOpen={() => openEditForm(category)}
+              dimmed={!category.status}
+              leading={
+                <ManageIcon icon={<ShieldCheck size={18} />} image={category.image_url} />
+              }
+              title={category.name}
+              subtitle={`${category.active_items_count} active item${
+                category.active_items_count === 1 ? "" : "s"
+              }`}
+              actions={
+                category.status ? (
+                  <RowAction
+                    tone="danger"
+                    disabled={deactivateMutation.isPending}
+                    onClick={() => deactivateMutation.mutate(category.id)}
+                  >
+                    Deactivate
+                  </RowAction>
+                ) : (
+                  <RowAction
+                    tone="success"
+                    disabled={restoreMutation.isPending}
+                    onClick={() => restoreMutation.mutate(category.id)}
+                  >
+                    Restore
+                  </RowAction>
+                )
+              }
+              pills={
+                <>
+                  {category.bulk_min_kg && (
+                    <ManagePill tone="warning">
+                      Bulk {Number(category.bulk_min_kg)} kg+
+                      {category.bulk_discount_per_kg !== null &&
+                      category.bulk_discount_per_kg !== undefined
+                        ? ` · ₱${Number(category.bulk_discount_per_kg)}/kg off`
+                        : ""}
+                    </ManagePill>
+                  )}
+                  <ManagePill tone={category.status ? "active" : "muted"}>
+                    {category.status ? "Active" : "Deactivated"}
+                  </ManagePill>
+                </>
+              }
+            />
+          ))}
+        </ManageList>
+      )}
 
       <Modal
         isOpen={formOpen}

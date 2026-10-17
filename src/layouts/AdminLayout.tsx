@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
+  ArrowLeft,
   BarChart3,
   Bike,
   BookOpen,
@@ -31,6 +32,8 @@ import {
 } from "lucide-react";
 import { InitialsAvatar } from "@/components/admin/AdminUi";
 import AdminOrderBell from "@/features/admin/AdminOrderBell";
+import { useQuery } from "@tanstack/react-query";
+import { listAdminOrders } from "@/services/api/adminOrders";
 import { useAdminAuthStore } from "@/stores/adminAuthStore";
 import { adminLogout } from "@/services/api/adminAuth";
 import ToastContainer from "@/components/ui/ToastContainer";
@@ -245,6 +248,13 @@ export default function AdminLayout() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const canSeeOrders = user ? ADMIN.includes(user.role) : false;
+  const { data: newOrderCount = 0 } = useQuery({
+    queryKey: ["adminNewOrders"],
+    queryFn: () => listAdminOrders({ status: "order_received", page: 1 }),
+    enabled: canSeeOrders,
+    refetchInterval: 60_000,
+    select: (result) => result.counts.order_received ?? 0,
+  });
 
   // Clear the search, close menus after navigating somewhere.
   useEffect(() => {
@@ -338,16 +348,25 @@ export default function AdminLayout() {
   }
 
   const sidebar = (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 px-5 pb-4 pt-5">
-        <img src="/palengkey-logo.png" alt="PalengKey" className="h-9 w-auto" />
-        <span className="rounded-md bg-primary-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-700">
-          Admin
+    <div className="flex h-full flex-col text-white">
+      <div className="flex items-center justify-between gap-2 px-5 pb-4 pt-5">
+        <img src="/palengkey-logo.png" alt="PalengKey" className="h-10 w-auto" />
+        <span className="rounded-md bg-[#f9a825] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#3b2a05]">
+          CMS
         </span>
       </div>
 
+      <div className="mx-4 mb-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
+          Workspace
+        </p>
+        <p className="truncate text-sm font-semibold text-white">
+          {user.market_name ?? "Palengkey Philippines"}
+        </p>
+      </div>
+
       <div className="px-4 pb-3">
-        <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-500 focus-within:border-primary-300 focus-within:bg-white">
+        <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white/50 focus-within:border-white/30 focus-within:bg-white/10">
           <Search size={15} aria-hidden="true" className="shrink-0" />
           <input
             ref={jumpRef}
@@ -356,9 +375,9 @@ export default function AdminLayout() {
             onKeyDown={handleJumpKey}
             placeholder="Jump to…"
             aria-label="Jump to an admin page"
-            className="w-full bg-transparent text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
+            className="w-full bg-transparent text-sm text-white placeholder:text-white/45 focus:outline-none"
           />
-          <kbd className="hidden shrink-0 rounded border border-slate-200 bg-white px-1 text-[10px] text-slate-400 lg:inline">
+          <kbd className="hidden shrink-0 rounded border border-white/15 px-1 text-[10px] text-white/45 lg:inline">
             Ctrl K
           </kbd>
         </label>
@@ -366,14 +385,12 @@ export default function AdminLayout() {
 
       <nav
         aria-label="Admin"
-        className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-3"
+        className="admin-sidebar-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-3"
       >
         {jumpTerm && (
           <div className="flex flex-col gap-0.5">
             {jumpResults.length === 0 && (
-              <p className="px-3 py-2 text-sm text-slate-500">
-                No page matches “{jump}”.
-              </p>
+              <p className="px-3 py-2 text-sm text-white/60">No page matches “{jump}”.</p>
             )}
             {jumpResults.map((item, index) => (
               <NavLink
@@ -381,13 +398,13 @@ export default function AdminLayout() {
                 to={item.to}
                 className={`flex flex-col rounded-lg px-3 py-2 text-sm font-medium ${
                   index === 0
-                    ? "bg-primary-50 text-primary-700"
-                    : "text-slate-600 hover:bg-slate-50"
+                    ? "bg-white/10 text-white"
+                    : "text-white/75 hover:bg-white/5 hover:text-white"
                 }`}
               >
                 {item.label}
                 {item.group && (
-                  <span className="text-[10px] uppercase tracking-wide text-slate-400">
+                  <span className="text-[10px] uppercase tracking-wide text-white/45">
                     {item.group}
                   </span>
                 )}
@@ -408,7 +425,7 @@ export default function AdminLayout() {
                     onClick={() => toggleGroup(group)}
                     aria-expanded={open}
                     aria-controls={groupId}
-                    className="mt-3 flex items-center justify-between rounded-md px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600"
+                    className="mt-3 flex items-center justify-between rounded-md px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/45 hover:text-white/80"
                   >
                     {group.label}
                     <ChevronDown
@@ -422,16 +439,17 @@ export default function AdminLayout() {
                   <div id={groupId} className="flex flex-col gap-0.5">
                     {group.items.map((item) => {
                       const ItemIcon = NAV_ICONS[item.to] ?? LayoutDashboard;
+                      const badge = item.to === "/admin/orders" ? newOrderCount : 0;
                       return (
                         <NavLink
                           key={item.to}
                           to={item.to}
                           end={needsExactMatch(item.to)}
                           className={({ isActive }) =>
-                            `group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                            `group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                               isActive
-                                ? "bg-primary-50 text-primary-700"
-                                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                                ? "bg-white/10 text-white before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-full before:bg-[#33bfcd]"
+                                : "text-white/70 hover:bg-white/5 hover:text-white"
                             }`
                           }
                         >
@@ -442,11 +460,16 @@ export default function AdminLayout() {
                                 aria-hidden="true"
                                 className={
                                   isActive
-                                    ? "text-primary-700"
-                                    : "text-slate-400 group-hover:text-slate-600"
+                                    ? "text-[#33bfcd]"
+                                    : "text-white/50 group-hover:text-white/80"
                                 }
                               />
-                              {item.label}
+                              <span className="flex-1">{item.label}</span>
+                              {badge > 0 && (
+                                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[#f9a825] px-1.5 text-[11px] font-bold text-[#3b2a05]">
+                                  {badge > 99 ? "99+" : badge}
+                                </span>
+                              )}
                             </>
                           )}
                         </NavLink>
@@ -458,12 +481,40 @@ export default function AdminLayout() {
             );
           })}
       </nav>
+
+      <div className="border-t border-white/10 px-4 py-3">
+        <a
+          href="/"
+          target="_blank"
+          rel="noreferrer"
+          className="mb-3 flex items-center gap-2 px-1 text-xs font-medium text-white/60 hover:text-white"
+        >
+          <ArrowLeft size={14} aria-hidden="true" /> View customer app
+        </a>
+        <div className="flex items-center gap-3 rounded-xl bg-white/5 p-2.5">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#f9a825] text-xs font-bold text-[#3b2a05]">
+            {user.name
+              .split(/\s+/)
+              .slice(0, 2)
+              .map((part) => part.charAt(0).toUpperCase())
+              .join("")}
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold text-white">
+              {user.name}
+            </span>
+            <span className="block truncate text-xs text-white/55">
+              {ROLE_LABELS[user.role] ?? user.role}
+            </span>
+          </span>
+        </div>
+      </div>
     </div>
   );
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-slate-200 bg-white md:block">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 bg-[linear-gradient(180deg,#0f3a40_0%,#0c3036_55%,#0b2a24_100%)] md:block">
         {sidebar}
       </aside>
 
@@ -475,12 +526,12 @@ export default function AdminLayout() {
             onClick={() => setMobileNavOpen(false)}
             className="absolute inset-0 bg-slate-900/40"
           />
-          <aside className="relative h-full w-72 max-w-[85vw] bg-white shadow-xl">
+          <aside className="relative h-full w-72 max-w-[85vw] bg-[linear-gradient(180deg,#0f3a40_0%,#0c3036_55%,#0b2a24_100%)] shadow-xl">
             <button
               type="button"
               onClick={() => setMobileNavOpen(false)}
               aria-label="Close menu"
-              className="absolute right-3 top-4 rounded-md p-1 text-slate-500 hover:bg-slate-100"
+              className="absolute right-3 top-14 rounded-md p-1 text-white/70 hover:bg-white/10"
             >
               <X size={18} />
             </button>

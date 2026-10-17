@@ -12,6 +12,7 @@ import {
   sendAdminSupportMessage,
 } from "@/services/api/adminSupport";
 import { useToastStore } from "@/stores/toastStore";
+import {} from "@/components/admin/AdminManageList";
 
 export default function AdminSupportThread() {
   const { threadId } = useParams<{ threadId: string }>();
@@ -109,8 +110,10 @@ export default function AdminSupportThread() {
             ←
           </button>
           <div>
-            <h1 className="text-lg font-semibold">{thread.subject}</h1>
-            <p className="text-xs text-text-muted">
+            <h2 className="font-display text-2xl font-semibold text-slate-900">
+              {thread.subject}
+            </h2>
+            <p className="text-sm text-slate-500">
               {thread.customer?.fname} {thread.customer?.lname}
               {thread.order && ` · Order #${thread.order.order_number}`}
             </p>

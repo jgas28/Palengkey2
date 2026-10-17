@@ -10,6 +10,16 @@ import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
 import { Spinner } from "@/components/common/LoadingState";
 import ErrorState from "@/components/common/ErrorState";
+import { Plus, Ticket } from "lucide-react";
+import { Card, EmptyPanel } from "@/components/admin/AdminUi";
+import {
+  ManageIcon,
+  ManageList,
+  ManagePill,
+  ManageRow,
+  ManageToolbar,
+  RowAction,
+} from "@/components/admin/AdminManageList";
 import {
   createAdminVoucher,
   deleteAdminVoucher,
@@ -242,88 +252,71 @@ export default function AdminVouchers() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search vouchers…"
-          className="h-10 w-64 rounded-lg border border-border bg-surface px-3 text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-300"
-        />
-        <Button size="sm" onClick={openCreateForm}>
-          Add voucher
-        </Button>
-      </div>
+      <ManageToolbar search={search} onSearch={setSearch} placeholder="Search vouchers">
+        <button
+          type="button"
+          onClick={openCreateForm}
+          className="flex h-10 items-center gap-2 rounded-xl bg-primary-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-primary-700"
+        >
+          <Plus size={16} aria-hidden="true" /> Add voucher
+        </button>
+      </ManageToolbar>
 
-      <div className="overflow-x-auto rounded-card border border-border">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-background text-xs uppercase text-text-muted">
-            <tr>
-              <th className="px-4 py-3">Code</th>
-              <th className="px-4 py-3">Discount</th>
-              <th className="px-4 py-3">Applies to</th>
-              <th className="px-4 py-3">Visibility</th>
-              <th className="px-4 py-3">Market</th>
-              <th className="px-4 py-3">Used</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {page.data.map((voucher) => (
-              <tr key={voucher.id}>
-                <td className="px-4 py-3 font-medium text-text">{voucher.code}</td>
-                <td className="px-4 py-3 text-text-muted">
-                  {voucher.discount_type === "percentage"
-                    ? `${voucher.discount_value}%`
-                    : `₱${voucher.discount_value}`}
-                </td>
-                <td className="px-4 py-3 text-text-muted">
-                  {voucher.applies_to.map((t) => TARGET_LABELS[t]).join(", ")}
-                </td>
-                <td className="px-4 py-3 text-text-muted">
-                  {voucher.is_public ? "Public" : "Exclusive"}
-                </td>
-                <td className="px-4 py-3 text-text-muted">
-                  {voucher.market?.name ?? "All markets"}
-                </td>
-                <td className="px-4 py-3 text-text-muted">
-                  {voucher.used_count}
-                  {voucher.usage_limit ? ` / ${voucher.usage_limit}` : ""}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`text-xs font-semibold ${
-                      voucher.is_active ? "text-status-delivered" : "text-text-muted"
-                    }`}
-                  >
-                    {voucher.is_active ? "Active" : "Inactive"}
-                  </span>
-                </td>
-                <td className="flex flex-wrap gap-2 px-4 py-3">
-                  <button
-                    type="button"
-                    onClick={() => openEditForm(voucher)}
-                    className="text-primary"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (window.confirm(`Delete voucher ${voucher.code}?`)) {
-                        deleteMutation.mutate(voucher.id);
-                      }
-                    }}
-                    className="text-status-cancelled"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {page.data.length === 0 ? (
+        <Card>
+          <EmptyPanel
+            title={search ? "No vouchers match." : "No vouchers yet."}
+            description="Create a code customers can use for a discount at checkout."
+          />
+        </Card>
+      ) : (
+        <ManageList>
+          {page.data.map((voucher) => (
+            <ManageRow
+              key={voucher.id}
+              onOpen={() => openEditForm(voucher)}
+              dimmed={!voucher.is_active}
+              leading={<ManageIcon icon={<Ticket size={18} />} />}
+              title={voucher.code}
+              subtitle={[
+                voucher.discount_type === "percentage"
+                  ? `${voucher.discount_value}% off`
+                  : `₱${voucher.discount_value} off`,
+                voucher.min_order_amount
+                  ? `Min spend ₱${voucher.min_order_amount}`
+                  : null,
+                voucher.applies_to.map((t) => TARGET_LABELS[t]).join(", "),
+                voucher.market?.name ?? "All markets",
+                voucher.is_public ? "Public" : "Exclusive",
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              actions={
+                <RowAction
+                  tone="danger"
+                  disabled={deleteMutation.isPending}
+                  onClick={() => {
+                    if (window.confirm(`Delete voucher ${voucher.code}?`)) {
+                      deleteMutation.mutate(voucher.id);
+                    }
+                  }}
+                >
+                  Delete
+                </RowAction>
+              }
+              pills={
+                <>
+                  <ManagePill tone="info">
+                    {voucher.used_count}
+                    {voucher.usage_limit ? `/${voucher.usage_limit}` : ""} uses
+                  </ManagePill>
+                  {!voucher.is_active && <ManagePill tone="muted">Inactive</ManagePill>}
+                </>
+              }
+            />
+          ))}
+        </ManageList>
+      )}
 
       <Modal
         isOpen={formOpen}
@@ -366,7 +359,7 @@ export default function AdminVouchers() {
                         discount_type: e.target.value as "percentage" | "fixed",
                       })
                     }
-                    className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+                    className="h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
                   >
                     <option value="percentage">Percentage</option>
                     <option value="fixed">Fixed amount</option>
@@ -477,7 +470,7 @@ export default function AdminVouchers() {
                     onChange={(e) =>
                       setForm({ ...form, is_public: e.target.value === "public" })
                     }
-                    className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+                    className="h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
                   >
                     <option value="public">
                       Public — listed for customers to browse
@@ -498,7 +491,7 @@ export default function AdminVouchers() {
                         market_id: e.target.value ? Number(e.target.value) : "",
                       })
                     }
-                    className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+                    className="h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
                   >
                     <option value="">All markets</option>
                     {markets.map((market) => (

@@ -1,4 +1,7 @@
 import { useState, type FormEvent } from "react";
+import type React from "react";
+import { Menu, ShieldCheck } from "lucide-react";
+import { Card } from "@/components/admin/AdminUi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -16,13 +19,40 @@ import { listAdminMarkets } from "@/services/api/adminLookups";
 import { useToastStore } from "@/stores/toastStore";
 import type { AdminRole } from "@/types/adminAuth";
 import type { AdminManagedUser } from "@/types/adminUser";
+import { ManageHeader } from "@/components/admin/AdminManageList";
+
+function initials(name: string): string {
+  return (
+    name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join("") || "?"
+  );
+}
+
+function lastActive(iso: string | null | undefined): string {
+  if (!iso) return "Never signed in";
+  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (minutes < 5) return "Now";
+  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60 * 24) return `${Math.round(minutes / 60)}h ago`;
+  return `${Math.round(minutes / 1440)}d ago`;
+}
+
+function closeMenu(event: React.MouseEvent) {
+  (event.currentTarget.closest("details") as HTMLDetailsElement | null)?.removeAttribute(
+    "open",
+  );
+}
 
 const ROLE_LABELS: Record<AdminRole, string> = {
   admin: "Admin",
   marketing: "Marketing",
   finance: "Finance",
   owner: "Owner",
-  super_admin: "Superadmin",
+  super_admin: "Super admin",
 };
 
 interface UserFormState {
@@ -195,6 +225,50 @@ export default function AdminUsers() {
     }
   }
 
+  const roleMutation = useMutation({
+    mutationFn: ({ user, role }: { user: AdminManagedUser; role: AdminRole }) =>
+      updateAdminUser(user.id, {
+        fname: user.fname,
+        lname: user.lname,
+        mname: user.mname ?? undefined,
+        email: user.email,
+        role,
+        market_id: role === "admin" ? user.market_id : null,
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["adminUsers"] });
+      showToast("Role updated.", "success");
+    },
+    onError: (error) => {
+      showToast(
+        error instanceof Error ? error.message : "Could not change role.",
+        "error",
+      );
+    },
+  });
+
+  /** Market admins need a market, so switching to that role opens the full form. */
+  function changeRole(user: AdminManagedUser, role: AdminRole) {
+    if (role === user.role) return;
+    if (role === "admin" && !user.market_id) {
+      openEditForm(user);
+      setForm((current) => ({ ...current, role }));
+      showToast("Choose a market for this admin.", "info");
+      return;
+    }
+    roleMutation.mutate({ user, role });
+  }
+
+  const roleCounts = (users ?? []).reduce<Partial<Record<AdminRole, number>>>(
+    (counts, user) => ({ ...counts, [user.role]: (counts[user.role] ?? 0) + 1 }),
+    {},
+  );
+  const roleSummary =
+    (Object.keys(ROLE_LABELS) as AdminRole[])
+      .filter((role) => roleCounts[role])
+      .map((role) => `${roleCounts[role]} ${ROLE_LABELS[role].toLowerCase()}`)
+      .join(", ") || "No team members yet";
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-8">
@@ -208,60 +282,138 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Admin accounts</h1>
-        <Button size="sm" onClick={openCreateForm}>
-          Add account
-        </Button>
-      </div>
+    <div className="flex flex-col gap-6">
+      <ManageHeader
+        eyebrow="Super admin only"
+        title="Team & roles"
+        description="Control CMS access and permissions."
+        actionLabel="Invite member"
+        onAction={openCreateForm}
+      />
 
-      <div className="overflow-x-auto rounded-card border border-border">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-background text-xs uppercase text-text-muted">
+      <Card className="flex flex-wrap items-center gap-4 p-4">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary-50 text-primary-700">
+          <ShieldCheck size={20} aria-hidden="true" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-slate-900">
+            Role-based access is enabled
+          </span>
+          <span className="block text-xs text-slate-500">{roleSummary}</span>
+        </span>
+      </Card>
+
+      <Card className="overflow-x-auto">
+        <table className="w-full min-w-[820px] text-left text-sm">
+          <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] uppercase tracking-wide text-slate-400">
             <tr>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Role</th>
-              <th className="px-4 py-3">Market</th>
-              <th className="px-4 py-3" />
+              <th className="px-5 py-3 font-semibold">Team member</th>
+              <th className="px-5 py-3 font-semibold">Email</th>
+              <th className="px-5 py-3 font-semibold">Role</th>
+              <th className="px-5 py-3 font-semibold">Status</th>
+              <th className="px-5 py-3 font-semibold">Last active</th>
+              <th className="px-5 py-3">
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="divide-y divide-slate-100">
             {users.map((user) => (
-              <tr key={user.id}>
-                <td className="px-4 py-3 font-medium text-text">{user.name}</td>
-                <td className="px-4 py-3 text-text-muted">{user.email}</td>
-                <td className="px-4 py-3 text-text-muted">{ROLE_LABELS[user.role]}</td>
-                <td className="px-4 py-3 text-text-muted">{user.market_name ?? "—"}</td>
-                <td className="flex flex-wrap gap-2 px-4 py-3">
-                  <button
-                    type="button"
-                    onClick={() => openEditForm(user)}
-                    className="text-primary"
+              <tr key={user.id} className="hover:bg-slate-50/60">
+                <td className="px-5 py-3">
+                  <span className="flex items-center gap-3">
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-50 text-[11px] font-semibold text-primary-800">
+                      {initials(user.name)}
+                    </span>
+                    <span>
+                      <span className="block font-semibold text-slate-900">
+                        {user.name}
+                      </span>
+                      {user.market_name && (
+                        <span className="block text-xs text-slate-500">
+                          {user.market_name}
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                </td>
+                <td className="px-5 py-3 text-slate-600">{user.email}</td>
+                <td className="px-5 py-3">
+                  <select
+                    aria-label={`${user.name} role`}
+                    value={user.role}
+                    disabled={roleMutation.isPending}
+                    onChange={(e) => changeRole(user, e.target.value as AdminRole)}
+                    className="h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
                   >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setResetPasswordUser(user)}
-                    className="text-primary"
+                    {(Object.keys(ROLE_LABELS) as AdminRole[]).map((role) => (
+                      <option key={role} value={role}>
+                        {ROLE_LABELS[role]}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-5 py-3">
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                      user.last_active_at
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-amber-50 text-amber-700"
+                    }`}
                   >
-                    Reset password
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(user)}
-                    className="text-status-cancelled"
-                  >
-                    Remove
-                  </button>
+                    {user.last_active_at ? "Active" : "Invited"}
+                  </span>
+                </td>
+                <td className="px-5 py-3 text-xs text-slate-500">
+                  {lastActive(user.last_active_at)}
+                </td>
+                <td className="px-5 py-3 text-right">
+                  <details className="relative inline-block text-left">
+                    <summary
+                      aria-label={`Actions for ${user.name}`}
+                      className="grid h-8 w-8 cursor-pointer list-none place-items-center rounded-lg text-slate-500 hover:bg-slate-100 [&::-webkit-details-marker]:hidden"
+                    >
+                      <Menu size={18} />
+                    </summary>
+                    <div className="absolute right-0 z-10 mt-1 flex w-40 flex-col rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-lg">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          closeMenu(e);
+                          openEditForm(user);
+                        }}
+                        className="rounded-lg px-3 py-2 text-left hover:bg-slate-50"
+                      >
+                        Edit details
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          closeMenu(e);
+                          setResetPasswordUser(user);
+                        }}
+                        className="rounded-lg px-3 py-2 text-left hover:bg-slate-50"
+                      >
+                        Reset password
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          closeMenu(e);
+                          handleDelete(user);
+                        }}
+                        className="rounded-lg px-3 py-2 text-left text-rose-600 hover:bg-rose-50"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </details>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
 
       <Modal
         isOpen={formOpen}
@@ -311,7 +463,7 @@ export default function AdminUsers() {
             <select
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value as AdminRole })}
-              className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
             >
               {(Object.keys(ROLE_LABELS) as AdminRole[]).map((role) => (
                 <option key={role} value={role}>
@@ -332,7 +484,7 @@ export default function AdminUsers() {
                     market_id: e.target.value ? Number(e.target.value) : "",
                   })
                 }
-                className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+                className="h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
               >
                 <option value="">Select a market</option>
                 {markets.map((market) => (

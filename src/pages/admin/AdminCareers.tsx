@@ -20,6 +20,7 @@ import {
 } from "@/services/api/adminCareers";
 import { useToastStore } from "@/stores/toastStore";
 import type { AdminCareer, CareerJobType, CareerStatus } from "@/types/adminCareer";
+import { ManageHeader, ManageTabs } from "@/components/admin/AdminManageList";
 
 const STATUS_FILTERS: { value: CareerStatus | "all"; label: string }[] = [
   { value: "open", label: "Open" },
@@ -139,36 +140,31 @@ export default function AdminCareers() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Careers</h1>
-        <Button size="sm" onClick={openCreate}>
-          Add job listing
-        </Button>
-      </div>
+      <ManageHeader
+        eyebrow="Growth & content"
+        title="Careers"
+        description="Job listings shown on the Careers page."
+        actionLabel="Add job listing"
+        onAction={openCreate}
+      />
 
-      <div className="flex gap-1 overflow-x-auto border-b border-border">
-        {STATUS_FILTERS.map((item) => (
-          <button
-            key={item.value}
-            type="button"
-            onClick={() => setStatusFilter(item.value)}
-            className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium ${
-              statusFilter === item.value
-                ? "border-primary text-primary"
-                : "border-transparent text-text-muted hover:text-text"
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <ManageTabs
+        label="Job status"
+        tabs={STATUS_FILTERS.map((item) => ({
+          value: item.value,
+          label: item.label,
+          count: null,
+        }))}
+        value={statusFilter}
+        onChange={setStatusFilter}
+      />
 
       <input
         type="search"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search title or location..."
-        className="rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+        className="rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100 py-2"
       />
 
       {isLoading && (
@@ -187,7 +183,7 @@ export default function AdminCareers() {
       )}
 
       {data && data.data.length > 0 && (
-        <ul className="flex flex-col divide-y divide-border rounded-card border border-border">
+        <ul className="flex flex-col divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
           {data.data.map((career) => (
             <li
               key={career.id}

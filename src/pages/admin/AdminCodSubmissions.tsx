@@ -21,6 +21,7 @@ import type {
   AdminIdSubmissionEntry,
   IdSubmissionFilter,
 } from "@/types/adminIdSubmission";
+import { ManageHeader, ManageTabs } from "@/components/admin/AdminManageList";
 
 const FILTERS: { value: IdSubmissionFilter; label: string }[] = [
   { value: "pending", label: "Pending" },
@@ -83,32 +84,29 @@ export default function AdminCodSubmissions() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-lg font-semibold">Cash on Delivery — ID Review</h1>
+      <ManageHeader
+        eyebrow="Customers"
+        title="Cash on delivery"
+        description="Review the IDs customers submit to unlock cash on delivery."
+      />
 
-      <div className="flex gap-1 overflow-x-auto border-b border-border">
-        {FILTERS.map((item) => (
-          <button
-            key={item.value}
-            type="button"
-            onClick={() => setFilter(item.value)}
-            className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium ${
-              filter === item.value
-                ? "border-primary text-primary"
-                : "border-transparent text-text-muted hover:text-text"
-            }`}
-          >
-            {item.label}
-            {data && item.value !== "all" && ` (${data.counts[item.value] ?? 0})`}
-          </button>
-        ))}
-      </div>
+      <ManageTabs
+        label="Submission status"
+        tabs={FILTERS.map((item) => ({
+          value: item.value,
+          label: item.label,
+          count: data && item.value !== "all" ? (data.counts[item.value] ?? 0) : null,
+        }))}
+        value={filter}
+        onChange={setFilter}
+      />
 
       <input
         type="search"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search name, email, ID number, order number..."
-        className="rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+        className="rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100 py-2"
       />
 
       {isLoading && (
@@ -127,7 +125,7 @@ export default function AdminCodSubmissions() {
       )}
 
       {data && data.submissions.data.length > 0 && (
-        <ul className="flex flex-col divide-y divide-border rounded-card border border-border">
+        <ul className="flex flex-col divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
           {data.submissions.data.map((entry) => (
             <li key={entry.id}>
               <button

@@ -36,7 +36,7 @@ import { useToastStore } from "@/stores/toastStore";
 import type { RecipePricingUnit } from "@/types/adminRecipe";
 
 const selectClass =
-  "h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300";
+  "h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100";
 
 const WIZARD_STEPS = [
   { id: 1, title: "Dish", hint: "Name, photo, type" },
@@ -334,7 +334,7 @@ export default function AdminPalutoDishForm() {
                     value={recipeSearch}
                     onChange={(e) => setRecipeSearch(e.target.value)}
                     placeholder="Search the Recipes catalog…"
-                    className="h-11 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+                    className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
                   />
                   <p className="text-xs text-text-muted">
                     Fills in the details and items below once. Later recipe changes

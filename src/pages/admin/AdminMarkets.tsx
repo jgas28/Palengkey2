@@ -7,9 +7,18 @@ import {
 } from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
-import { Spinner } from "@/components/common/LoadingState";
-import EmptyState from "@/components/common/EmptyState";
+import { Store } from "lucide-react";
 import ErrorState from "@/components/common/ErrorState";
+import { Card, EmptyPanel, SkeletonRows } from "@/components/admin/AdminUi";
+import {
+  ManageHeader,
+  ManageIcon,
+  ManageList,
+  ManagePill,
+  ManageRow,
+  ManageToolbar,
+  RowAction,
+} from "@/components/admin/AdminManageList";
 import {
   createAdminMarket,
   deactivateAdminMarket,
@@ -25,11 +34,17 @@ const STATUS_LABELS: Record<AdminMarketStatus, string> = {
   0: "Inactive",
 };
 
-const STATUS_COLOR: Record<AdminMarketStatus, string> = {
-  1: "text-status-delivered",
-  2: "text-status-preparing",
-  0: "text-text-muted",
+const STATUS_TONE: Record<AdminMarketStatus, "active" | "warning" | "muted"> = {
+  1: "active",
+  2: "warning",
+  0: "muted",
 };
+
+/** "17:00" → "5:00 PM". */
+function clock(time: string): string {
+  const [h, m] = time.split(":").map(Number);
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+}
 
 interface MarketFormState {
   name: string;
@@ -174,83 +189,69 @@ export default function AdminMarkets() {
     form.longitude.trim().length > 0;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Markets</h1>
-        <Button size="sm" onClick={openCreate}>
-          Add market
-        </Button>
-      </div>
+    <div className="flex flex-col gap-6">
+      <ManageHeader
+        title="Markets"
+        description="Manage Palengkey markets from one place."
+        onAction={openCreate}
+      />
 
-      <input
-        type="search"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search name, location, address..."
-        className="rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+      <ManageToolbar
+        search={search}
+        onSearch={setSearch}
+        placeholder="Search name, location, address"
       />
 
       {isLoading && (
-        <div className="flex justify-center py-8">
-          <Spinner />
-        </div>
+        <Card>
+          <SkeletonRows rows={4} />
+        </Card>
       )}
-
       {isError && <ErrorState onRetry={() => void refetch()} />}
 
       {data && data.data.length === 0 && (
-        <EmptyState
-          title="No markets yet."
-          description="Add a market to start listing items."
-        />
+        <Card>
+          <EmptyPanel
+            title={search ? "No markets match." : "No markets yet."}
+            description="Add a market to start listing items."
+          />
+        </Card>
       )}
 
       {data && data.data.length > 0 && (
-        <ul className="flex flex-col divide-y divide-border rounded-card border border-border">
+        <ManageList>
           {data.data.map((market) => (
-            <li
+            <ManageRow
               key={market.id}
-              className="flex items-center justify-between gap-3 px-4 py-3"
-            >
-              <button
-                type="button"
-                onClick={() => openEdit(market)}
-                className="flex flex-1 items-center gap-3 text-left"
-              >
-                {market.image_url ? (
-                  <img
-                    src={market.image_url}
-                    alt={market.name}
-                    className="h-10 w-10 shrink-0 rounded-lg object-cover"
-                  />
-                ) : (
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-sm font-bold text-primary-700">
-                    {market.name.charAt(0).toUpperCase()}
-                  </span>
-                )}
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-medium text-text">{market.name}</span>
-                  <span className="text-xs text-text-muted">
-                    {market.location} · Cutoff {market.cutoff_time}
-                  </span>
-                </div>
-              </button>
-              <span className={`text-xs font-semibold ${STATUS_COLOR[market.status]}`}>
-                {STATUS_LABELS[market.status]}
-              </span>
-              {market.status !== 0 && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  loading={deactivateMutation.isPending}
-                  onClick={() => deactivateMutation.mutate(market)}
-                >
-                  Deactivate
-                </Button>
-              )}
-            </li>
+              onOpen={() => openEdit(market)}
+              dimmed={market.status === 0}
+              leading={<ManageIcon icon={<Store size={18} />} image={market.image_url} />}
+              title={market.name}
+              subtitle={[
+                market.location,
+                market.cutoff_time ? `Cutoff ${clock(market.cutoff_time)}` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              actions={
+                market.status !== 0 ? (
+                  <RowAction
+                    tone="danger"
+                    disabled={deactivateMutation.isPending}
+                    onClick={() => deactivateMutation.mutate(market)}
+                  >
+                    Deactivate
+                  </RowAction>
+                ) : undefined
+              }
+              pills={
+                <ManagePill tone={STATUS_TONE[market.status]}>
+                  {STATUS_LABELS[market.status]}
+                </ManagePill>
+              }
+            />
           ))}
-        </ul>
+        </ManageList>
       )}
 
       <Modal

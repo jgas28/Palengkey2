@@ -17,6 +17,7 @@ import {
 } from "@/services/api/adminFeedback";
 import { useToastStore } from "@/stores/toastStore";
 import type { AdminOrderFeedback, FeedbackFilter } from "@/types/adminFeedback";
+import { ManageHeader, ManageTabs } from "@/components/admin/AdminManageList";
 
 const FILTERS: { value: FeedbackFilter; label: string }[] = [
   { value: "bad", label: "Needs attention" },
@@ -71,25 +72,22 @@ export default function AdminFeedback() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-lg font-semibold">Suki Trust Level</h1>
+      <ManageHeader
+        eyebrow="Customers"
+        title="Suki trust level"
+        description="Customer ratings and feedback after delivery."
+      />
 
-      <div className="flex gap-1 overflow-x-auto border-b border-border">
-        {FILTERS.map((item) => (
-          <button
-            key={item.value}
-            type="button"
-            onClick={() => setFilter(item.value)}
-            className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium ${
-              filter === item.value
-                ? "border-primary text-primary"
-                : "border-transparent text-text-muted hover:text-text"
-            }`}
-          >
-            {item.label}
-            {data && item.value !== "five_star" && ` (${data.counts[item.value]})`}
-          </button>
-        ))}
-      </div>
+      <ManageTabs
+        label="Trust level"
+        tabs={FILTERS.map((item) => ({
+          value: item.value,
+          label: item.label,
+          count: data && item.value !== "five_star" ? data.counts[item.value] : null,
+        }))}
+        value={filter}
+        onChange={setFilter}
+      />
 
       {isLoading && (
         <div className="flex justify-center py-8">
@@ -107,7 +105,7 @@ export default function AdminFeedback() {
       )}
 
       {data && data.feedback.data.length > 0 && (
-        <ul className="flex flex-col divide-y divide-border rounded-card border border-border">
+        <ul className="flex flex-col divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
           {data.feedback.data.map((feedback) => (
             <li key={feedback.id}>
               <button

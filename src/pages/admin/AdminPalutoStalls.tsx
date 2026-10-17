@@ -21,6 +21,15 @@ import {
 import { listAdminMarkets } from "@/services/api/adminLookups";
 import { useToastStore } from "@/stores/toastStore";
 import type { AdminPalutoStall } from "@/types/adminPalutoStall";
+import { ChefHat } from "lucide-react";
+import {
+  ManageHeader,
+  ManageIcon,
+  ManageList,
+  ManagePill,
+  ManageRow,
+  RowAction,
+} from "@/components/admin/AdminManageList";
 
 interface StallFormState {
   name: string;
@@ -178,12 +187,13 @@ export default function AdminPalutoStalls() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Paluto Stalls</h1>
-        <Button size="sm" onClick={openCreate}>
-          Add stall
-        </Button>
-      </div>
+      <ManageHeader
+        eyebrow="Paluto & recipes"
+        title="Paluto stalls"
+        description="Cooking stalls and the dishes they cook from market ingredients."
+        actionLabel="Add stall"
+        onAction={openCreate}
+      />
 
       <div className="flex flex-wrap gap-3">
         <input
@@ -191,14 +201,14 @@ export default function AdminPalutoStalls() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search stall name..."
-          className="h-10 flex-1 rounded-lg border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+          className="h-10 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
         />
         <select
           value={marketId ?? ""}
           onChange={(e) =>
             setMarketId(e.target.value ? Number(e.target.value) : undefined)
           }
-          className="h-10 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+          className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
         >
           <option value="">All markets</option>
           {markets.map((market) => (
@@ -225,75 +235,62 @@ export default function AdminPalutoStalls() {
       )}
 
       {data && data.data.length > 0 && (
-        <ul className="flex flex-col divide-y divide-border rounded-card border border-border">
+        <ManageList>
           {data.data.map((stall) => (
-            <li
+            <ManageRow
               key={stall.id}
-              className="flex items-center justify-between gap-3 px-4 py-3"
-            >
-              <button
-                type="button"
-                onClick={() => openEdit(stall)}
-                className="flex flex-1 items-center gap-3 text-left"
-              >
-                {stall.image_url ? (
-                  <img
-                    src={stall.image_url}
-                    alt={stall.name}
-                    className="h-10 w-10 shrink-0 rounded-lg object-cover"
-                  />
-                ) : (
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-sm font-bold text-primary-700">
-                    {stall.name.charAt(0).toUpperCase()}
-                  </span>
-                )}
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-medium text-text">{stall.name}</span>
-                  <span className="text-xs text-text-muted">
-                    {stall.market_name ?? "No market"}
-                    {stall.prep_time_minutes ? ` · ~${stall.prep_time_minutes} min` : ""}
-                  </span>
-                </div>
-              </button>
-              <span
-                className={`text-xs font-semibold ${
-                  stall.is_accepting_orders ? "text-status-delivered" : "text-text-muted"
-                }`}
-              >
-                {stall.is_accepting_orders ? "Accepting orders" : "Paused"}
-              </span>
-              <span
-                className={`text-xs font-semibold ${
-                  stall.status ? "text-status-delivered" : "text-text-muted"
-                }`}
-              >
-                {stall.status ? "Active" : "Inactive"}
-              </span>
-              <Link to={`/admin/paluto-stalls/${stall.id}/dishes`}>
-                <Button size="sm">Manage menu ({stall.dishes_count})</Button>
-              </Link>
-              {stall.status ? (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  loading={deactivateMutation.isPending}
-                  onClick={() => handleDeactivate(stall)}
-                >
-                  Deactivate
-                </Button>
-              ) : (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  loading={restoreMutation.isPending}
-                  onClick={() => restoreMutation.mutate(stall)}
-                >
-                  Restore
-                </Button>
-              )}
-            </li>
+              onOpen={() => navigate(`/admin/paluto-stalls/${stall.id}/dishes`)}
+              dimmed={!stall.status}
+              leading={
+                <ManageIcon icon={<ChefHat size={18} />} image={stall.image_url} />
+              }
+              title={stall.name}
+              subtitle={[
+                stall.market_name ?? "No market",
+                stall.prep_time_minutes ? `~${stall.prep_time_minutes} min prep` : null,
+                `${stall.dishes_count} dish${stall.dishes_count === 1 ? "" : "es"} on the menu`,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              actions={
+                <>
+                  <button
+                    type="button"
+                    onClick={() => openEdit(stall)}
+                    className="text-primary-700 hover:underline"
+                  >
+                    Edit stall
+                  </button>
+                  {stall.status ? (
+                    <RowAction
+                      tone="danger"
+                      disabled={deactivateMutation.isPending}
+                      onClick={() => handleDeactivate(stall)}
+                    >
+                      Deactivate
+                    </RowAction>
+                  ) : (
+                    <RowAction
+                      tone="success"
+                      disabled={restoreMutation.isPending}
+                      onClick={() => restoreMutation.mutate(stall)}
+                    >
+                      Restore
+                    </RowAction>
+                  )}
+                </>
+              }
+              pills={
+                <>
+                  <ManagePill tone={stall.is_accepting_orders ? "active" : "warning"}>
+                    {stall.is_accepting_orders ? "Accepting orders" : "Paused"}
+                  </ManagePill>
+                  {!stall.status && <ManagePill tone="muted">Inactive</ManagePill>}
+                </>
+              }
+            />
           ))}
-        </ul>
+        </ManageList>
       )}
 
       <Modal

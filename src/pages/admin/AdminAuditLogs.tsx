@@ -7,6 +7,22 @@ import EmptyState from "@/components/common/EmptyState";
 import ErrorState from "@/components/common/ErrorState";
 import { listAdminAuditLogs, listAuditLogUsers } from "@/services/api/adminAuditLog";
 import type { AdminAuditLog } from "@/types/adminAuditLog";
+import { ManageHeader } from "@/components/admin/AdminManageList";
+
+/** "Oct 7, 2026, 7:21 PM" in Manila time. */
+function manilaTime(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? iso
+    : date.toLocaleString("en-PH", {
+        timeZone: "Asia/Manila",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+}
 
 export default function AdminAuditLogs() {
   const [search, setSearch] = useState("");
@@ -34,7 +50,11 @@ export default function AdminAuditLogs() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-lg font-semibold">Audit Logs</h1>
+      <ManageHeader
+        eyebrow="Administration"
+        title="Audit logs"
+        description="Every change made in the CMS, newest first."
+      />
 
       <div className="flex flex-wrap gap-3">
         <input
@@ -44,7 +64,7 @@ export default function AdminAuditLogs() {
             setPage(1);
           }}
           placeholder="Search action, model, or id…"
-          className="h-10 flex-1 rounded-lg border border-border bg-surface px-3 text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-300"
+          className="h-10 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
         />
         <input
           value={action}
@@ -53,7 +73,7 @@ export default function AdminAuditLogs() {
             setPage(1);
           }}
           placeholder="Action (e.g. created)"
-          className="h-10 w-48 rounded-lg border border-border bg-surface px-3 text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-300"
+          className="h-10 w-48 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
         />
         <select
           value={userId}
@@ -61,7 +81,7 @@ export default function AdminAuditLogs() {
             setUserId(e.target.value ? Number(e.target.value) : "");
             setPage(1);
           }}
-          className="h-10 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+          className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
         >
           <option value="">All users</option>
           {users.map((user) => (
@@ -89,9 +109,9 @@ export default function AdminAuditLogs() {
 
       {data && data.data.length > 0 && (
         <>
-          <div className="overflow-x-auto rounded-card border border-border">
+          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
             <table className="w-full text-left text-sm">
-              <thead className="bg-background text-xs uppercase text-text-muted">
+              <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] uppercase tracking-wide text-slate-400">
                 <tr>
                   <th className="px-4 py-3">When</th>
                   <th className="px-4 py-3">User</th>
@@ -107,7 +127,9 @@ export default function AdminAuditLogs() {
                     onClick={() => setSelected(log)}
                     className="cursor-pointer hover:bg-background"
                   >
-                    <td className="px-4 py-3 text-text-muted">{log.created_at}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-text-muted">
+                      {manilaTime(log.created_at)}
+                    </td>
                     <td className="px-4 py-3 text-text-muted">{log.user?.name ?? "—"}</td>
                     <td className="px-4 py-3 font-medium text-text">{log.action}</td>
                     <td className="px-4 py-3 text-text-muted">
@@ -165,7 +187,7 @@ export default function AdminAuditLogs() {
               )}
             </p>
             <p className="text-xs text-text-muted">
-              {selected.created_at} · {selected.ip ?? "no IP recorded"}
+              {manilaTime(selected.created_at)} · {selected.ip ?? "no IP recorded"}
             </p>
             {selected.old_values && (
               <div>

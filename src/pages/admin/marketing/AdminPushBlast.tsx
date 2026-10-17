@@ -49,13 +49,13 @@ export default function AdminPushBlast() {
         </div>
       ) : stats ? (
         <div className="grid grid-cols-2 gap-2">
-          <div className="flex flex-col items-center gap-0.5 rounded-card border border-border p-3">
+          <div className="flex flex-col items-center gap-0.5 rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-3">
             <span className="text-base font-semibold text-text">
               {stats.customers_with_device}
             </span>
             <span className="text-xs text-text-muted">With a registered device</span>
           </div>
-          <div className="flex flex-col items-center gap-0.5 rounded-card border border-border p-3">
+          <div className="flex flex-col items-center gap-0.5 rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-3">
             <span className="text-base font-semibold text-text">
               {stats.push_opted_in}
             </span>
@@ -70,7 +70,7 @@ export default function AdminPushBlast() {
           <select
             value={audience}
             onChange={(e) => setAudience(e.target.value as PushAudience)}
-            className="h-12 rounded-lg border border-border bg-surface px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+            className="h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
           >
             <option value="opted_in">Opted in to push notifications</option>
             <option value="all_with_device">

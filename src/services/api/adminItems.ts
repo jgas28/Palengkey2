@@ -5,6 +5,8 @@ export interface ListAdminItemsParams {
   search?: string;
   marketId?: number;
   status?: "0" | "1";
+  categoryId?: number;
+  availability?: "available" | "unavailable";
   page?: number;
 }
 
@@ -16,6 +18,8 @@ export async function listAdminItems(
       search: params.search || undefined,
       market_id: params.marketId,
       status: params.status,
+      category_id: params.categoryId,
+      availability: params.availability,
       page: params.page,
     },
   });
@@ -60,7 +64,10 @@ export async function createAdminItem(
   if (payload.type_id) form.append("type_id", String(payload.type_id));
   form.append("unit_id", String(payload.unit_id));
   if (payload.bulk_min_kg) form.append("bulk_min_kg", String(payload.bulk_min_kg));
-  if (payload.bulk_discount_per_kg !== null && payload.bulk_discount_per_kg !== undefined) {
+  if (
+    payload.bulk_discount_per_kg !== null &&
+    payload.bulk_discount_per_kg !== undefined
+  ) {
     form.append("bulk_discount_per_kg", String(payload.bulk_discount_per_kg));
   }
   form.append("price", String(payload.price));
@@ -109,6 +116,21 @@ export async function updateAdminItemMarketListing(
   await adminApiClient.patch(`/admin/items/${itemId}/market`, payload);
 }
 
+export async function replaceAdminItemCover(
+  itemId: number,
+  file: File,
+  marketId?: number,
+): Promise<AdminItem> {
+  const form = new FormData();
+  form.append("picture_url", file);
+  if (marketId) form.append("market_id", String(marketId));
+  const { data } = await adminApiClient.post<AdminItem>(
+    `/admin/items/${itemId}/cover`,
+    form,
+  );
+  return data;
+}
+
 export async function uploadAdminItemImages(
   itemId: number,
   files: File[],
@@ -131,7 +153,9 @@ export async function deleteAdminItemImage(
 }
 
 export async function deactivateAdminItem(itemId: number): Promise<{ message: string }> {
-  const { data } = await adminApiClient.delete<{ message: string }>(`/admin/items/${itemId}`);
+  const { data } = await adminApiClient.delete<{ message: string }>(
+    `/admin/items/${itemId}`,
+  );
   return data;
 }
 
@@ -153,7 +177,10 @@ export interface AdminItemImportResult {
 export async function importAdminItemsCsv(file: File): Promise<AdminItemImportResult> {
   const form = new FormData();
   form.append("file", file);
-  const { data } = await adminApiClient.post<AdminItemImportResult>("/admin/items/import", form);
+  const { data } = await adminApiClient.post<AdminItemImportResult>(
+    "/admin/items/import",
+    form,
+  );
   return data;
 }
 

@@ -75,19 +75,30 @@ class OrderController extends Controller
             ->groupBy('status')->pluck('aggregate', 'status');
 
         $orders = (clone $baseQuery)
-            ->with(['customer:id,fname,lname,email,phone', 'rider:id,name,phone'])
+            ->with(['customer:id,fname,lname,email,phone', 'rider:id,name,phone', 'market:id,name'])
             ->when($status, fn (Builder $q) => $q->where('status', $status))
             ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->paginate(20);
 
-        return response()->json(['orders' => $orders, 'counts' => $counts]);
+        // Header cards: scheduled "order later" work still to do, and today's order value.
+        $scoped = Order::query()->when($marketId, fn (Builder $q) => $q->where('market_id', $marketId));
+        $todayStart = now('Asia/Manila')->startOfDay()->timezone(config('app.timezone'));
+        $summary = [
+            'order_later' => (clone $scoped)->where('is_reservation', true)
+                ->whereNotIn('status', ['delivered', 'completed', 'cancelled'])->count(),
+            'today_value' => round((float) (clone $scoped)->where('created_at', '>=', $todayStart)
+                ->where('status', '!=', 'cancelled')->sum('total_amount'), 2),
+        ];
+
+        return response()->json(['orders' => $orders, 'counts' => $counts, 'summary' => $summary]);
     }
 
     public function show(Request $request, Order $order)
     {
         $this->authorizeOrderAccess($request, $order);
 
-        $order->load(['items', 'customer', 'rider', 'voucher', 'cashlessPayment', 'recipeBundles.stall']);
+        $order->load(['items', 'customer', 'rider', 'voucher', 'cashlessPayment', 'recipeBundles.stall', 'market:id,name', 'shopper:id,name']);
 
         return response()->json($order);
     }
@@ -371,6 +382,43 @@ class OrderController extends Controller
         $pdf = Pdf::loadView('admin.orders.print', compact('order'));
 
         return $pdf->stream("Order-{$order->order_number}.pdf");
+    }
+
+    /** Staff who can be assigned to shop an order: market admins/owners of the order's market. */
+    public function activeShoppers(Request $request)
+    {
+        $user = $request->user();
+        $marketId = $user->role === 'super_admin' ? $request->query('market_id') : $user->market_id;
+
+        $shoppers = \App\Models\User::query()
+            ->whereIn('role', ['admin', 'owner'])
+            ->when($marketId, fn ($q) => $q->where('market_id', $marketId))
+            ->orderBy('name')
+            ->get(['id', 'name', 'market_id']);
+
+        return response()->json($shoppers);
+    }
+
+    public function assignShopper(Request $request, Order $order)
+    {
+        $this->authorizeOrderAccess($request, $order);
+
+        if (! \Illuminate\Support\Facades\Schema::hasColumn('orders', 'shopper_id')) {
+            return response()->json(['message' => 'Run the latest migration to enable shopper assignment.'], 422);
+        }
+
+        $data = $request->validate(['shopper_id' => 'nullable|integer|exists:users,id']);
+        $shopper = isset($data['shopper_id']) ? \App\Models\User::findOrFail($data['shopper_id']) : null;
+
+        if ($shopper && $request->user()->role !== 'super_admin' && $shopper->market_id !== $request->user()->market_id) {
+            return response()->json(['message' => 'This staff member is not in your market.'], 403);
+        }
+
+        $old = $order->shopper_id;
+        $order->update(['shopper_id' => $shopper?->id]);
+        AuditLogger::log('order_shopper_assigned', $order, $order->id, ['shopper_id' => $old], ['shopper_id' => $shopper?->id]);
+
+        return response()->json(['message' => $shopper ? 'Shopper assigned.' : 'Shopper removed.', 'order' => $order->fresh('shopper:id,name')]);
     }
 
     public function activeRiders(Request $request)

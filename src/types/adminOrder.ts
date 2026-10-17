@@ -86,6 +86,9 @@ export interface AdminOrderSummary {
   created_at: string;
   customer: AdminOrderCustomer | null;
   rider: AdminOrderRider | null;
+  shopper?: { id: number; name: string } | null;
+  market?: { id: number; name: string } | null;
+  delivery_slot?: string | null;
 }
 
 export interface AdminOrderDetail extends AdminOrderSummary {
@@ -125,9 +128,23 @@ export interface AdminOrderPage {
 
 export type AdminOrderCounts = Partial<Record<AdminOrderStatus, number>>;
 
+/** Header cards on the Orders page. */
+export interface AdminOrderSummaryStats {
+  /** Order-later reservations not yet delivered or cancelled. */
+  order_later: number;
+  /** Value of today's (Manila) non-cancelled orders. */
+  today_value: number;
+}
+
 export interface AdminActiveRider {
   id: number;
   name: string;
   phone: string;
   vehicle_type: string;
+}
+
+export interface AdminShopper {
+  id: number;
+  name: string;
+  market_id: number | null;
 }

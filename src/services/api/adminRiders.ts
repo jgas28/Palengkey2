@@ -1,9 +1,18 @@
 import { adminApiClient } from "@/services/api/adminClient";
-import type { AdminRider, AdminRiderPage, AdminRiderTrackingEntry } from "@/types/adminRider";
+import type {
+  AdminRider,
+  AdminRiderPage,
+  AdminRiderStatusFilter,
+  AdminRiderTrackingEntry,
+} from "@/types/adminRider";
 
-export async function listAdminRiders(search?: string): Promise<AdminRiderPage> {
+export async function listAdminRiders(
+  search?: string,
+  status: AdminRiderStatusFilter = "all",
+  page = 1,
+): Promise<AdminRiderPage> {
   const { data } = await adminApiClient.get<AdminRiderPage>("/admin/riders", {
-    params: { search: search || undefined },
+    params: { search: search || undefined, status, page },
   });
   return data;
 }
@@ -31,11 +40,16 @@ export async function updateAdminRider(
   riderId: number,
   payload: UpdateRiderPayload,
 ): Promise<AdminRider> {
-  const { data } = await adminApiClient.patch<AdminRider>(`/admin/riders/${riderId}`, payload);
+  const { data } = await adminApiClient.patch<AdminRider>(
+    `/admin/riders/${riderId}`,
+    payload,
+  );
   return data;
 }
 
 export async function getAdminRiderTracking(): Promise<AdminRiderTrackingEntry[]> {
-  const { data } = await adminApiClient.get<AdminRiderTrackingEntry[]>("/admin/riders/tracking");
+  const { data } = await adminApiClient.get<AdminRiderTrackingEntry[]>(
+    "/admin/riders/tracking",
+  );
   return data;
 }

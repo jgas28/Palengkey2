@@ -10,6 +10,7 @@ use App\Models\MarketPriceSnapshot;
 use App\Services\AuditLogger;
 use App\Services\ItemCsvParser;
 use App\Services\PriceRecorder;
+use App\Support\PriceDisplay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -17,6 +18,9 @@ use Illuminate\Support\Str;
 
 class ItemController extends Controller
 {
+    /** @var array<int, string|null> */
+    private array $marketNames = [];
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -34,11 +38,24 @@ class ItemController extends Controller
         }
 
         $status = $request->query('status');
-        if ($status !== null) {
+        if ($status !== null && $status !== '') {
             $query->where('status', (int) $status);
         }
 
-        $items = $query->orderBy('name')->paginate(20);
+        if ($categoryId = $request->query('category_id')) {
+            $query->where('category_id', (int) $categoryId);
+        }
+
+        // Availability only means something inside one market's listings.
+        $availability = $request->query('availability');
+        if ($marketId && in_array($availability, ['available', 'unavailable'], true)) {
+            $query->whereHas('markets', fn ($q) => $q->where('market_id', $marketId)
+                ->where('market_items.is_available', $availability === 'available'));
+        }
+
+        $summary = $this->summary($marketId);
+
+        $items = $query->withCount('markets')->orderBy('name')->paginate(20);
 
         // One query each for the page's market listings and prices (was 2 per item).
         $ids = $items->getCollection()->pluck('id');
@@ -52,7 +69,46 @@ class ItemController extends Controller
             $snapshots->get($item->id),
         ));
 
-        return response()->json($items);
+        return response()->json([...$items->toArray(), 'summary' => $summary]);
+    }
+
+    /** Header counts for the items list (scoped to one market when chosen). */
+    private function summary(?int $marketId): array
+    {
+        $todayStart = now('Asia/Manila')->startOfDay()->utc();
+        $items = fn () => Item::query()->when($marketId, fn ($q) => $q->whereHas('markets', fn ($m) => $m->where('market_id', $marketId)));
+
+        if ($marketId) {
+            $needsAttention = MarketItem::where('market_id', $marketId)->where('is_available', false)->count();
+            $updatedToday = MarketPriceSnapshot::where('market_id', $marketId)->where('price_at', '>=', $todayStart)->count();
+        } else {
+            $needsAttention = Item::where('status', 1)->whereDoesntHave('markets')->count();
+            $updatedToday = Item::where('updated_at', '>=', $todayStart)->count();
+        }
+
+        return [
+            'total' => $items()->count(),
+            'active' => $items()->where('status', 1)->count(),
+            'needs_attention' => $needsAttention,
+            'updated_today' => $updatedToday,
+        ];
+    }
+
+    /** Swap the cover photo of an existing item. */
+    public function replaceCover(Request $request, Item $item)
+    {
+        $request->validate(['picture_url' => 'required|image|max:4096']);
+
+        $old = $item->picture_url;
+        $path = $request->file('picture_url')->storeAs(
+            'items',
+            Str::slug($item->name).'-'.uniqid().'.'.$request->file('picture_url')->extension(),
+            $this->disk(),
+        );
+        $item->update(['picture_url' => $path]);
+        AuditLogger::log('updated', $item, $item->id, ['picture_url' => $old], ['picture_url' => $path]);
+
+        return response()->json($this->formatItem($item->fresh(['category', 'type', 'unit', 'images']), $this->resolveMarketId($request, $request->user())));
     }
 
     public function show(Request $request, Item $item)
@@ -283,10 +339,16 @@ class ItemController extends Controller
                 : null;
         }
 
+        $updatedAt = collect([$item->updated_at, $marketItem?->updated_at, $snapshot?->price_at])->filter()->max();
+
         return [
             'id' => $item->id,
+            'sku' => 'ITM-'.str_pad((string) $item->id, 4, '0', STR_PAD_LEFT),
             'name' => $item->name,
             'description' => $item->description,
+            'updated_at' => $updatedAt?->toIso8601String(),
+            'markets_count' => $item->markets_count ?? null,
+            'markup_percent' => PriceDisplay::markupPercent(),
             'image_url' => $item->image_full_url,
             'status' => $item->status,
             'category_id' => $item->category_id,
@@ -307,6 +369,8 @@ class ItemController extends Controller
             'market' => $marketId ? [
                 'market_id' => $marketId,
                 'price' => $snapshot?->price,
+                'customer_price' => $snapshot?->price !== null ? PriceDisplay::markedUp($snapshot->price) : null,
+                'market_name' => $this->marketNames[$marketId] ??= Market::whereKey($marketId)->value('name'),
                 'is_available' => (bool) ($marketItem?->is_available ?? false),
                 'cutoff_time' => $marketItem?->cutoff_time ? substr($marketItem->cutoff_time, 0, 5) : null,
             ] : null,

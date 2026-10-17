@@ -19,6 +19,7 @@ import {
 } from "@/services/api/adminRecipeTypes";
 import { useToastStore } from "@/stores/toastStore";
 import type { AdminRecipeType } from "@/types/adminRecipeType";
+import { ManageHeader } from "@/components/admin/AdminManageList";
 
 export default function AdminRecipeTypes() {
   const queryClient = useQueryClient();
@@ -126,25 +127,25 @@ export default function AdminRecipeTypes() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-lg font-semibold">Recipe Types</h1>
-      <p className="text-sm text-text-muted">
-        Cooking-style tags for Paluto's filter chips (Soup, Fried, Grilled, etc.) —
-        separate from the shop's grocery categories.
-      </p>
+      <ManageHeader
+        eyebrow="Paluto & recipes"
+        title="Recipe types"
+        description="Cooking-style tags for Paluto's filter chips (Soup, Fried, Grilled) — separate from grocery categories."
+      />
 
       <div className="flex items-center justify-between gap-3">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search recipe types..."
-          className="h-10 flex-1 rounded-lg border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+          className="h-10 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
         />
         <Button size="sm" onClick={openCreateForm}>
           Add recipe type
         </Button>
       </div>
 
-      <ul className="flex flex-col divide-y divide-border rounded-card border border-border">
+      <ul className="flex flex-col divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         {data.data.length === 0 && (
           <li className="px-4 py-6 text-center text-sm text-text-muted">
             No recipe types yet.

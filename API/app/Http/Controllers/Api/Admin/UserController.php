@@ -14,7 +14,7 @@ class UserController extends Controller
 
     public function index()
     {
-        $users = User::whereIn('role', self::ROLES)->with('market')->latest()->get();
+        $users = User::whereIn('role', self::ROLES)->with('market')->withMax('tokens', 'last_used_at')->withMax('tokens', 'created_at')->latest()->get();
 
         return response()->json($users->map(fn (User $user) => $this->formatUser($user)));
     }
@@ -119,6 +119,10 @@ class UserController extends Controller
             'role' => $user->role,
             'market_id' => $user->market_id,
             'market_name' => $user->market?->name,
+            // Latest sign-in activity; null = never signed in (invited only).
+            'last_active_at' => ($user->tokens_max_last_used_at ?? $user->tokens_max_created_at)
+                ? \Illuminate\Support\Carbon::parse($user->tokens_max_last_used_at ?? $user->tokens_max_created_at)->toIso8601String()
+                : null,
         ];
     }
 }
