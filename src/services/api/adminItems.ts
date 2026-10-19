@@ -1,5 +1,10 @@
 import { adminApiClient } from "@/services/api/adminClient";
-import type { AdminItem, AdminItemImage, AdminItemListPage } from "@/types/adminItem";
+import type {
+  AdminItem,
+  AdminItemAvailability,
+  AdminItemImage,
+  AdminItemListPage,
+} from "@/types/adminItem";
 
 export interface ListAdminItemsParams {
   search?: string;
@@ -106,6 +111,7 @@ export interface UpdateMarketListingPayload {
   market_id?: number;
   price: number | null;
   is_available: boolean;
+  availability?: AdminItemAvailability;
   cutoff_time?: string;
 }
 

@@ -8,9 +8,10 @@ import type {
 
 export async function listAdminSupportThreads(
   status: SupportThreadStatus | "all",
+  page = 1,
 ): Promise<AdminSupportThreadPage> {
   const { data } = await adminApiClient.get<AdminSupportThreadPage>("/admin/support", {
-    params: { status },
+    params: { status, page },
   });
   return data;
 }

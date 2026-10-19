@@ -92,19 +92,22 @@ function AvailabilityCell({ item, marketId }: { item: AdminItem; marketId?: numb
       </span>
     );
   }
-  const available = item.status && item.market.is_available;
+  const state = !item.status
+    ? "inactive"
+    : (item.market.availability ??
+      (item.market.is_available ? "available" : "unavailable"));
+  const look = {
+    available: ["bg-emerald-50 text-emerald-700", "Available", "Order today"],
+    out_of_stock: ["bg-amber-50 text-amber-700", "Out of stock", "Back tomorrow"],
+    unavailable: ["bg-rose-50 text-rose-600", "Unavailable", "Seasonal"],
+    inactive: ["bg-slate-100 text-slate-500", "Inactive", "Hidden from customers"],
+  }[state];
   return (
     <span>
-      <span
-        className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-          available ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-600"
-        }`}
-      >
-        {!item.status ? "Inactive" : available ? "Available" : "Unavailable"}
+      <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${look[0]}`}>
+        {look[1]}
       </span>
-      <span className="mt-1.5 block text-[11px] text-slate-400">
-        {available ? "Order today" : "Hidden from customers"}
-      </span>
+      <span className="mt-1.5 block text-[11px] text-slate-400">{look[2]}</span>
     </span>
   );
 }

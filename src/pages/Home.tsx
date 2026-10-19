@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import Icon from "@/components/pk/Icon";
@@ -30,7 +30,10 @@ export default function Home() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [search, setSearch] = useState(
-    () => params.get("search") ?? (location.state as { search?: string } | null)?.search ?? "",
+    () =>
+      params.get("search") ??
+      (location.state as { search?: string } | null)?.search ??
+      "",
   );
   const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(() => {
@@ -60,10 +63,17 @@ export default function Home() {
     }
   }, [selectedMarket, autoMarkets, setMarket]);
 
-  const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: listCategories });
-  const { data: types = [] } = useQuery({ queryKey: ["types"], queryFn: listProductTypes });
-
   const marketId = selectedMarket?.id;
+
+  // Counts are per market so the sidebar matches what this shop actually lists.
+  const { data: categories = [] } = useQuery({
+    queryKey: ["categories", marketId ?? null],
+    queryFn: () => listCategories(marketId),
+  });
+  const { data: types = [] } = useQuery({
+    queryKey: ["types"],
+    queryFn: listProductTypes,
+  });
 
   const {
     data: itemPages,
@@ -90,9 +100,30 @@ export default function Home() {
     enabled: marketId !== undefined,
   });
 
-  const items = useMemo(() => itemPages?.pages.flatMap((page) => page.data) ?? [], [itemPages]);
+  const items = useMemo(
+    () => itemPages?.pages.flatMap((page) => page.data) ?? [],
+    [itemPages],
+  );
+
+  // Load the next page automatically when the end of the grid scrolls into view.
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const node = loadMoreRef.current;
+    if (!node || !hasNextPage) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !isFetchingNextPage) void fetchNextPage();
+      },
+      { rootMargin: "400px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, items.length]);
   const totalCount = itemPages?.pages[0]?.total ?? items.length;
-  const allCount = categories.reduce((sum, category) => sum + (category.items_count ?? 0), 0);
+  const allCount = categories.reduce(
+    (sum, category) => sum + (category.items_count ?? 0),
+    0,
+  );
 
   function clearFilters() {
     setSearch("");
@@ -110,7 +141,11 @@ export default function Home() {
         </div>
         <div className="shell shop-tools">
           <div>
-            <button type="button" className="market-selector" onClick={() => setPickerOpen(true)}>
+            <button
+              type="button"
+              className="market-selector"
+              onClick={() => setPickerOpen(true)}
+            >
               <span>
                 <Icon name="bag" size={17} />
               </span>
@@ -225,9 +260,14 @@ export default function Home() {
                 <Icon name="sparkle" />
               </span>
               <div>
-                <p className="kicker">Available from {selectedMarket?.name ?? "your market"}</p>
+                <p className="kicker">
+                  Available from {selectedMarket?.name ?? "your market"}
+                </p>
                 <h2>Try Paluto</h2>
-                <p>Choose a stall and we’ll buy the ingredients and have your meal cooked fresh.</p>
+                <p>
+                  Choose a stall and we’ll buy the ingredients and have your meal cooked
+                  fresh.
+                </p>
               </div>
             </div>
             <button type="button" className="btn" onClick={() => navigate("/paluto")}>
@@ -244,7 +284,9 @@ export default function Home() {
                 <select
                   value={activeTypeId ?? ""}
                   onChange={(event) =>
-                    setActiveTypeId(event.target.value ? Number(event.target.value) : null)
+                    setActiveTypeId(
+                      event.target.value ? Number(event.target.value) : null,
+                    )
                   }
                   aria-label="Product type"
                 >
@@ -264,7 +306,11 @@ export default function Home() {
               <Icon name="bag" size={34} />
               <h3>Choose a market to start shopping</h3>
               <p>We’ll show you what’s fresh and available today.</p>
-              <button type="button" className="btn primary" onClick={() => setPickerOpen(true)}>
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => setPickerOpen(true)}
+              >
                 Choose market
               </button>
             </div>
@@ -278,7 +324,11 @@ export default function Home() {
               <Icon name="x" size={34} />
               <h3>Something went wrong</h3>
               <p>Please try again.</p>
-              <button type="button" className="btn primary" onClick={() => void refetch()}>
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => void refetch()}
+              >
                 Try again
               </button>
             </div>
@@ -286,11 +336,18 @@ export default function Home() {
             <>
               <div className="catalog-grid">
                 {items.map((item) => (
-                  <PkProductCard key={item.id} item={item} onView={() => setSelectedItemId(item.id)} />
+                  <PkProductCard
+                    key={item.id}
+                    item={item}
+                    onView={() => setSelectedItemId(item.id)}
+                  />
                 ))}
               </div>
               {hasNextPage && (
-                <div style={{ display: "flex", justifyContent: "center", marginTop: 24 }}>
+                <div
+                  ref={loadMoreRef}
+                  style={{ display: "flex", justifyContent: "center", marginTop: 24 }}
+                >
                   <button
                     type="button"
                     className="btn outline"

@@ -2,7 +2,8 @@ import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { Card, EmptyPanel } from "@/components/admin/AdminUi";
-import { ManageTabs } from "@/components/admin/AdminManageList";
+import { ManageTabs, PagerBar } from "@/components/admin/AdminManageList";
+import usePagedRows from "@/hooks/usePagedRows";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
@@ -168,6 +169,8 @@ export default function AdminHeroContent() {
     }
   }
 
+  const paged = usePagedRows(heroes, 6, pageName);
+
   const toggleMutation = useMutation({
     mutationFn: (hero: AdminHeroContentEntry) =>
       updateAdminHeroContent(hero.id, {
@@ -231,7 +234,7 @@ export default function AdminHeroContent() {
 
       {heroes && heroes.length > 0 && (
         <div className="grid gap-4 lg:grid-cols-2">
-          {heroes.map((hero) => (
+          {paged.rows.map((hero) => (
             <Card key={hero.id} className="flex overflow-hidden">
               <button
                 type="button"
@@ -293,6 +296,19 @@ export default function AdminHeroContent() {
             </Card>
           ))}
         </div>
+      )}
+
+      {heroes && heroes.length > 0 && (
+        <Card className="overflow-hidden">
+          <PagerBar
+            className="border-t-0"
+            page={paged.page}
+            lastPage={paged.lastPage}
+            total={paged.total}
+            perPage={paged.perPage}
+            onPage={paged.setPage}
+          />
+        </Card>
       )}
 
       <Modal

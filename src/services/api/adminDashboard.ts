@@ -1,8 +1,14 @@
 import { adminApiClient } from "@/services/api/adminClient";
-import type { AdminDashboard, DashboardPeriod, LatestOrdersPage } from "@/types/adminDashboard";
+import type {
+  AdminDashboard,
+  DashboardPeriod,
+  LatestOrdersPage,
+} from "@/types/adminDashboard";
 
 /** KPI overview for the period (default today), compared with the stretch just before it. */
-export async function getAdminDashboard(days: DashboardPeriod = 0): Promise<AdminDashboard> {
+export async function getAdminDashboard(
+  days: DashboardPeriod = 0,
+): Promise<AdminDashboard> {
   const { data } = await adminApiClient.get<AdminDashboard>("/admin/dashboard", {
     params: { days },
   });

@@ -1,5 +1,8 @@
 import { adminApiClient } from "@/services/api/adminClient";
-import type { AdminPalutoStall, AdminPalutoStallListPage } from "@/types/adminPalutoStall";
+import type {
+  AdminPalutoStall,
+  AdminPalutoStallListPage,
+} from "@/types/adminPalutoStall";
 
 export interface ListAdminPalutoStallsParams {
   search?: string;
@@ -38,7 +41,8 @@ export interface PalutoStallFormPayload {
 function toStallFormData(payload: Partial<PalutoStallFormPayload>): FormData {
   const form = new FormData();
   if (payload.name !== undefined) form.append("name", payload.name);
-  if (payload.market_id !== undefined) form.append("market_id", String(payload.market_id));
+  if (payload.market_id !== undefined)
+    form.append("market_id", String(payload.market_id));
   if (payload.description) form.append("description", payload.description);
   if (payload.contact_phone) form.append("contact_phone", payload.contact_phone);
   if (payload.is_accepting_orders !== undefined) {
@@ -75,17 +79,19 @@ export async function updateAdminPalutoStall(
 export async function deactivateAdminPalutoStall(
   stallId: number,
 ): Promise<{ message: string; stall: AdminPalutoStall }> {
-  const { data } = await adminApiClient.delete<{ message: string; stall: AdminPalutoStall }>(
-    `/admin/paluto-stalls/${stallId}`,
-  );
+  const { data } = await adminApiClient.delete<{
+    message: string;
+    stall: AdminPalutoStall;
+  }>(`/admin/paluto-stalls/${stallId}`);
   return data;
 }
 
 export async function restoreAdminPalutoStall(
   stallId: number,
 ): Promise<{ message: string; stall: AdminPalutoStall }> {
-  const { data } = await adminApiClient.post<{ message: string; stall: AdminPalutoStall }>(
-    `/admin/paluto-stalls/${stallId}/restore`,
-  );
+  const { data } = await adminApiClient.post<{
+    message: string;
+    stall: AdminPalutoStall;
+  }>(`/admin/paluto-stalls/${stallId}/restore`);
   return data;
 }

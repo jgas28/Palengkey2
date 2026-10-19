@@ -1,5 +1,9 @@
 import { adminApiClient } from "@/services/api/adminClient";
-import type { AdminMarket, AdminMarketPage, AdminMarketStatus } from "@/types/adminMarket";
+import type {
+  AdminMarket,
+  AdminMarketPage,
+  AdminMarketStatus,
+} from "@/types/adminMarket";
 
 export interface ListAdminMarketsParams {
   search?: string;
@@ -38,7 +42,8 @@ function toFormData(payload: Partial<MarketFormPayload>): FormData {
   if (payload.location !== undefined) form.append("location", payload.location);
   if (payload.address !== undefined) form.append("address", payload.address);
   if (payload.latitude !== undefined) form.append("latitude", String(payload.latitude));
-  if (payload.longitude !== undefined) form.append("longitude", String(payload.longitude));
+  if (payload.longitude !== undefined)
+    form.append("longitude", String(payload.longitude));
   if (payload.status !== undefined) form.append("status", String(payload.status));
   if (payload.cutoff_time) form.append("cutoff_time", payload.cutoff_time);
   if (payload.cutoff_timezone) form.append("cutoff_timezone", payload.cutoff_timezone);
@@ -46,7 +51,9 @@ function toFormData(payload: Partial<MarketFormPayload>): FormData {
   return form;
 }
 
-export async function createAdminMarket(payload: MarketFormPayload): Promise<AdminMarket> {
+export async function createAdminMarket(
+  payload: MarketFormPayload,
+): Promise<AdminMarket> {
   const { data } = await adminApiClient.post<AdminMarket>(
     "/admin/manage-markets",
     toFormData(payload),

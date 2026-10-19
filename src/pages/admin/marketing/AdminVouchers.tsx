@@ -18,6 +18,7 @@ import {
   ManagePill,
   ManageRow,
   ManageToolbar,
+  PagerBar,
   RowAction,
 } from "@/components/admin/AdminManageList";
 import {
@@ -82,6 +83,7 @@ export default function AdminVouchers() {
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
   const [search, setSearch] = useState("");
+  const [pageNumber, setPageNumber] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<AdminVoucher | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -96,8 +98,8 @@ export default function AdminVouchers() {
     isError,
     refetch,
   } = useQuery({
-    queryKey: ["adminVouchers", search],
-    queryFn: () => listAdminVouchers(search),
+    queryKey: ["adminVouchers", search, pageNumber],
+    queryFn: () => listAdminVouchers(search, pageNumber),
     placeholderData: keepPreviousData,
   });
 
@@ -252,7 +254,14 @@ export default function AdminVouchers() {
 
   return (
     <div className="flex flex-col gap-4">
-      <ManageToolbar search={search} onSearch={setSearch} placeholder="Search vouchers">
+      <ManageToolbar
+        search={search}
+        onSearch={(value) => {
+          setSearch(value);
+          setPageNumber(1);
+        }}
+        placeholder="Search vouchers"
+      >
         <button
           type="button"
           onClick={openCreateForm}
@@ -270,7 +279,17 @@ export default function AdminVouchers() {
           />
         </Card>
       ) : (
-        <ManageList>
+        <ManageList
+          footer={
+            <PagerBar
+              page={page.current_page}
+              lastPage={page.last_page}
+              total={page.total}
+              perPage={page.per_page}
+              onPage={setPageNumber}
+            />
+          }
+        >
           {page.data.map((voucher) => (
             <ManageRow
               key={voucher.id}

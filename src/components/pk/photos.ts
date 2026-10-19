@@ -11,4 +11,7 @@ export const photos = {
     "https://images.unsplash.com/photo-1581493297375-6bf56ab23719?auto=format&fit=crop&w=900&q=85",
   palengke:
     "https://images.unsplash.com/photo-1548585219-8eb7c1801390?auto=format&fit=crop&w=1200&q=85",
+  meatStall:
+    "https://images.unsplash.com/photo-1643545809505-1c884b5d3755?auto=format&fit=crop&w=900&q=85",
+  cook: "https://images.unsplash.com/photo-1606328333887-2576c7fee856?auto=format&fit=crop&w=1200&q=85",
 };

@@ -9,6 +9,7 @@ import { formatKg, kgToGo } from "@/features/bulk/bulkFormat";
 import { useToastStore } from "@/stores/toastStore";
 import { formatPeso } from "@/utils/currency";
 import { isWeightUnit } from "@/utils/unit";
+import { availabilityLabel } from "@/types/item";
 
 const WEIGHT_PRESETS = [
   { label: "125 g", kg: 0.125 },
@@ -47,6 +48,8 @@ export default function PkProductModal({
   });
 
   const weighted = item ? isWeightUnit(item.unit) : false;
+  // Out of stock / seasonal items are shown, but can't be added to the basket.
+  const status = item ? availabilityLabel(item) : null;
   const selectedKg = weighted ? weightKg * quantity : 0;
   const bulkReached = Boolean(
     weighted &&
@@ -144,10 +147,22 @@ export default function PkProductModal({
                   </div>
                 )}
                 {item.bulk_min_kg && <span>Bulk deal</span>}
-                {item.is_cutoff && (
-                  <b className="modal-stock" style={{ background: "var(--teal-dark)" }}>
-                    Order later
+                {status ? (
+                  <b
+                    className="modal-stock"
+                    style={{
+                      background:
+                        item.availability === "out_of_stock" ? "#b26a00" : "var(--muted)",
+                    }}
+                  >
+                    {status.title}
                   </b>
+                ) : (
+                  item.is_cutoff && (
+                    <b className="modal-stock" style={{ background: "var(--teal-dark)" }}>
+                      Order later
+                    </b>
+                  )
                 )}
               </div>
             </div>
@@ -160,11 +175,19 @@ export default function PkProductModal({
               </p>
               <h2>{item.name}</h2>
               <div className="modal-price">
-                <strong>{formatPeso(unitPrice)}</strong>
-                <span>/ {item.unit ?? "pc"}</span>
+                {status ? (
+                  <strong style={{ color: "var(--muted)", fontSize: 20 }}>
+                    {status.title}
+                  </strong>
+                ) : (
+                  <>
+                    <strong>{formatPeso(unitPrice)}</strong>
+                    <span>/ {item.unit ?? "pc"}</span>
+                  </>
+                )}
                 {bulkReached && (
                   <>
-                    <del>{formatPeso(item.price)}</del>
+                    <del>{formatPeso(Number(item.price))}</del>
                     <b>Bulk price</b>
                   </>
                 )}
@@ -174,7 +197,31 @@ export default function PkProductModal({
                   "Freshly selected from a trusted market stall. Your personal shopper checks quality before packing."}
               </p>
 
-              {weighted && item.bulk_min_kg && item.bulk_price !== null && (
+              {status && (
+                <div
+                  className="bulk-banner"
+                  style={{
+                    color:
+                      item.availability === "out_of_stock" ? "#8a5300" : "var(--muted)",
+                    background:
+                      item.availability === "out_of_stock" ? "#fff6e5" : "#f3f5f5",
+                    borderColor:
+                      item.availability === "out_of_stock" ? "#f3d9a8" : "#e2e8e8",
+                  }}
+                >
+                  <Icon name="clock" />
+                  <div>
+                    <strong>{status.title}</strong>
+                    <p>
+                      {item.availability === "out_of_stock"
+                        ? `${status.detail}. Check back then to add it to your basket.`
+                        : "This item is seasonal. It will be back once the market has it again."}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {!status && weighted && item.bulk_min_kg && item.bulk_price !== null && (
                 <div className="bulk-banner">
                   <Icon name="sparkle" />
                   <div>
@@ -203,7 +250,7 @@ export default function PkProductModal({
                 </div>
               )}
 
-              {item.is_cutoff && (
+              {!status && item.is_cutoff && (
                 <div
                   className="bulk-banner"
                   style={{
@@ -222,7 +269,7 @@ export default function PkProductModal({
                 </div>
               )}
 
-              {weighted && (
+              {!status && weighted && (
                 <div className="quantity-row" style={{ borderBottom: 0 }}>
                   <div>
                     <strong>Weight</strong>
@@ -243,63 +290,79 @@ export default function PkProductModal({
                 </div>
               )}
 
-              <div className="quantity-row">
-                <div>
-                  <strong>Quantity</strong>
-                  <small>
-                    {weighted
-                      ? `${formatKg(selectedKg)} kg total`
-                      : `Each item is ${item.unit ?? "1 pc"}`}
-                  </small>
-                </div>
-                <div className="modal-quantity">
-                  <button
-                    type="button"
-                    aria-label="Decrease quantity"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  >
-                    <Icon name="minus" size={16} />
-                  </button>
-                  <span>{quantity}</span>
-                  <button
-                    type="button"
-                    aria-label="Increase quantity"
-                    onClick={() => setQuantity(quantity + 1)}
-                  >
-                    <Icon name="plus" size={16} />
-                  </button>
-                </div>
-              </div>
+              {!status && (
+                <>
+                  <div className="quantity-row">
+                    <div>
+                      <strong>Quantity</strong>
+                      <small>
+                        {weighted
+                          ? `${formatKg(selectedKg)} kg total`
+                          : `Each item is ${item.unit ?? "1 pc"}`}
+                      </small>
+                    </div>
+                    <div className="modal-quantity">
+                      <button
+                        type="button"
+                        aria-label="Decrease quantity"
+                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      >
+                        <Icon name="minus" size={16} />
+                      </button>
+                      <span>{quantity}</span>
+                      <button
+                        type="button"
+                        aria-label="Increase quantity"
+                        onClick={() => setQuantity(quantity + 1)}
+                      >
+                        <Icon name="plus" size={16} />
+                      </button>
+                    </div>
+                  </div>
 
-              <label className="instruction-field">
-                Special instructions <small>Optional</small>
-                <textarea
-                  value={instructions}
-                  maxLength={500}
-                  onChange={(event) => setInstructions(event.target.value)}
-                  placeholder="Hal. hinog pero matigas, clean and slice, no plastic..."
-                />
-              </label>
+                  <label className="instruction-field">
+                    Special instructions <small>Optional</small>
+                    <textarea
+                      value={instructions}
+                      maxLength={500}
+                      onChange={(event) => setInstructions(event.target.value)}
+                      placeholder="Hal. hinog pero matigas, clean and slice, no plastic..."
+                    />
+                  </label>
 
-              <div className="modal-total">
-                <div>
-                  <small>
-                    {saved > 0
-                      ? `Total · You save ${formatPeso(saved)}`
-                      : "Estimated total"}
-                  </small>
-                  <strong>{formatPeso(total)}</strong>
+                  <div className="modal-total">
+                    <div>
+                      <small>
+                        {saved > 0
+                          ? `Total · You save ${formatPeso(saved)}`
+                          : "Estimated total"}
+                      </small>
+                      <strong>{formatPeso(total)}</strong>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn primary"
+                      disabled={addMutation.isPending}
+                      onClick={() => addMutation.mutate()}
+                    >
+                      <Icon name="cart" size={18} />{" "}
+                      {addMutation.isPending ? "Adding…" : `Add ${quantity} to cart`}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {status && (
+                <div className="modal-total">
+                  <div>
+                    <small>Not available to order</small>
+                    <strong style={{ color: "var(--muted)" }}>{status.title}</strong>
+                  </div>
+                  <button type="button" className="btn primary" disabled>
+                    <Icon name="cart" size={18} /> {status.title}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="btn primary"
-                  disabled={addMutation.isPending}
-                  onClick={() => addMutation.mutate()}
-                >
-                  <Icon name="cart" size={18} />{" "}
-                  {addMutation.isPending ? "Adding…" : `Add ${quantity} to cart`}
-                </button>
-              </div>
+              )}
             </div>
           </>
         )}

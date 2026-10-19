@@ -22,11 +22,11 @@ class AuthController extends Controller
         $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
 
         if (! $user || ! $user->password || ! Hash::check($data['password'], $user->password)) {
-            return response()->json(['message' => 'Invalid credentials'], 401);
+            return response()->json(['message' => 'Incorrect email or password.', 'error_code' => 'invalid_credentials'], 401);
         }
 
         if (! in_array($user->role, self::ROLES, true)) {
-            return response()->json(['message' => 'This account has no admin panel access.'], 403);
+            return response()->json(['message' => "This account can't use the admin panel. Customers sign in on the Palengkey app or website.", 'error_code' => 'no_admin_access'], 403);
         }
 
         $token = $user->createToken('admin-panel', ['*'], now()->addDays(30))->plainTextToken;

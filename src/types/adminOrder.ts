@@ -117,7 +117,12 @@ export interface AdminOrderDetail extends AdminOrderSummary {
   items: AdminOrderItem[];
   recipe_bundles: AdminOrderRecipeBundle[];
   voucher: { id: number; code: string } | null;
-  cashless_payment: { provider: string; method: string; status: string; reference: string | null } | null;
+  cashless_payment: {
+    provider: string;
+    method: string;
+    status: string;
+    reference: string | null;
+  } | null;
 }
 
 export interface AdminOrderPage {

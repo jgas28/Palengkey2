@@ -5,7 +5,7 @@ import Icon, { type IconName } from "@/components/pk/Icon";
 import PkProductCard from "@/components/pk/PkProductCard";
 import { photos } from "@/components/pk/photos";
 import { listCategories } from "@/services/api/categories";
-import { getFeaturedReviews, getHeroStats } from "@/services/api/content";
+import { getFeaturedReviews, getHeroStats, getReviewStats } from "@/services/api/content";
 import { listMarkets } from "@/services/api/markets";
 import { listItems, listCuratedProducts } from "@/services/api/items";
 import { getCurrentCoordinates } from "@/utils/geolocation";
@@ -43,8 +43,13 @@ function CategoryThumb({ category }: { category: Category }) {
   }
 
   return (
-    <span style={{ overflow: "hidden", background: "white" }}>
-      <img src={category.image_url} alt="" loading="lazy" onError={() => setFailed(true)} />
+    <span className="category-photo">
+      <img
+        src={category.image_url}
+        alt=""
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
     </span>
   );
 }
@@ -57,13 +62,20 @@ export default function Global() {
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
-    queryFn: listCategories,
+    queryFn: () => listCategories(),
   });
   const { data: featuredReviews = [] } = useQuery({
     queryKey: ["featuredReviews"],
     queryFn: getFeaturedReviews,
   });
-  const { data: heroStats } = useQuery({ queryKey: ["heroStats"], queryFn: getHeroStats });
+  const { data: reviewStats } = useQuery({
+    queryKey: ["reviewStats"],
+    queryFn: getReviewStats,
+  });
+  const { data: heroStats } = useQuery({
+    queryKey: ["heroStats"],
+    queryFn: getHeroStats,
+  });
   const stats = heroStats && heroStats.length > 0 ? heroStats : FALLBACK_HERO_STATS;
 
   // Never calls setMarket: browsing the landing page shouldn't silently commit
@@ -89,7 +101,8 @@ export default function Global() {
   });
   const { data: curatedHighlights } = useQuery({
     queryKey: ["curatedProducts", "highlighted_products", marketId],
-    queryFn: () => listCuratedProducts({ marketId: marketId!, section: "highlighted_products" }),
+    queryFn: () =>
+      listCuratedProducts({ marketId: marketId!, section: "highlighted_products" }),
     enabled: marketId !== undefined,
   });
   const { data: curatedDeals } = useQuery({
@@ -122,7 +135,9 @@ export default function Global() {
 
   function handleSearch(event: FormEvent) {
     event.preventDefault();
-    navigate(search.trim() ? `/shop?search=${encodeURIComponent(search.trim())}` : "/shop");
+    navigate(
+      search.trim() ? `/shop?search=${encodeURIComponent(search.trim())}` : "/shop",
+    );
   }
 
   const ratingStat = stats[stats.length - 1];
@@ -180,12 +195,21 @@ export default function Global() {
                 </Link>
               </div>
             </div>
-            <div className="hero-visual" aria-label="Fresh produce from local market vendors">
+            <div
+              className="hero-visual"
+              aria-label="Fresh produce from local market vendors"
+            >
               <div className="photo photo-main">
-                <img src={photos.market} alt="Market vendor packing fresh vegetables" />
+                <img
+                  src={photos.palengke}
+                  alt="Shoppers browsing a busy Philippine public market"
+                />
               </div>
               <div className="photo photo-top">
-                <img src={photos.fish} alt="Fresh fish at the market" />
+                <img
+                  src={photos.meatStall}
+                  alt="Fresh cuts at a Filipino neighborhood meat stall"
+                />
               </div>
               <div className="photo photo-bottom">
                 <img src={photos.fruit} alt="Colorful fresh fruit" />
@@ -267,8 +291,8 @@ export default function Global() {
               </button>
             ))}
             <button type="button" onClick={() => navigate("/paluto")}>
-              <span>
-                <Icon name="sparkle" />
+              <span className="category-photo">
+                <img src={photos.cook} alt="" loading="lazy" />
               </span>
               <strong>Paluto</strong>
               <small>Ready to eat</small>
@@ -335,7 +359,11 @@ export default function Global() {
                   ? "Fresh items for this market will show up here."
                   : "Pick a market in the shop to see what's fresh today."}
               </p>
-              <button type="button" className="btn primary" onClick={() => navigate("/shop")}>
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => navigate("/shop")}
+              >
                 Go to the shop
               </button>
             </div>
@@ -390,14 +418,14 @@ export default function Global() {
                 We cook it for you.
               </h2>
               <p>
-                Choose a trusted market stall and your favorite Filipino dish. Kami na bahala
-                sa ingredients at luto.
+                Choose a trusted market stall and your favorite Filipino dish. Kami na
+                bahala sa ingredients at luto.
               </p>
               <Link to="/paluto">
                 Explore Paluto <Icon name="arrow" size={18} />
               </Link>
             </div>
-            <img src={photos.fish} alt="Fresh seafood ready for Paluto" />
+            <img src={photos.cook} alt="Filipino cook preparing food at a local stall" />
           </article>
           <article className="split-card recipe-card">
             <div>
@@ -410,7 +438,9 @@ export default function Global() {
                 <br />
                 ingredients.
               </h2>
-              <p>From adobo to sinigang, add every ingredient to your cart in one easy tap.</p>
+              <p>
+                From adobo to sinigang, add every ingredient to your cart in one easy tap.
+              </p>
               <Link to="/recipes">
                 Browse recipes <Icon name="arrow" size={18} />
               </Link>
@@ -434,8 +464,8 @@ export default function Global() {
                 </div>
                 <h3>Browse &amp; order</h3>
                 <p>
-                  Shop fresh market goods, choose your preferred weight, and tell us exactly how
-                  you like it.
+                  Shop fresh market goods, choose your preferred weight, and tell us
+                  exactly how you like it.
                 </p>
               </article>
               <span className="step-line"></span>
@@ -445,7 +475,10 @@ export default function Global() {
                   <Icon name="bag" size={27} />
                 </div>
                 <h3>We shop for you</h3>
-                <p>Your personal shopper handpicks every item from trusted market suki stalls.</p>
+                <p>
+                  Your personal shopper handpicks every item from trusted market suki
+                  stalls.
+                </p>
               </article>
               <span className="step-line"></span>
               <article>
@@ -454,7 +487,9 @@ export default function Global() {
                   <Icon name="truck" size={27} />
                 </div>
                 <h3>Fresh delivery</h3>
-                <p>Your order arrives carefully packed, fresh, and ready for your kitchen.</p>
+                <p>
+                  Your order arrives carefully packed, fresh, and ready for your kitchen.
+                </p>
               </article>
             </div>
           </div>
@@ -471,9 +506,17 @@ export default function Global() {
                 <Icon name="star" />
                 <span>
                   <strong>
-                    {ratingStat.value} {ratingStat.label}
+                    {reviewStats
+                      ? `${reviewStats.total_reviews.toLocaleString("en-PH")} Suki ${
+                          reviewStats.total_reviews === 1 ? "review" : "reviews"
+                        }`
+                      : "Suki reviews"}
                   </strong>
-                  <small>Verified suki reviews</small>
+                  <small>
+                    {reviewStats?.average_rating
+                      ? `${reviewStats.average_rating.toFixed(1)} average rating · verified orders`
+                      : "Verified suki reviews"}
+                  </small>
                 </span>
               </div>
             </div>
@@ -490,7 +533,10 @@ export default function Global() {
                     <span>{review.public_customer_name.charAt(0)}</span>
                     <div>
                       <strong>{review.public_customer_name}</strong>
-                      <small>Verified suki{review.market_name ? ` · ${review.market_name}` : ""}</small>
+                      <small>
+                        Verified suki
+                        {review.market_name ? ` · ${review.market_name}` : ""}
+                      </small>
                     </div>
                   </div>
                 </article>

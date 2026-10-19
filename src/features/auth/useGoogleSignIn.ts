@@ -6,13 +6,14 @@ import { getGoogleIdToken, isGoogleSignInCancelled } from "@/features/auth/googl
 import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
 import { getDeviceId } from "@/utils/deviceId";
+import { authErrorMessage } from "@/features/auth/authErrorMessage";
 
 /**
  * "Continue with Google" for the login and sign-up pages (web, Android, iOS).
  * New Google users get an account; everyone then confirms the one-time code
  * sent to their Google email, same as email login.
  */
-export function useGoogleSignIn() {
+export function useGoogleSignIn(onError?: (message: string) => void) {
   const [loading, setLoading] = useState(false);
   const setSession = useAuthStore((state) => state.setSession);
   const clearSession = useAuthStore((state) => state.clearSession);
@@ -43,10 +44,12 @@ export function useGoogleSignIn() {
       navigate("/verify-otp", { state: { email: user.email, requiresToken: true } });
     } catch (error) {
       if (!isGoogleSignInCancelled(error)) {
-        showToast(
-          error instanceof Error ? error.message : "Google sign-in failed.",
-          "error",
+        const message = authErrorMessage(
+          error,
+          "Google sign-in failed. Please try again.",
         );
+        if (onError) onError(message);
+        else showToast(message, "error");
       }
     } finally {
       setLoading(false);

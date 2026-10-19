@@ -8,7 +8,6 @@ import {
 import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/common/LoadingState";
 import ErrorState from "@/components/common/ErrorState";
-import EmptyState from "@/components/common/EmptyState";
 import {
   createAdminCuratedProduct,
   deleteAdminCuratedProduct,
@@ -17,6 +16,9 @@ import {
 } from "@/services/api/adminCuratedProducts";
 import { listAdminItems } from "@/services/api/adminItems";
 import { useToastStore } from "@/stores/toastStore";
+import { Card, EmptyPanel, SkeletonRows } from "@/components/admin/AdminUi";
+import { ManageTabs, PagerBar } from "@/components/admin/AdminManageList";
+import usePagedRows from "@/hooks/usePagedRows";
 import type { CuratedSection } from "@/types/adminCuratedProduct";
 
 const SECTIONS: { value: CuratedSection; label: string }[] = [
@@ -41,6 +43,7 @@ export default function AdminHighlights() {
   });
 
   const curatedItemIds = useMemo(() => new Set(curated.map((c) => c.item.id)), [curated]);
+  const paged = usePagedRows(curated, 8, section);
 
   const { data: searchResults, isFetching: searching } = useQuery({
     queryKey: ["adminItemsSearch", search],
@@ -92,114 +95,121 @@ export default function AdminHighlights() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex gap-2 border-b border-border">
-        {SECTIONS.map(({ value, label }) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setSection(value)}
-            className={`border-b-2 px-1 pb-3 text-sm font-semibold transition-colors ${
-              section === value
-                ? "border-primary text-primary"
-                : "border-transparent text-text-muted hover:text-text"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <ManageTabs
+        label="Section"
+        tabs={SECTIONS.map(({ value, label }) => ({ value, label }))}
+        value={section}
+        onChange={setSection}
+      />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <div className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold text-text">Curated items</h2>
+        <Card className="h-fit overflow-hidden">
+          <div className="border-b border-slate-100 px-5 py-4">
+            <h3 className="font-display text-lg font-semibold text-slate-900">
+              Curated items
+            </h3>
+            <p className="text-xs text-slate-500">
+              Lower order numbers show first. Untick Active to hide without removing.
+            </p>
+          </div>
 
-          {isLoading && (
-            <div className="flex justify-center py-8">
-              <Spinner />
-            </div>
-          )}
+          {isLoading && <SkeletonRows rows={4} />}
 
           {isError && <ErrorState onRetry={() => void refetch()} />}
 
           {!isLoading && !isError && curated.length === 0 && (
-            <EmptyState
+            <EmptyPanel
               title="Nothing curated yet."
               description="Search for a product on the right and add it to this section."
             />
           )}
 
           {!isLoading && !isError && curated.length > 0 && (
-            <ul className="flex flex-col gap-2">
-              {curated.map((entry) => (
-                <li
-                  key={entry.id}
-                  className="flex items-center gap-3 rounded-card border border-border bg-surface p-3"
-                >
-                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-primary-50">
-                    {entry.item.image && (
-                      <img
-                        src={entry.item.image}
-                        alt={entry.item.name}
-                        className="h-full w-full object-cover"
+            <>
+              <ul className="divide-y divide-slate-100">
+                {paged.rows.map((entry) => (
+                  <li key={entry.id} className="flex items-center gap-4 px-5 py-3">
+                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-primary-50">
+                      {entry.item.image && (
+                        <img
+                          src={entry.item.image}
+                          alt={entry.item.name}
+                          className="h-full w-full object-cover"
+                        />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold text-slate-900">
+                        {entry.item.name}
+                      </p>
+                      {entry.item.category && (
+                        <p className="text-xs text-slate-500">{entry.item.category}</p>
+                      )}
+                    </div>
+                    <label className="flex flex-col items-center gap-1 text-[11px] text-slate-500">
+                      Order
+                      <input
+                        type="number"
+                        min={0}
+                        defaultValue={entry.sort_order}
+                        onBlur={(e) => {
+                          const value = Number(e.target.value);
+                          if (value !== entry.sort_order) {
+                            updateMutation.mutate({ id: entry.id, sort_order: value });
+                          }
+                        }}
+                        className="h-9 w-16 rounded-lg border border-slate-200 bg-white px-2 text-center text-sm text-slate-800 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
                       />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-text">
-                      {entry.item.name}
-                    </p>
-                    {entry.item.category && (
-                      <p className="text-xs text-text-muted">{entry.item.category}</p>
-                    )}
-                  </div>
-                  <label className="flex flex-col items-center gap-1 text-xs text-text-muted">
-                    Order
-                    <input
-                      type="number"
-                      min={0}
-                      defaultValue={entry.sort_order}
-                      onBlur={(e) => {
-                        const value = Number(e.target.value);
-                        if (value !== entry.sort_order) {
-                          updateMutation.mutate({ id: entry.id, sort_order: value });
-                        }
-                      }}
-                      className="h-9 w-16 rounded-lg border border-border bg-background px-2 text-center text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
-                    />
-                  </label>
-                  <label className="flex flex-col items-center gap-1 text-xs text-text-muted">
-                    Active
-                    <input
-                      type="checkbox"
-                      checked={entry.is_active}
-                      onChange={(e) =>
+                    </label>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={entry.is_active}
+                      aria-label={entry.is_active ? "Hide" : "Show"}
+                      onClick={() =>
                         updateMutation.mutate({
                           id: entry.id,
-                          is_active: e.target.checked,
+                          is_active: !entry.is_active,
                         })
                       }
-                      className="h-5 w-5 accent-primary"
-                    />
-                  </label>
-                  <Button
-                    type="button"
-                    variant="danger"
-                    size="sm"
-                    loading={
-                      removeMutation.isPending && removeMutation.variables === entry.id
-                    }
-                    onClick={() => removeMutation.mutate(entry.id)}
-                  >
-                    Remove
-                  </Button>
-                </li>
-              ))}
-            </ul>
+                      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+                        entry.is_active ? "bg-primary-600" : "bg-slate-300"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+                          entry.is_active ? "left-[22px]" : "left-0.5"
+                        }`}
+                      />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={
+                        removeMutation.isPending && removeMutation.variables === entry.id
+                      }
+                      onClick={() => removeMutation.mutate(entry.id)}
+                      className="text-xs font-semibold text-rose-600 hover:underline disabled:opacity-40"
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <PagerBar
+                page={paged.page}
+                lastPage={paged.lastPage}
+                total={paged.total}
+                perPage={paged.perPage}
+                onPage={paged.setPage}
+              />
+            </>
           )}
-        </div>
+        </Card>
 
-        <div className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold text-text">Add a product</h2>
+        <Card className="flex h-fit flex-col gap-3 p-5">
+          <h3 className="font-display text-lg font-semibold text-slate-900">
+            Add a product
+          </h3>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -224,7 +234,7 @@ export default function AdminHighlights() {
                 return (
                   <li
                     key={item.id}
-                    className="flex items-center gap-3 rounded-card border border-border bg-surface p-2.5"
+                    className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-2.5"
                   >
                     <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-primary-50">
                       <img
@@ -251,7 +261,7 @@ export default function AdminHighlights() {
               })}
             </ul>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

@@ -4,11 +4,14 @@
 export class ApiError extends Error {
   code?: string;
   data?: unknown;
+  /** HTTP status; undefined when the server couldn't be reached at all. */
+  status?: number;
 
-  constructor(message: string, code?: string, data?: unknown) {
+  constructor(message: string, code?: string, data?: unknown, status?: number) {
     super(message);
     this.name = "ApiError";
     this.code = code;
     this.data = data;
+    this.status = status;
   }
 }

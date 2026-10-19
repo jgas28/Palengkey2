@@ -8,9 +8,9 @@ import {
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
-import { Spinner } from "@/components/common/LoadingState";
-import EmptyState from "@/components/common/EmptyState";
+import { Briefcase } from "lucide-react";
 import ErrorState from "@/components/common/ErrorState";
+import { Card, EmptyPanel, SkeletonRows } from "@/components/admin/AdminUi";
 import {
   createAdminCareer,
   deleteAdminCareer,
@@ -20,7 +20,17 @@ import {
 } from "@/services/api/adminCareers";
 import { useToastStore } from "@/stores/toastStore";
 import type { AdminCareer, CareerJobType, CareerStatus } from "@/types/adminCareer";
-import { ManageHeader, ManageTabs } from "@/components/admin/AdminManageList";
+import {
+  ManageHeader,
+  ManageIcon,
+  ManageList,
+  ManagePill,
+  ManageRow,
+  ManageTabs,
+  ManageToolbar,
+  PagerBar,
+  RowAction,
+} from "@/components/admin/AdminManageList";
 
 const STATUS_FILTERS: { value: CareerStatus | "all"; label: string }[] = [
   { value: "open", label: "Open" },
@@ -47,14 +57,15 @@ export default function AdminCareers() {
   const showToast = useToastStore((state) => state.showToast);
   const [statusFilter, setStatusFilter] = useState<CareerStatus | "all">("open");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<AdminCareer | null>(null);
   const [form, setForm] = useState<CareerFormPayload>(EMPTY_FORM);
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["adminCareers", statusFilter, search],
+    queryKey: ["adminCareers", statusFilter, search, page],
     queryFn: () =>
-      listAdminCareers({ status: statusFilter, search: search || undefined }),
+      listAdminCareers({ status: statusFilter, search: search || undefined, page }),
     placeholderData: keepPreviousData,
   });
 
@@ -139,7 +150,7 @@ export default function AdminCareers() {
     form.location.trim().length > 0;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <ManageHeader
         eyebrow="Growth & content"
         title="Careers"
@@ -148,76 +159,97 @@ export default function AdminCareers() {
         onAction={openCreate}
       />
 
-      <ManageTabs
-        label="Job status"
-        tabs={STATUS_FILTERS.map((item) => ({
-          value: item.value,
-          label: item.label,
-          count: null,
-        }))}
-        value={statusFilter}
-        onChange={setStatusFilter}
-      />
-
-      <input
-        type="search"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search title or location..."
-        className="rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100 py-2"
-      />
+      <ManageToolbar
+        search={search}
+        onSearch={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
+        placeholder="Search title or location"
+      >
+        <ManageTabs
+          label="Job status"
+          tabs={STATUS_FILTERS.map((item) => ({ value: item.value, label: item.label }))}
+          value={statusFilter}
+          onChange={(value) => {
+            setStatusFilter(value);
+            setPage(1);
+          }}
+        />
+      </ManageToolbar>
 
       {isLoading && (
-        <div className="flex justify-center py-8">
-          <Spinner />
-        </div>
+        <Card>
+          <SkeletonRows rows={4} />
+        </Card>
       )}
 
       {isError && <ErrorState onRetry={() => void refetch()} />}
 
       {data && data.data.length === 0 && (
-        <EmptyState
-          title="No job listings."
-          description="Add a listing to start recruiting."
-        />
+        <Card>
+          <EmptyPanel
+            title="No job listings."
+            description="Add a listing to start recruiting."
+          />
+        </Card>
       )}
 
       {data && data.data.length > 0 && (
-        <ul className="flex flex-col divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+        <ManageList
+          footer={
+            <PagerBar
+              page={data.current_page}
+              lastPage={data.last_page}
+              total={data.total}
+              perPage={data.per_page}
+              onPage={setPage}
+            />
+          }
+        >
           {data.data.map((career) => (
-            <li
+            <ManageRow
               key={career.id}
-              className="flex items-center justify-between gap-3 px-4 py-3"
-            >
-              <button
-                type="button"
-                onClick={() => openEdit(career)}
-                className="flex flex-1 flex-col items-start gap-0.5 text-left"
-              >
-                <span className="font-medium text-text">{career.title}</span>
-                <span className="text-xs text-text-muted">
-                  {career.location} · {career.job_type}
-                  {career.salary_range && ` · ${career.salary_range}`}
-                </span>
-              </button>
-              <span
-                className={`text-xs font-semibold capitalize ${
-                  career.status === "open" ? "text-status-delivered" : "text-text-muted"
-                }`}
-              >
-                {career.status}
-              </span>
-              <Button
-                variant="danger"
-                size="sm"
-                loading={deleteMutation.isPending}
-                onClick={() => deleteMutation.mutate(career.id)}
-              >
-                Delete
-              </Button>
-            </li>
+              onOpen={() => openEdit(career)}
+              dimmed={career.status !== "open"}
+              leading={<ManageIcon icon={<Briefcase size={18} />} />}
+              title={career.title}
+              subtitle={[
+                career.location,
+                career.job_type.replace("-", " "),
+                career.salary_range,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              actions={
+                <RowAction
+                  tone="danger"
+                  disabled={deleteMutation.isPending}
+                  onClick={() => {
+                    if (window.confirm(`Delete "${career.title}"?`)) {
+                      deleteMutation.mutate(career.id);
+                    }
+                  }}
+                >
+                  Delete
+                </RowAction>
+              }
+              pills={
+                <ManagePill
+                  tone={
+                    career.status === "open"
+                      ? "active"
+                      : career.status === "filled"
+                        ? "info"
+                        : "muted"
+                  }
+                >
+                  {career.status.charAt(0).toUpperCase() + career.status.slice(1)}
+                </ManagePill>
+              }
+            />
           ))}
-        </ul>
+        </ManageList>
       )}
 
       <Modal

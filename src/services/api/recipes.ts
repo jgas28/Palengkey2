@@ -36,7 +36,10 @@ export async function listRecipeTypes(): Promise<RecipeType[]> {
 }
 
 /** Ingredient prices and availability come from the given market. */
-export async function getRecipe(recipeId: number, marketId?: number): Promise<RecipeDetail> {
+export async function getRecipe(
+  recipeId: number,
+  marketId?: number,
+): Promise<RecipeDetail> {
   const { data } = await apiClient.get<RecipeDetail>(`/customer/recipes/${recipeId}`, {
     params: { market_id: marketId },
   });

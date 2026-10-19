@@ -36,7 +36,8 @@ use App\Http\Controllers\Api\Admin\VoucherController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('admin')->group(function () {
-    Route::post('/login', [AuthController::class, 'login']);
+    // 5 tries a minute per email + IP (see AppServiceProvider).
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:admin-login');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);

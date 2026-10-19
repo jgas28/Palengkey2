@@ -12,13 +12,7 @@ export interface DeliveryFeeResponse {
 }
 
 export type CheckoutPaymentMethod =
-  | "cod"
-  | "qrph"
-  | "bpi"
-  | "card"
-  | "gcash"
-  | "maya"
-  | "ubp";
+  "cod" | "qrph" | "bpi" | "card" | "gcash" | "maya" | "ubp";
 
 export interface CheckoutPayload {
   address_id: number;

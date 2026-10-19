@@ -372,6 +372,16 @@ class ItemController extends Controller
                 'customer_price' => $snapshot?->price !== null ? PriceDisplay::markedUp($snapshot->price) : null,
                 'market_name' => $this->marketNames[$marketId] ??= Market::whereKey($marketId)->value('name'),
                 'is_available' => (bool) ($marketItem?->is_available ?? false),
+                'availability' => $marketItem?->is_available
+                    ? 'available'
+                    : ($marketItem?->out_of_stock_until ? 'out_of_stock' : 'unavailable'),
+                'out_of_stock_until' => $marketItem?->out_of_stock_until
+                    ? substr((string) $marketItem->out_of_stock_until, 0, 10)
+                    : null,
+                // The live price is cleared while hidden; keep the last one for the form.
+                'last_price' => $snapshot?->price ?? ($marketItem && ! $marketItem->is_available
+                    ? \App\Models\ItemPrice::where('market_id', $marketId)->where('item_id', $item->id)->latest('id')->value('price')
+                    : null),
                 'cutoff_time' => $marketItem?->cutoff_time ? substr($marketItem->cutoff_time, 0, 5) : null,
             ] : null,
         ];

@@ -5,12 +5,9 @@ import {
   useQueryClient,
   keepPreviousData,
 } from "@tanstack/react-query";
-import AdminTable, {
-  AdminStatusPill,
-  AdminThumb,
-  adminTd,
-  adminTdStrong,
-} from "@/components/admin/AdminTable";
+import { Plus } from "lucide-react";
+import { Card, EmptyPanel } from "@/components/admin/AdminUi";
+import { ManageToolbar, PagerBar } from "@/components/admin/AdminManageList";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
@@ -65,10 +62,36 @@ const emptyForm: FormState = {
   sort_order: "0",
 };
 
+type PopupState = "live" | "scheduled" | "expired" | "draft";
+
+/** What customers see right now: switched on AND inside its schedule = live. */
+function popupState(ad: AdminPopupAd): PopupState {
+  if (!ad.is_active) return "draft";
+  const now = Date.now();
+  if (ad.starts_at && new Date(ad.starts_at).getTime() > now) return "scheduled";
+  if (ad.ends_at && new Date(ad.ends_at).getTime() < now) return "expired";
+  return "live";
+}
+
+const POPUP_STATE_LABEL: Record<PopupState, string> = {
+  live: "Live on homepage",
+  scheduled: "Scheduled",
+  expired: "Expired",
+  draft: "Draft",
+};
+
+const POPUP_STATE_STYLE: Record<PopupState, string> = {
+  live: "bg-emerald-50 text-emerald-700",
+  scheduled: "bg-sky-50 text-sky-700",
+  expired: "bg-rose-50 text-rose-600",
+  draft: "bg-amber-50 text-amber-700",
+};
+
 export default function AdminPopupAds() {
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
   const [search, setSearch] = useState("");
+  const [pageNumber, setPageNumber] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<AdminPopupAd | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -79,8 +102,8 @@ export default function AdminPopupAds() {
     isError,
     refetch,
   } = useQuery({
-    queryKey: ["adminPopupAds", search],
-    queryFn: () => listAdminPopupAds(search),
+    queryKey: ["adminPopupAds", search, pageNumber],
+    queryFn: () => listAdminPopupAds(search, pageNumber),
     placeholderData: keepPreviousData,
   });
 
@@ -151,6 +174,31 @@ export default function AdminPopupAds() {
     },
   });
 
+  const toggleMutation = useMutation({
+    mutationFn: (ad: AdminPopupAd) =>
+      updateAdminPopupAd(ad.id, {
+        type: ad.type,
+        voucher_id: ad.voucher_id ?? undefined,
+        title: ad.title,
+        subtitle: ad.subtitle ?? undefined,
+        body: ad.body ?? undefined,
+        badge_text: ad.badge_text ?? undefined,
+        cta_label: ad.cta_label ?? undefined,
+        cta_url: ad.cta_url ?? undefined,
+        is_active: !ad.is_active,
+        starts_at: ad.starts_at?.slice(0, 16) || undefined,
+        ends_at: ad.ends_at?.slice(0, 16) || undefined,
+        sort_order: ad.sort_order,
+      }),
+    onSuccess: (_data, ad) => {
+      void queryClient.invalidateQueries({ queryKey: ["adminPopupAds"] });
+      showToast(ad.is_active ? "Moved to draft." : "Published.", "success");
+    },
+    onError: (error) => {
+      showToast(error instanceof Error ? error.message : "Could not update.", "error");
+    },
+  });
+
   function openCreateForm() {
     setEditing(null);
     setForm(emptyForm);
@@ -196,70 +244,128 @@ export default function AdminPopupAds() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-8">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (isError || !page) {
-    return <ErrorState onRetry={() => void refetch()} />;
-  }
-
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search popup ads…"
-          className="h-10 w-64 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
-        />
-        <Button size="sm" onClick={openCreateForm}>
-          Add popup ad
-        </Button>
-      </div>
+      <ManageToolbar
+        search={search}
+        onSearch={(value) => {
+          setSearch(value);
+          setPageNumber(1);
+        }}
+        placeholder="Search popup ads"
+      >
+        <button
+          type="button"
+          onClick={openCreateForm}
+          className="flex h-10 items-center gap-2 rounded-xl bg-primary-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-primary-700"
+        >
+          <Plus size={16} aria-hidden="true" /> New popup
+        </button>
+      </ManageToolbar>
 
-      <AdminTable head={["Popup", "Type", "Schedule", "Status", ""]}>
-        {page.data.map((ad) => (
-          <tr key={ad.id} className="hover:bg-background/60">
-            <td className={adminTdStrong}>
-              <button
-                type="button"
-                onClick={() => openEditForm(ad)}
-                className="flex items-center gap-3 text-left hover:text-primary"
-              >
-                <AdminThumb src={ad.image_url} />
-                <span className="line-clamp-2">{ad.title}</span>
-              </button>
-            </td>
-            <td className={adminTd}>{TYPE_LABELS[ad.type]}</td>
-            <td className={adminTd}>
-              {ad.starts_at || ad.ends_at
-                ? `${ad.starts_at ? new Date(ad.starts_at).toLocaleDateString("en-PH") : "Now"} – ${
-                    ad.ends_at
-                      ? new Date(ad.ends_at).toLocaleDateString("en-PH")
-                      : "No end"
-                  }`
-                : "Always"}
-            </td>
-            <td className={adminTd}>
-              <AdminStatusPill active={ad.is_active} />
-            </td>
-            <td className="px-4 py-3 text-right">
-              <button
-                type="button"
-                onClick={() => openEditForm(ad)}
-                className="text-xs font-semibold text-primary hover:underline"
-              >
-                Edit
-              </button>
-            </td>
-          </tr>
-        ))}
-      </AdminTable>
+      {isLoading && (
+        <div className="flex justify-center py-8">
+          <Spinner />
+        </div>
+      )}
+
+      {isError && <ErrorState onRetry={() => void refetch()} />}
+
+      {page && page.data.length === 0 && (
+        <Card>
+          <EmptyPanel
+            title={search ? "No popup ads match." : "No popup ads yet."}
+            description="Popups greet customers with a promo, voucher or ad."
+          />
+        </Card>
+      )}
+
+      {page && page.data.length > 0 && (
+        <>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {page.data.map((ad) => (
+              <Card key={ad.id} className="flex overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => openEditForm(ad)}
+                  className="w-2/5 shrink-0 bg-slate-100"
+                  aria-label={`Edit ${ad.title}`}
+                >
+                  <img
+                    src={ad.image_url}
+                    alt=""
+                    loading="lazy"
+                    className="h-full min-h-[150px] w-full object-cover"
+                  />
+                </button>
+                <div className="flex min-w-0 flex-1 flex-col p-4">
+                  <span className="flex flex-wrap gap-1.5">
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                        POPUP_STATE_STYLE[popupState(ad)]
+                      }`}
+                    >
+                      {POPUP_STATE_LABEL[popupState(ad)]}
+                    </span>
+                    <span className="rounded-full bg-primary-50 px-2.5 py-1 text-[11px] font-semibold text-primary-700">
+                      {TYPE_LABELS[ad.type]}
+                    </span>
+                  </span>
+                  <h3 className="mt-2 line-clamp-2 font-display text-lg font-semibold text-slate-900">
+                    {ad.title}
+                  </h3>
+                  <p className="line-clamp-2 text-xs text-slate-500">
+                    {ad.subtitle ||
+                      (ad.starts_at || ad.ends_at
+                        ? `${ad.starts_at ? new Date(ad.starts_at).toLocaleDateString("en-PH") : "Now"} – ${
+                            ad.ends_at
+                              ? new Date(ad.ends_at).toLocaleDateString("en-PH")
+                              : "No end"
+                          }`
+                        : "Always on")}
+                  </p>
+                  <div className="mt-auto flex items-center justify-between pt-3">
+                    <button
+                      type="button"
+                      onClick={() => openEditForm(ad)}
+                      className="text-xs font-semibold text-primary-700 hover:underline"
+                    >
+                      Edit content
+                    </button>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={ad.is_active}
+                      aria-label={ad.is_active ? "Unpublish" : "Publish"}
+                      disabled={toggleMutation.isPending}
+                      onClick={() => toggleMutation.mutate(ad)}
+                      className={`relative h-6 w-11 rounded-full transition-colors disabled:opacity-50 ${
+                        ad.is_active ? "bg-primary-600" : "bg-slate-300"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+                          ad.is_active ? "left-[22px]" : "left-0.5"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+          <Card className="overflow-hidden">
+            <PagerBar
+              className="border-t-0"
+              page={page.current_page}
+              lastPage={page.last_page}
+              total={page.total}
+              perPage={page.per_page}
+              onPage={setPageNumber}
+            />
+          </Card>
+        </>
+      )}
 
       <Modal
         isOpen={formOpen}

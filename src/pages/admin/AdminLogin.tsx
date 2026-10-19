@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AuthShell from "@/features/auth/AuthShell";
 import { adminLogin } from "@/services/api/adminAuth";
 import { useAdminAuthStore } from "@/stores/adminAuthStore";
-import { useToastStore } from "@/stores/toastStore";
+import { authErrorMessage } from "@/features/auth/authErrorMessage";
 
 /** Admin / super admin login — same photo-and-card layout as the customer login. */
 export default function AdminLogin() {
@@ -12,16 +12,19 @@ export default function AdminLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const setSession = useAdminAuthStore((state) => state.setSession);
-  const showToast = useToastStore((state) => state.showToast);
   const navigate = useNavigate();
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
 
+    setFormError(null);
     const nextErrors: typeof errors = {};
-    if (!/^\S+@\S+\.\S+$/.test(email)) nextErrors.email = "Enter a valid email.";
-    if (!password) nextErrors.password = "Password is required.";
+    if (!email.trim()) nextErrors.email = "Enter your email address.";
+    else if (!/^\S+@\S+\.\S+$/.test(email.trim()))
+      nextErrors.email = "That doesn't look like an email address.";
+    if (!password) nextErrors.password = "Enter your password.";
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
@@ -31,7 +34,7 @@ export default function AdminLogin() {
       await setSession(token, user);
       navigate("/admin", { replace: true });
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Login failed.", "error");
+      setFormError(authErrorMessage(error));
     } finally {
       setSubmitting(false);
     }
@@ -45,6 +48,30 @@ export default function AdminLogin() {
       <p className="kicker">Palengkey Admin Panel</p>
       <h1>Log in to manage</h1>
       <p>For market admins, super admins, marketing and finance staff.</p>
+      {formError && (
+        <div
+          role="alert"
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "flex-start",
+            margin: "14px 0 0",
+            padding: "12px 14px",
+            borderRadius: 14,
+            background: "#fdecec",
+            border: "1px solid #f5c2c2",
+            color: "#9f1c1c",
+            fontSize: 13,
+            fontWeight: 600,
+            lineHeight: 1.45,
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: 15, lineHeight: 1.2 }}>
+            !
+          </span>
+          <span>{formError}</span>
+        </div>
+      )}
       <form onSubmit={handleSubmit} noValidate style={{ marginTop: 18 }}>
         <label htmlFor="admin-email">
           Email Address
@@ -54,7 +81,10 @@ export default function AdminLogin() {
             autoComplete="email"
             placeholder="you@palengkey.ph"
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            onChange={(event) => {
+              setEmail(event.target.value);
+              setErrors((prev) => ({ ...prev, email: undefined }));
+            }}
             aria-invalid={Boolean(errors.email)}
             style={errors.email ? { borderColor: "#dc2626" } : undefined}
           />
@@ -71,7 +101,10 @@ export default function AdminLogin() {
               autoComplete="current-password"
               placeholder="Your password"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setErrors((prev) => ({ ...prev, password: undefined }));
+              }}
               aria-invalid={Boolean(errors.password)}
               style={
                 errors.password

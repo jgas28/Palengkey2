@@ -25,13 +25,21 @@ class ItemApiController extends Controller
             return response()->json(['message' => 'market_id required'], 422);
         }
 
-        // Only items actually priced/listed at this market.
+        // Every item listed at this market — available ones (live price) plus
+        // out-of-stock and seasonal ones, which show with a label but can't be added.
         $query = Item::query()
-            ->where('status', 1)
-            ->whereIn('id', function ($q) use ($marketId) {
-                $q->select('item_id')->from('market_price_snapshots')->where('market_id', $marketId);
+            ->where('items.status', 1)
+            ->where(function ($q) use ($marketId) {
+                $q->whereIn('items.id', fn ($s) => $s->select('item_id')->from('market_price_snapshots')->where('market_id', $marketId))
+                    ->orWhereIn('items.id', fn ($s) => $s->select('item_id')->from('market_items')->where('market_id', $marketId));
             })
             ->with(['category', 'type:id,name', 'unit:id,short_name']);
+
+        // Orderable items first, then out of stock / seasonal.
+        $query->orderByRaw(
+            'CASE WHEN EXISTS (SELECT 1 FROM market_price_snapshots s WHERE s.item_id = items.id AND s.market_id = ?) THEN 0 ELSE 1 END',
+            [$marketId],
+        );
 
         if ($categoryId) {
             $query->where('category_id', $categoryId);
@@ -46,18 +54,18 @@ class ItemApiController extends Controller
         }
 
         if ($sort === 'price-asc' || $sort === 'price-desc') {
-            // One snapshot per (item, market) — the whereIn above already guarantees
-            // a match exists, so this join can't drop rows.
-            $query->join('market_price_snapshots as mps', function ($join) use ($marketId) {
+            // Left join: out-of-stock/seasonal items have no live price and sort last.
+            $query->leftJoin('market_price_snapshots as mps', function ($join) use ($marketId) {
                 $join->on('mps.item_id', '=', 'items.id')->where('mps.market_id', $marketId);
             })
                 ->select('items.*')
                 ->orderBy('mps.price', $sort === 'price-asc' ? 'asc' : 'desc');
         } elseif ($sort === 'az') {
             $query->orderBy('items.name');
-        } else {
-            $query->orderBy('items.id');
         }
+
+        // Stable tiebreak so "Load more" never repeats or skips items between pages.
+        $query->orderBy('items.id');
 
         $items = $query->paginate(20);
 
@@ -70,7 +78,7 @@ class ItemApiController extends Controller
         $marketItemPivots = DB::table('market_items')
             ->where('market_id', $marketId)
             ->whereIn('item_id', $items->pluck('id'))
-            ->get(['item_id', 'cutoff_time', 'cutoff_timezone'])
+            ->get(['item_id', 'cutoff_time', 'cutoff_timezone', ...$this->availabilityColumns()])
             ->keyBy('item_id');
 
         $market = Market::find($marketId);
@@ -91,6 +99,7 @@ class ItemApiController extends Controller
                 'is_muslim_friendly' => str_contains(strtolower($item->type?->name ?? ''), 'halal'),
                 'cutoff_time' => $item->getCutoffTimeStringForMarketData($pivot, $market),
                 'is_cutoff' => $item->isPastCutoffForMarketData($pivot, $market),
+                ...$this->availability($snap !== null, $pivot),
                 ...$this->bulkInfo($item, $snap?->price),
             ];
         });
@@ -110,8 +119,13 @@ class ItemApiController extends Controller
             ->where('item_id', $item->id)
             ->first();
 
-        if (! $snapshot) {
-            return response()->json(['message' => 'Item unavailable'], 404);
+        $pivot = DB::table('market_items')
+            ->where('market_id', $marketId)
+            ->where('item_id', $item->id)
+            ->first(['item_id', ...$this->availabilityColumns()]);
+
+        if (! $snapshot && ! $pivot) {
+            return response()->json(['message' => 'Item not sold at this market'], 404);
         }
 
         return response()->json([
@@ -127,13 +141,37 @@ class ItemApiController extends Controller
             'type' => $item->type?->name,
             'is_muslim_friendly' => str_contains(strtolower($item->type?->name ?? ''), 'halal'),
             'unit' => $item->unit?->short_name,
-            'price' => PriceDisplay::markedUp($snapshot->price),
-            'base_price' => $snapshot->price,
-            'price_at' => $snapshot->price_at,
+            'price' => $snapshot ? PriceDisplay::markedUp($snapshot->price) : null,
+            'base_price' => $snapshot?->price,
+            'price_at' => $snapshot?->price_at,
             'cutoff_time' => $item->getCutoffTimeStringForMarket($marketId),
             'is_cutoff' => $item->isPastCutoffForMarket($marketId),
-            ...$this->bulkInfo($item, $snapshot->price),
+            ...$this->availability($snapshot !== null, $pivot),
+            ...$this->bulkInfo($item, $snapshot?->price),
         ]);
+    }
+
+    /**
+     * available = has a live price; out_of_stock = sold out today, back on
+     * available_on; unavailable = seasonal, back when an admin turns it on.
+     */
+    private function availability(bool $hasPrice, ?object $pivot): array
+    {
+        $until = $pivot->out_of_stock_until ?? null;
+
+        return [
+            'availability' => $hasPrice ? 'available' : ($until ? 'out_of_stock' : 'unavailable'),
+            'available_on' => ! $hasPrice && $until ? substr((string) $until, 0, 10) : null,
+        ];
+    }
+
+    /** market_items columns to read (the restock date only once its migration has run). */
+    private function availabilityColumns(): array
+    {
+        static $hasColumn = null;
+        $hasColumn ??= \Illuminate\Support\Facades\Schema::hasColumn('market_items', 'out_of_stock_until');
+
+        return $hasColumn ? ['out_of_stock_until'] : [];
     }
 
     /** For the quick-view bulk banner: threshold and wholesale price, null when not eligible. */

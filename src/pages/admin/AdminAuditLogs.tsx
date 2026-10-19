@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { Spinner } from "@/components/common/LoadingState";
 import EmptyState from "@/components/common/EmptyState";
 import ErrorState from "@/components/common/ErrorState";
 import { listAdminAuditLogs, listAuditLogUsers } from "@/services/api/adminAuditLog";
 import type { AdminAuditLog } from "@/types/adminAuditLog";
-import { ManageHeader } from "@/components/admin/AdminManageList";
+import { ManageHeader, PagerBar } from "@/components/admin/AdminManageList";
 
 /** "Oct 7, 2026, 7:21 PM" in Manila time. */
 function manilaTime(iso: string): string {
@@ -110,7 +109,7 @@ export default function AdminAuditLogs() {
       {data && data.data.length > 0 && (
         <>
           <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-            <table className="w-full text-left text-sm">
+            <table className="w-full min-w-[720px] text-left text-sm">
               <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] uppercase tracking-wide text-slate-400">
                 <tr>
                   <th className="px-4 py-3">When</th>
@@ -120,12 +119,12 @@ export default function AdminAuditLogs() {
                   <th className="px-4 py-3">IP</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-slate-100">
                 {data.data.map((log) => (
                   <tr
                     key={log.id}
                     onClick={() => setSelected(log)}
-                    className="cursor-pointer hover:bg-background"
+                    className="cursor-pointer hover:bg-slate-50/70"
                   >
                     <td className="whitespace-nowrap px-4 py-3 text-text-muted">
                       {manilaTime(log.created_at)}
@@ -141,28 +140,13 @@ export default function AdminAuditLogs() {
                 ))}
               </tbody>
             </table>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              Previous
-            </Button>
-            <span className="text-sm text-text-muted">
-              Page {data.current_page} of {data.last_page}
-            </span>
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={data.current_page >= data.last_page}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </Button>
+            <PagerBar
+              page={data.current_page}
+              lastPage={data.last_page}
+              total={data.total}
+              perPage={data.per_page}
+              onPage={setPage}
+            />
           </div>
         </>
       )}

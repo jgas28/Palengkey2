@@ -19,7 +19,8 @@ import { listAdminMarkets } from "@/services/api/adminLookups";
 import { useToastStore } from "@/stores/toastStore";
 import type { AdminRole } from "@/types/adminAuth";
 import type { AdminManagedUser } from "@/types/adminUser";
-import { ManageHeader } from "@/components/admin/AdminManageList";
+import { ManageHeader, PagerBar } from "@/components/admin/AdminManageList";
+import usePagedRows from "@/hooks/usePagedRows";
 
 function initials(name: string): string {
   return (
@@ -259,6 +260,8 @@ export default function AdminUsers() {
     roleMutation.mutate({ user, role });
   }
 
+  const paged = usePagedRows(users, 10);
+
   const roleCounts = (users ?? []).reduce<Partial<Record<AdminRole, number>>>(
     (counts, user) => ({ ...counts, [user.role]: (counts[user.role] ?? 0) + 1 }),
     {},
@@ -318,7 +321,7 @@ export default function AdminUsers() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {users.map((user) => (
+            {paged.rows.map((user) => (
               <tr key={user.id} className="hover:bg-slate-50/60">
                 <td className="px-5 py-3">
                   <span className="flex items-center gap-3">
@@ -413,6 +416,13 @@ export default function AdminUsers() {
             ))}
           </tbody>
         </table>
+        <PagerBar
+          page={paged.page}
+          lastPage={paged.lastPage}
+          total={paged.total}
+          perPage={paged.perPage}
+          onPage={paged.setPage}
+        />
       </Card>
 
       <Modal

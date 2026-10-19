@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { Children, type ReactNode } from "react";
+import usePagedRows from "@/hooks/usePagedRows";
 import { ChevronRight, Plus, Search } from "lucide-react";
 import { Card } from "@/components/admin/AdminUi";
 
@@ -184,33 +185,50 @@ export function ManageList({
   return (
     <Card className="overflow-hidden">
       <ul className="divide-y divide-slate-100">{children}</ul>
-      {footer && (
-        <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-xs text-slate-500">
-          {footer}
-        </div>
-      )}
+      {footer}
     </Card>
   );
 }
 
-export function ManagePager({
+/**
+ * Pagination bar shown under every admin list: "Showing 1–20 of 57" plus
+ * Previous / page numbers / Next. Always visible once there are rows.
+ */
+export function PagerBar({
   page,
   lastPage,
   onPage,
+  total,
+  perPage,
+  className = "",
 }: {
   page: number;
   lastPage: number;
   onPage: (page: number) => void;
+  total?: number;
+  perPage?: number;
+  className?: string;
 }) {
-  if (lastPage <= 1) return null;
+  const last = Math.max(1, lastPage);
   const button =
-    "rounded-lg border border-slate-200 px-3 py-1.5 font-semibold disabled:opacity-40";
+    "h-8 min-w-8 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-600 hover:border-primary-300 hover:text-primary-700 disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:text-slate-600";
+  // Up to 5 page numbers around the current one.
+  const start = Math.max(1, Math.min(page - 2, last - 4));
+  const pages = Array.from({ length: Math.min(5, last) }, (_, i) => start + i);
+  const from = total !== undefined && perPage ? (page - 1) * perPage + 1 : null;
+  const to =
+    from !== null && total !== undefined ? Math.min(total, page * perPage!) : null;
+
   return (
-    <>
+    <div
+      className={`flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-white px-5 py-3 text-xs text-slate-500 ${className}`}
+    >
       <span>
-        Page {page} of {lastPage}
+        {from !== null && to !== null && total !== undefined
+          ? `Showing ${from}–${to} of ${total}`
+          : `Page ${page} of ${last}`}
       </span>
-      <span className="flex gap-2">
+      <span className="flex items-center gap-1.5">
         <button
           type="button"
           disabled={page <= 1}
@@ -219,17 +237,41 @@ export function ManagePager({
         >
           Previous
         </button>
+        {pages.map((number) => (
+          <button
+            key={number}
+            type="button"
+            aria-current={number === page ? "page" : undefined}
+            onClick={() => onPage(number)}
+            className={
+              number === page
+                ? "h-8 min-w-8 rounded-lg bg-primary-600 px-2.5 text-xs font-semibold text-white"
+                : button
+            }
+          >
+            {number}
+          </button>
+        ))}
         <button
           type="button"
-          disabled={page >= lastPage}
+          disabled={page >= last}
           onClick={() => onPage(page + 1)}
           className={button}
         >
           Next
         </button>
       </span>
-    </>
+    </div>
   );
+}
+
+/** Kept for older callers; same as PagerBar. */
+export function ManagePager(props: {
+  page: number;
+  lastPage: number;
+  onPage: (page: number) => void;
+}) {
+  return <PagerBar {...props} />;
 }
 
 /** Small text button used for Deactivate / Restore inside a row. */
@@ -303,5 +345,45 @@ export function ManageTabs<T extends string | number>({
         );
       })}
     </div>
+  );
+}
+
+/**
+ * Pages the rows of any table body: renders `perPage` of the given <tr>s
+ * plus a pager row. Use inside <tbody> around an already-mapped row list.
+ */
+export function PagedRows({
+  children,
+  colSpan,
+  perPage = 10,
+}: {
+  children: ReactNode;
+  colSpan: number;
+  perPage?: number;
+}) {
+  const rows = Children.toArray(children);
+  const {
+    rows: visible,
+    page,
+    lastPage,
+    total,
+    setPage,
+  } = usePagedRows(rows, perPage, rows.length);
+  if (rows.length === 0) return null;
+  return (
+    <>
+      {visible}
+      <tr>
+        <td colSpan={colSpan} className="p-0">
+          <PagerBar
+            page={page}
+            lastPage={lastPage}
+            total={total}
+            perPage={perPage}
+            onPage={setPage}
+          />
+        </td>
+      </tr>
+    </>
   );
 }

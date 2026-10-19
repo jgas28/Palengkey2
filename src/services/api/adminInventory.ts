@@ -1,7 +1,12 @@
 import { adminApiClient } from "@/services/api/adminClient";
-import type { AdminInventoryBoard, AdminInventoryUpdateResult } from "@/types/adminInventory";
+import type {
+  AdminInventoryBoard,
+  AdminInventoryUpdateResult,
+} from "@/types/adminInventory";
 
-export async function getAdminInventoryBoard(marketId?: number): Promise<AdminInventoryBoard> {
+export async function getAdminInventoryBoard(
+  marketId?: number,
+): Promise<AdminInventoryBoard> {
   const { data } = await adminApiClient.get<AdminInventoryBoard>("/admin/inventory", {
     params: { market_id: marketId },
   });

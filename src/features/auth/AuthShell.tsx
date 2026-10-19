@@ -21,7 +21,7 @@ export default function AuthShell({
   return (
     <main className="auth-page">
       <section className="auth-photo">
-        <img src={photos.market} alt="Fresh market produce and local shoppers" />
+        <img src={photos.palengke} alt="Fresh market produce and local shoppers" />
         <div>
           <Link to={homeHref} aria-label="Palengkey home">
             <Logo light />

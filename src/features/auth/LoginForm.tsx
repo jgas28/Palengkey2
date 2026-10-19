@@ -6,8 +6,8 @@ import AuthShell from "@/features/auth/AuthShell";
 import { login } from "@/services/api/auth";
 import { useGoogleSignIn } from "@/features/auth/useGoogleSignIn";
 import { useAuthStore } from "@/stores/authStore";
-import { useToastStore } from "@/stores/toastStore";
 import { getDeviceId } from "@/utils/deviceId";
+import { authErrorMessage } from "@/features/auth/authErrorMessage";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -15,19 +15,23 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [submitting, setSubmitting] = useState(false);
-  const { signIn: signInWithGoogle, loading: googleLoading } = useGoogleSignIn();
+  const [formError, setFormError] = useState<string | null>(null);
+  const { signIn: signInWithGoogle, loading: googleLoading } =
+    useGoogleSignIn(setFormError);
   const setSession = useAuthStore((state) => state.setSession);
   const clearSession = useAuthStore((state) => state.clearSession);
-  const showToast = useToastStore((state) => state.showToast);
   const navigate = useNavigate();
   const location = useLocation();
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
 
+    setFormError(null);
     const nextErrors: typeof errors = {};
-    if (!/^\S+@\S+\.\S+$/.test(email)) nextErrors.email = "Enter a valid email.";
-    if (!password) nextErrors.password = "Password is required.";
+    if (!email.trim()) nextErrors.email = "Enter your email address.";
+    else if (!/^\S+@\S+\.\S+$/.test(email.trim()))
+      nextErrors.email = "That doesn't look like an email address.";
+    if (!password) nextErrors.password = "Enter your password.";
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
@@ -56,7 +60,7 @@ export default function LoginForm() {
       // Every login now requires a fresh OTP challenge — server withholds the token.
       navigate("/verify-otp", { state: { email: user.email, requiresToken: true } });
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Login failed.", "error");
+      setFormError(authErrorMessage(error));
     } finally {
       setSubmitting(false);
     }
@@ -71,11 +75,38 @@ export default function LoginForm() {
         type="button"
         className="btn social-login"
         disabled={googleLoading || submitting}
-        onClick={() => void signInWithGoogle()}
+        onClick={() => {
+          setFormError(null);
+          void signInWithGoogle();
+        }}
       >
         <GoogleGIcon />{" "}
         <span>{googleLoading ? "Opening Google…" : "Continue with Google"}</span>
       </button>
+      {formError && (
+        <div
+          role="alert"
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "flex-start",
+            margin: "14px 0 0",
+            padding: "12px 14px",
+            borderRadius: 14,
+            background: "#fdecec",
+            border: "1px solid #f5c2c2",
+            color: "#9f1c1c",
+            fontSize: 13,
+            fontWeight: 600,
+            lineHeight: 1.45,
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: 15, lineHeight: 1.2 }}>
+            !
+          </span>
+          <span>{formError}</span>
+        </div>
+      )}
       <div className="divider">
         <span>or continue with email</span>
       </div>
@@ -87,7 +118,10 @@ export default function LoginForm() {
             type="email"
             placeholder="you@example.com"
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            onChange={(event) => {
+              setEmail(event.target.value);
+              setErrors((prev) => ({ ...prev, email: undefined }));
+            }}
             aria-invalid={Boolean(errors.email)}
             style={errors.email ? { borderColor: "#dc2626" } : undefined}
           />
@@ -103,7 +137,10 @@ export default function LoginForm() {
               type={showPassword ? "text" : "password"}
               placeholder="At least 8 characters"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setErrors((prev) => ({ ...prev, password: undefined }));
+              }}
               aria-invalid={Boolean(errors.password)}
               style={
                 errors.password

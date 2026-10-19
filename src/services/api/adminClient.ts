@@ -28,7 +28,12 @@ adminApiClient.interceptors.response.use(
     const message =
       error.response?.data?.message ?? "Something went wrong. Please try again.";
     return Promise.reject(
-      new ApiError(message, error.response?.data?.error_code, error.response?.data),
+      new ApiError(
+        message,
+        error.response?.data?.error_code,
+        error.response?.data,
+        error.response?.status,
+      ),
     );
   },
 );

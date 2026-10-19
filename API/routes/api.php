@@ -50,6 +50,7 @@ Route::prefix('customer')->group(function () {
     Route::get('/paluto/stalls/{stall}', [PalutoApiController::class, 'stall']);
     Route::get('/delivery-areas', [ContentController::class, 'deliveryAreas']);
     Route::get('/featured-reviews', [ContentController::class, 'featuredReviews']);
+    Route::get('/review-stats', [ContentController::class, 'reviewStats']);
     Route::get('/hero-stats', [ContentController::class, 'heroStats']);
     Route::get('/careers', [CareerApiController::class, 'index']);
 

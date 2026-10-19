@@ -6,9 +6,12 @@ import type {
   VoucherOption,
 } from "@/types/adminPopupAd";
 
-export async function listAdminPopupAds(search = ""): Promise<AdminPopupAdPage> {
+export async function listAdminPopupAds(
+  search = "",
+  page = 1,
+): Promise<AdminPopupAdPage> {
   const { data } = await adminApiClient.get<AdminPopupAdPage>("/admin/popup-ads", {
-    params: { search: search || undefined },
+    params: { search: search || undefined, page },
   });
   return data;
 }

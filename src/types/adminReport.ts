@@ -101,7 +101,13 @@ export interface PaymentsReport {
   start_date: string;
   end_date: string;
   total: number;
-  methods: { payment_method: string | null; label: string; orders: number; total: number; share: number }[];
+  methods: {
+    payment_method: string | null;
+    label: string;
+    orders: number;
+    total: number;
+    share: number;
+  }[];
 }
 
 export interface DiscountTotals {
@@ -135,6 +141,9 @@ export interface DiscountsReport {
   end_date: string;
   markup_percent: number;
   totals: DiscountTotals;
-  by_market: ({ market_id: number; market_name: string | null } & Omit<DiscountTotals, "bulk_orders" | "vendor_lines_recorded">)[];
+  by_market: ({ market_id: number; market_name: string | null } & Omit<
+    DiscountTotals,
+    "bulk_orders" | "vendor_lines_recorded"
+  >)[];
   vendor_lines: VendorSavingsLine[];
 }

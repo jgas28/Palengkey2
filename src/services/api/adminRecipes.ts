@@ -65,7 +65,9 @@ function toRecipeFormData(payload: Partial<RecipeFormPayload>): FormData {
   return form;
 }
 
-export async function createAdminRecipe(payload: RecipeFormPayload): Promise<AdminRecipe> {
+export async function createAdminRecipe(
+  payload: RecipeFormPayload,
+): Promise<AdminRecipe> {
   const { data } = await adminApiClient.post<AdminRecipe>(
     "/admin/recipes",
     toRecipeFormData(payload),

@@ -7,9 +7,9 @@ import {
 } from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
-import { Spinner } from "@/components/common/LoadingState";
-import EmptyState from "@/components/common/EmptyState";
+import { Star } from "lucide-react";
 import ErrorState from "@/components/common/ErrorState";
+import { Card, EmptyPanel, SkeletonRows } from "@/components/admin/AdminUi";
 import {
   listAdminFeedback,
   markFeedbackReviewed,
@@ -17,7 +17,14 @@ import {
 } from "@/services/api/adminFeedback";
 import { useToastStore } from "@/stores/toastStore";
 import type { AdminOrderFeedback, FeedbackFilter } from "@/types/adminFeedback";
-import { ManageHeader, ManageTabs } from "@/components/admin/AdminManageList";
+import {
+  ManageHeader,
+  ManageList,
+  ManagePill,
+  ManageRow,
+  ManageTabs,
+  PagerBar,
+} from "@/components/admin/AdminManageList";
 
 const FILTERS: { value: FeedbackFilter; label: string }[] = [
   { value: "bad", label: "Needs attention" },
@@ -31,12 +38,13 @@ export default function AdminFeedback() {
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
   const [filter, setFilter] = useState<FeedbackFilter>("bad");
+  const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<AdminOrderFeedback | null>(null);
   const [adminNotes, setAdminNotes] = useState("");
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["adminFeedback", filter],
-    queryFn: () => listAdminFeedback(filter),
+    queryKey: ["adminFeedback", filter, page],
+    queryFn: () => listAdminFeedback(filter, page),
     placeholderData: keepPreviousData,
   });
 
@@ -71,7 +79,7 @@ export default function AdminFeedback() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <ManageHeader
         eyebrow="Customers"
         title="Suki trust level"
@@ -86,62 +94,85 @@ export default function AdminFeedback() {
           count: data && item.value !== "five_star" ? data.counts[item.value] : null,
         }))}
         value={filter}
-        onChange={setFilter}
+        onChange={(value) => {
+          setFilter(value);
+          setPage(1);
+        }}
       />
 
       {isLoading && (
-        <div className="flex justify-center py-8">
-          <Spinner />
-        </div>
+        <Card>
+          <SkeletonRows rows={4} />
+        </Card>
       )}
 
       {isError && <ErrorState onRetry={() => void refetch()} />}
 
       {data && data.feedback.data.length === 0 && (
-        <EmptyState
-          title="Nothing here."
-          description="No feedback matches this filter."
-        />
+        <Card>
+          <EmptyPanel
+            title="Nothing here."
+            description="No feedback matches this filter."
+          />
+        </Card>
       )}
 
       {data && data.feedback.data.length > 0 && (
-        <ul className="flex flex-col divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-          {data.feedback.data.map((feedback) => (
-            <li key={feedback.id}>
-              <button
-                type="button"
-                onClick={() => openDetail(feedback)}
-                className="flex w-full flex-col items-start gap-1 px-4 py-3 text-left"
-              >
-                <div className="flex w-full items-center justify-between">
-                  <span className="text-accent" aria-hidden="true">
-                    {"★".repeat(feedback.rating)}
-                    {"☆".repeat(5 - feedback.rating)}
-                  </span>
+        <ManageList
+          footer={
+            <PagerBar
+              page={data.feedback.current_page}
+              lastPage={data.feedback.last_page}
+              total={data.feedback.total}
+              perPage={data.feedback.per_page}
+              onPage={setPage}
+            />
+          }
+        >
+          {data.feedback.data.map((feedback) => {
+            const who = feedback.is_anonymous
+              ? "Anonymous"
+              : `${feedback.customer?.fname ?? ""} ${feedback.customer?.lname ?? ""}`.trim() ||
+                "Customer";
+            return (
+              <ManageRow
+                key={feedback.id}
+                onOpen={() => openDetail(feedback)}
+                leading={
                   <span
-                    className={`text-xs font-semibold ${
-                      feedback.status === "reviewed"
-                        ? "text-status-delivered"
-                        : "text-status-preparing"
+                    className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-sm font-semibold ${
+                      feedback.rating <= 2
+                        ? "bg-rose-50 text-rose-600"
+                        : feedback.rating === 3
+                          ? "bg-amber-50 text-amber-700"
+                          : "bg-emerald-50 text-emerald-700"
                     }`}
                   >
-                    {feedback.status === "reviewed" ? "Reviewed" : "New"}
+                    <span className="flex items-center gap-0.5">
+                      {feedback.rating}
+                      <Star size={12} className="fill-current" aria-hidden="true" />
+                    </span>
                   </span>
-                </div>
-                {feedback.comment && (
-                  <p className="line-clamp-2 text-sm text-text">{feedback.comment}</p>
-                )}
-                <span className="text-xs text-text-muted">
-                  {feedback.is_anonymous
-                    ? "Anonymous"
-                    : `${feedback.customer?.fname ?? ""} ${feedback.customer?.lname ?? ""}`}
-                  {feedback.order && ` · Order #${feedback.order.order_number}`}
-                  {feedback.market && ` · ${feedback.market.name}`}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+                }
+                title={feedback.comment || `${feedback.rating}-star rating`}
+                subtitle={[
+                  who,
+                  feedback.order && `Order #${feedback.order.order_number}`,
+                  feedback.market?.name,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+                pills={
+                  <ManagePill
+                    tone={feedback.status === "reviewed" ? "active" : "warning"}
+                  >
+                    {feedback.status === "reviewed" ? "Reviewed" : "New"}
+                  </ManagePill>
+                }
+              />
+            );
+          })}
+        </ManageList>
       )}
 
       <Modal
@@ -170,7 +201,7 @@ export default function AdminFeedback() {
                 onChange={(e) => setAdminNotes(e.target.value)}
                 rows={3}
                 maxLength={2000}
-                className="rounded-lg border border-border bg-surface p-3 text-sm font-normal text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
+                className="rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal text-slate-800 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
               />
             </label>
 

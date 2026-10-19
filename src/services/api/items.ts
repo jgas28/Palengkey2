@@ -46,8 +46,11 @@ export interface ListCuratedProductsParams {
 export async function listCuratedProducts(
   params: ListCuratedProductsParams,
 ): Promise<ItemSummary[]> {
-  const { data } = await apiClient.get<{ data: ItemSummary[] }>("/customer/curated-products", {
-    params: { market_id: params.marketId, section: params.section },
-  });
+  const { data } = await apiClient.get<{ data: ItemSummary[] }>(
+    "/customer/curated-products",
+    {
+      params: { market_id: params.marketId, section: params.section },
+    },
+  );
   return data.data;
 }

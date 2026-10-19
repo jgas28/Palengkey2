@@ -103,6 +103,11 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
 :where(body.pk) .categories button > span { display: grid; place-items: center; width: 46px; height: 46px; margin-bottom: 7px; color: var(--teal-dark); background: white; border-radius: 50%; box-shadow: 0 6px 20px rgba(0,92,101,.08); }
 :where(body.pk) .categories strong { font-size: 13px; }
 :where(body.pk) .categories small { color: var(--muted); font-size: 9px; white-space: nowrap; }
+/* Categories with a CMS photo: a large rounded image instead of the small icon circle. */
+:where(body.pk) .categories button:has(.category-photo) { padding: 8px 8px 14px; }
+:where(body.pk) .categories button > span.category-photo { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; margin-bottom: 8px; overflow: hidden; background: #eaf4f2; border-radius: 12px; box-shadow: none; }
+:where(body.pk) .categories .category-photo img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .35s; }
+:where(body.pk) .categories button:hover .category-photo img { transform: scale(1.06); }
 :where(body.pk) .market-banner { position: relative; display: grid; grid-template-columns: 56% 44%; min-height: 355px; overflow: hidden; color: white; background: var(--dark); border-radius: 26px; box-shadow: var(--shadow); }
 :where(body.pk) .market-banner > div:first-child { z-index: 2; padding: 58px 50px; background: linear-gradient(90deg, var(--dark) 75%, transparent); }
 :where(body.pk) .market-banner .kicker { color: #7bd9e0; }
@@ -259,9 +264,9 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
 :where(body.pk) .paluto-note { display: flex; gap: 15px; margin-top: 25px; padding: 22px; color: #355154; background: var(--teal-pale); border-radius: 16px; }
 :where(body.pk) .paluto-note > svg { flex: 0 0 auto; color: var(--teal); }
 :where(body.pk) .paluto-note p { margin: 4px 0 0; font-size: 11px; line-height: 1.6; }
-:where(body.pk) .recipe-hero { padding: 90px 0 80px; text-align: center; background: radial-gradient(circle at 50% -20%, #f9d989, transparent 45%), linear-gradient(120deg, #fff8e8, #effafa); }
-:where(body.pk) .recipe-intro > p:not(.kicker) { margin-right: auto; margin-left: auto; }
-:where(body.pk) .recipe-search { display: flex; align-items: center; gap: 12px; width: min(580px, 100%); margin: 29px auto 0; padding: 7px 16px; background: white; border: 1px solid #d9e4df; border-radius: 14px; box-shadow: var(--shadow); }
+:where(body.pk) .recipe-hero { padding: 0; background: radial-gradient(circle at 20% -20%, #f9d989, transparent 45%), linear-gradient(120deg, #fff8e8, #effafa); }
+:where(body.pk) .recipe-hero .recipe-intro { padding: 60px 0; }
+:where(body.pk) .recipe-search { display: flex; align-items: center; gap: 12px; width: min(580px, 100%); margin: 29px 0 0; padding: 7px 16px; background: white; border: 1px solid #d9e4df; border-radius: 14px; box-shadow: var(--shadow); }
 :where(body.pk) .recipe-search svg { color: var(--teal); }
 :where(body.pk) .recipe-search input { width: 100%; height: 42px; border: 0; outline: 0; }
 :where(body.pk) .recipe-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; }
@@ -805,7 +810,7 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
   :where(body.pk) .section-heading { align-items: flex-start; margin-bottom: 25px; }
   :where(body.pk) .section-heading h2, :where(body.pk) .center-heading h2, :where(body.pk) .split-card h2, :where(body.pk) .deal h2, :where(body.pk) .market-banner h2 { font-size: 34px; }
   :where(body.pk) .categories { display: flex; gap: 10px; margin-right: -16px; overflow-x: auto; scrollbar-width: none; }
-  :where(body.pk) .categories button { min-width: 105px; }
+  :where(body.pk) .categories button { min-width: 120px; }
   :where(body.pk) .market-banner { width: calc(100% - 32px); grid-template-columns: 1fr; min-height: 485px; }
   :where(body.pk) .market-banner > div:first-child { padding: 34px 26px; background: linear-gradient(180deg, var(--dark) 80%, transparent); }
   :where(body.pk) .market-photo { top: auto; bottom: 0; width: 100%; height: 48%; }
@@ -846,7 +851,8 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
   :where(body.pk) .page-hero-image { width: 100%; height: 300px; margin-top: 20px; border-radius: 70px 18px 0 0; }
   :where(body.pk) .stall-grid, :where(body.pk) .dish-grid { grid-template-columns: 1fr; }
   :where(body.pk) .stall-image { height: 210px; }
-  :where(body.pk) .recipe-hero { padding: 60px 0; }
+  :where(body.pk) .recipe-hero .recipe-intro { padding: 0; }
+  :where(body.pk) .recipe-hero .page-hero-image { height: 300px; }
   :where(body.pk) .recipe-grid { gap: 14px; }
   :where(body.pk) .full-recipe-card { grid-template-columns: 1fr; }
   :where(body.pk) .full-recipe-card > div { min-height: 190px; }

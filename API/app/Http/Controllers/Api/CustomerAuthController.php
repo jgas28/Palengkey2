@@ -117,8 +117,17 @@ class CustomerAuthController extends Controller
         $email = strtolower(trim($data['email']));
         $customer = Customer::whereRaw('LOWER(email) = ?', [$email])->first();
 
-        if (! $customer || ! $customer->password || ! Hash::check($data['password'], $customer->password)) {
-            return response()->json(['message' => 'Invalid credentials'], 401);
+        // Signed up with Google and never set a password: say so instead of "wrong password".
+        if ($customer && ! $customer->password) {
+            return response()->json([
+                'message' => 'This account uses Google sign-in. Tap "Continue with Google", or use "Forgot password?" to set a password.',
+                'error_code' => 'google_account',
+            ], 401);
+        }
+
+        // Same message for unknown email and wrong password (don't reveal which accounts exist).
+        if (! $customer || ! Hash::check($data['password'], $customer->password)) {
+            return response()->json(['message' => 'Incorrect email or password.', 'error_code' => 'invalid_credentials'], 401);
         }
 
         // Every login requires a fresh OTP challenge (2FA) — withhold the token

@@ -55,4 +55,17 @@ class ContentController extends Controller
 
         return response()->json($reviews);
     }
+
+    /** Live totals for the landing page's review badge (every submitted rating). */
+    public function reviewStats()
+    {
+        $stats = OrderFeedback::query()
+            ->selectRaw('COUNT(*) as total, AVG(rating) as average')
+            ->first();
+
+        return response()->json([
+            'total_reviews' => (int) ($stats->total ?? 0),
+            'average_rating' => $stats->average !== null ? round((float) $stats->average, 1) : null,
+        ]);
+    }
 }

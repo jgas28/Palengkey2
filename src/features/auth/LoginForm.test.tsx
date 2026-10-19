@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { useAuthStore } from "@/stores/authStore";
 import type { AuthUser } from "@/types/auth";
 import LoginForm from "./LoginForm";
+import { ApiError } from "@/services/api/apiError";
 
 vi.mock("@/services/api/auth", () => ({
   login: vi.fn(),
@@ -51,8 +52,24 @@ describe("LoginForm", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Log in" }));
 
-    expect(await screen.findByText("Enter a valid email.")).toBeInTheDocument();
+    expect(await screen.findByText("Enter your email address.")).toBeInTheDocument();
+    expect(screen.getByText("Enter your password.")).toBeInTheDocument();
     expect(login).not.toHaveBeenCalled();
+  });
+
+  it("shows a wrong password as an alert on the form", async () => {
+    vi.mocked(login).mockRejectedValue(
+      new ApiError("Incorrect email or password.", "invalid_credentials", {}, 401),
+    );
+    renderLoginForm();
+
+    await userEvent.type(screen.getByLabelText("Email Address"), "juan@example.com");
+    await userEvent.type(screen.getByLabelText("Password"), "wrong-pass");
+    await userEvent.click(screen.getByRole("button", { name: "Log in" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Incorrect email or password.",
+    );
   });
 
   it("logs in and navigates home when a token is returned", async () => {

@@ -20,9 +20,7 @@ export interface AdminOrderFilter {
   page?: number;
 }
 
-export async function listAdminOrders(
-  filter: AdminOrderFilter,
-): Promise<{
+export async function listAdminOrders(filter: AdminOrderFilter): Promise<{
   orders: AdminOrderPage;
   counts: AdminOrderCounts;
   summary?: AdminOrderSummaryStats;

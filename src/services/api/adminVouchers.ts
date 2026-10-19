@@ -1,9 +1,12 @@
 import { adminApiClient } from "@/services/api/adminClient";
 import type { AdminVoucher, AdminVoucherPage, VoucherTarget } from "@/types/adminVoucher";
 
-export async function listAdminVouchers(search = ""): Promise<AdminVoucherPage> {
+export async function listAdminVouchers(
+  search = "",
+  page = 1,
+): Promise<AdminVoucherPage> {
   const { data } = await adminApiClient.get<AdminVoucherPage>("/admin/vouchers", {
-    params: { search: search || undefined },
+    params: { search: search || undefined, page },
   });
   return data;
 }

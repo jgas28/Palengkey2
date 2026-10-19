@@ -8,6 +8,7 @@ use App\Models\Market;
 use App\Models\MarketItem;
 use App\Services\PriceRecorder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class MarketItemController extends Controller
 {
@@ -20,9 +21,14 @@ class MarketItemController extends Controller
         $data = $request->validate([
             'market_id' => $isSuperAdmin ? 'required|exists:markets,id' : 'nullable',
             'price' => 'nullable|numeric|min:0',
-            'is_available' => 'required|boolean',
+            'is_available' => 'required_without:availability|boolean',
+            // available | out_of_stock (back tomorrow) | unavailable (until turned back on)
+            'availability' => 'sometimes|in:available,out_of_stock,unavailable',
             'cutoff_time' => 'nullable|date_format:H:i',
         ]);
+
+        $availability = $data['availability'] ?? ($data['is_available'] ? 'available' : 'unavailable');
+        $data['is_available'] = $availability === 'available';
 
         $marketId = $isSuperAdmin ? (int) $data['market_id'] : $user->market_id;
 
@@ -43,6 +49,11 @@ class MarketItemController extends Controller
         MarketItem::where('market_id', $marketId)->where('item_id', $item->id)->update([
             'cutoff_time' => $data['cutoff_time'] ?? null,
             'cutoff_timezone' => Market::find($marketId)?->cutoff_timezone ?? 'Asia/Manila',
+            ...(Schema::hasColumn('market_items', 'out_of_stock_until') ? [
+                'out_of_stock_until' => $availability === 'out_of_stock'
+                    ? now('Asia/Manila')->addDay()->toDateString()
+                    : null,
+            ] : []),
         ]);
 
         return response()->json(['message' => 'Market listing updated.']);

@@ -4,6 +4,8 @@ export interface AdminItemImage {
   sort_order: number;
 }
 
+export type AdminItemAvailability = "available" | "out_of_stock" | "unavailable";
+
 export interface AdminItemMarketListing {
   market_id: number;
   price: number | null;
@@ -11,6 +13,12 @@ export interface AdminItemMarketListing {
   customer_price?: number | null;
   market_name?: string | null;
   is_available: boolean;
+  /** available | out_of_stock (back automatically) | unavailable. */
+  availability?: AdminItemAvailability;
+  /** Date (YYYY-MM-DD, Manila) an out-of-stock listing comes back. */
+  out_of_stock_until?: string | null;
+  /** Last recorded vendor price, kept while the live price is cleared. */
+  last_price?: number | string | null;
   cutoff_time: string | null;
 }
 

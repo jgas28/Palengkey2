@@ -10,6 +10,7 @@ import {
   type SimpleReport,
 } from "@/services/api/adminReports";
 import { useToastStore } from "@/stores/toastStore";
+import { PagedRows } from "@/components/admin/AdminManageList";
 
 export interface ReportPanelProps {
   startDate: string;
@@ -52,7 +53,9 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
         {title}
       </h2>
-      <div className="overflow-x-auto rounded-card border border-border">{children}</div>
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+        {children}
+      </div>
     </section>
   );
 }
@@ -70,7 +73,7 @@ function Table({
 }) {
   return (
     <table className="w-full text-left text-sm">
-      <thead className="bg-background text-xs uppercase text-text-muted">
+      <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] uppercase tracking-wide text-slate-400">
         <tr>
           {head.map((label) => (
             <th key={label} className="px-4 py-3">
@@ -79,8 +82,8 @@ function Table({
           ))}
         </tr>
       </thead>
-      <tbody className="divide-y divide-border">
-        {children}
+      <tbody className="divide-y divide-slate-100">
+        <PagedRows colSpan={colSpan ?? head.length}>{children}</PagedRows>
         {empty && (
           <tr>
             <td

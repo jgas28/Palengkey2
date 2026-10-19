@@ -13,7 +13,12 @@ export default function Paluto() {
   const selectedMarket = useMarketStore((state) => state.selectedMarket);
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const { data: stalls = [], isLoading, isError, refetch } = useQuery({
+  const {
+    data: stalls = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["palutoStalls", selectedMarket?.id],
     queryFn: () => listPalutoStalls(selectedMarket!.id),
     enabled: selectedMarket !== null,
@@ -27,15 +32,15 @@ export default function Paluto() {
             <p className="kicker">Cook for me</p>
             <h1>Paluto, made simple.</h1>
             <p>
-              Pick a trusted stall and choose your dish. Our staff buys the freshest ingredients
-              from the market, then the stall cooks it just the way you like.
+              Pick a trusted stall and choose your dish. Our staff buys the freshest
+              ingredients from the market, then the stall cooks it just the way you like.
             </p>
             <a href="#stalls" className="page-cta">
               Choose a stall <Icon name="arrow" />
             </a>
           </div>
           <div className="page-hero-image">
-            <img src={photos.fish} alt="Fresh seafood prepared for Paluto" />
+            <img src={photos.cook} alt="Filipino cook preparing food at a local stall" />
             <span>
               Fresh ingredients
               <br />
@@ -51,7 +56,11 @@ export default function Paluto() {
             <p className="kicker">{selectedMarket?.name ?? "Your market"}</p>
             <h2>Choose your cooking stall</h2>
           </div>
-          <button type="button" className="btn outline" onClick={() => setPickerOpen(true)}>
+          <button
+            type="button"
+            className="btn outline"
+            onClick={() => setPickerOpen(true)}
+          >
             {selectedMarket ? "Change market" : "Choose market"}
           </button>
         </div>
@@ -61,7 +70,11 @@ export default function Paluto() {
             <Icon name="bag" size={34} />
             <h3>Choose a market to see Paluto stalls</h3>
             <p>Pick your market and we’ll show the stalls that can cook for you there.</p>
-            <button type="button" className="btn primary" onClick={() => setPickerOpen(true)}>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => setPickerOpen(true)}
+            >
               Choose market
             </button>
           </div>
@@ -82,8 +95,15 @@ export default function Paluto() {
           <div className="empty">
             <Icon name="sparkle" size={34} />
             <h3>No Paluto stalls here yet</h3>
-            <p>This market doesn’t have stalls cooking orders right now. You can still cook it yourself.</p>
-            <button type="button" className="btn primary" onClick={() => navigate("/recipes")}>
+            <p>
+              This market doesn’t have stalls cooking orders right now. You can still cook
+              it yourself.
+            </p>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => navigate("/recipes")}
+            >
               Browse recipes
             </button>
           </div>

@@ -34,13 +34,18 @@ export async function downloadSalesReport(
 export async function getVerificationsReport(
   params: SalesReportParams,
 ): Promise<VerificationsReport> {
-  const { data } = await adminApiClient.get<VerificationsReport>("/admin/reports/verifications", {
-    params: { start_date: params.startDate, end_date: params.endDate },
-  });
+  const { data } = await adminApiClient.get<VerificationsReport>(
+    "/admin/reports/verifications",
+    {
+      params: { start_date: params.startDate, end_date: params.endDate },
+    },
+  );
   return data;
 }
 
-export async function downloadVerificationsReport(params: SalesReportParams): Promise<Blob> {
+export async function downloadVerificationsReport(
+  params: SalesReportParams,
+): Promise<Blob> {
   const { data } = await adminApiClient.get<Blob>("/admin/reports/verifications", {
     params: { start_date: params.startDate, end_date: params.endDate, format: "csv" },
     responseType: "blob",
@@ -48,10 +53,15 @@ export async function downloadVerificationsReport(params: SalesReportParams): Pr
   return data;
 }
 
-export async function getActivitiesReport(params: SalesReportParams): Promise<ActivitiesReport> {
-  const { data } = await adminApiClient.get<ActivitiesReport>("/admin/reports/activities", {
-    params: { start_date: params.startDate, end_date: params.endDate },
-  });
+export async function getActivitiesReport(
+  params: SalesReportParams,
+): Promise<ActivitiesReport> {
+  const { data } = await adminApiClient.get<ActivitiesReport>(
+    "/admin/reports/activities",
+    {
+      params: { start_date: params.startDate, end_date: params.endDate },
+    },
+  );
   return data;
 }
 
@@ -76,9 +86,12 @@ export async function getSimpleReport<K extends SimpleReport>(
   report: K,
   params: SalesReportParams,
 ): Promise<SimpleReportMap[K]> {
-  const { data } = await adminApiClient.get<SimpleReportMap[K]>(`/admin/reports/${report}`, {
-    params: { start_date: params.startDate, end_date: params.endDate },
-  });
+  const { data } = await adminApiClient.get<SimpleReportMap[K]>(
+    `/admin/reports/${report}`,
+    {
+      params: { start_date: params.startDate, end_date: params.endDate },
+    },
+  );
   return data;
 }
 

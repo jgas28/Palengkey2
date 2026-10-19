@@ -15,10 +15,10 @@ import {
   ManageHeader,
   ManageIcon,
   ManageList,
-  ManagePager,
   ManagePill,
   ManageRow,
   ManageToolbar,
+  PagerBar,
   RowAction,
   manageSelect,
 } from "@/components/admin/AdminManageList";
@@ -213,13 +213,13 @@ export default function AdminCategories() {
       {data && categories.length > 0 && (
         <ManageList
           footer={
-            data.last_page > 1 ? (
-              <ManagePager
-                page={data.current_page}
-                lastPage={data.last_page}
-                onPage={setPage}
-              />
-            ) : undefined
+            <PagerBar
+              page={data.current_page}
+              lastPage={data.last_page}
+              total={data.total}
+              perPage={data.per_page}
+              onPage={setPage}
+            />
           }
         >
           {categories.map((category) => (

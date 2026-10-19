@@ -7,6 +7,7 @@ import MarketPickerDrawer from "@/features/home/MarketPickerDrawer";
 import { formatBatch } from "@/features/recipes/ingredientFormat";
 import { listRecipes, listRecipeTypes } from "@/services/api/recipes";
 import { useMarketStore } from "@/stores/marketStore";
+import recipesHero from "@/assets/images/recipes-hero.jpg";
 
 /** The design's Recipes page — global catalog; ingredients priced at the selected market in the drawer. */
 export default function Recipes() {
@@ -22,39 +23,68 @@ export default function Recipes() {
     return () => clearTimeout(timeout);
   }, [search]);
 
-  const { data: recipeTypes = [] } = useQuery({ queryKey: ["recipeTypes"], queryFn: listRecipeTypes });
+  const { data: recipeTypes = [] } = useQuery({
+    queryKey: ["recipeTypes"],
+    queryFn: listRecipeTypes,
+  });
 
-  const { data: recipePages, isLoading, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useInfiniteQuery({
-      queryKey: ["recipes", activeRecipeTypeId, debouncedSearch],
-      queryFn: ({ pageParam }) =>
-        listRecipes({
-          recipeTypeId: activeRecipeTypeId ?? undefined,
-          search: debouncedSearch,
-          page: pageParam,
-        }),
-      initialPageParam: 1,
-      getNextPageParam: (lastPage) =>
-        lastPage.current_page < lastPage.last_page ? lastPage.current_page + 1 : undefined,
-    });
+  const {
+    data: recipePages,
+    isLoading,
+    isError,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["recipes", activeRecipeTypeId, debouncedSearch],
+    queryFn: ({ pageParam }) =>
+      listRecipes({
+        recipeTypeId: activeRecipeTypeId ?? undefined,
+        search: debouncedSearch,
+        page: pageParam,
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.current_page < lastPage.last_page ? lastPage.current_page + 1 : undefined,
+  });
 
-  const recipes = useMemo(() => recipePages?.pages.flatMap((page) => page.data) ?? [], [recipePages]);
+  const recipes = useMemo(
+    () => recipePages?.pages.flatMap((page) => page.data) ?? [],
+    [recipePages],
+  );
 
   return (
     <main className="inner-page">
       <section className="page-hero recipe-hero">
-        <div className="shell recipe-intro">
-          <p className="kicker">Cook it yourself</p>
-          <h1>Recipes for every Filipino table.</h1>
-          <p>Step-by-step home cooking, with every fresh ingredient ready to add to your basket.</p>
-          <div className="recipe-search">
-            <Icon name="search" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search sinigang, adobo, gulay..."
-              aria-label="Search recipes"
+        <div className="shell page-hero-grid">
+          <div className="recipe-intro">
+            <p className="kicker">Cook it yourself</p>
+            <h1>Recipes for every Filipino table.</h1>
+            <p>
+              Step-by-step home cooking, with every fresh ingredient ready to add to your
+              basket.
+            </p>
+            <div className="recipe-search">
+              <Icon name="search" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search sinigang, adobo, gulay..."
+                aria-label="Search recipes"
+              />
+            </div>
+          </div>
+          <div className="page-hero-image">
+            <img
+              src={recipesHero}
+              alt="A Filipino spread of grilled meats, rice, salted egg and vinegar dip"
             />
+            <span>
+              Classic Filipino flavors
+              <br />
+              made easy
+            </span>
           </div>
         </div>
       </section>
@@ -111,7 +141,11 @@ export default function Recipes() {
           <>
             <div className="recipe-grid">
               {recipes.map((recipe) => (
-                <article className="full-recipe-card" key={recipe.id} onClick={() => setSelectedRecipeId(recipe.id)}>
+                <article
+                  className="full-recipe-card"
+                  key={recipe.id}
+                  onClick={() => setSelectedRecipeId(recipe.id)}
+                >
                   <div>
                     <img src={recipe.image ?? photos.vendor} alt={recipe.name} />
                     <span>
@@ -121,7 +155,10 @@ export default function Recipes() {
                   </div>
                   <section>
                     <h3>{recipe.name}</h3>
-                    <p>{recipe.description ?? "A Filipino favorite, with every ingredient ready to add to your basket."}</p>
+                    <p>
+                      {recipe.description ??
+                        "A Filipino favorite, with every ingredient ready to add to your basket."}
+                    </p>
                     <button
                       type="button"
                       onClick={(event) => {
@@ -137,7 +174,12 @@ export default function Recipes() {
             </div>
             {hasNextPage && (
               <div style={{ display: "flex", justifyContent: "center", marginTop: 24 }}>
-                <button type="button" className="btn outline" disabled={isFetchingNextPage} onClick={() => void fetchNextPage()}>
+                <button
+                  type="button"
+                  className="btn outline"
+                  disabled={isFetchingNextPage}
+                  onClick={() => void fetchNextPage()}
+                >
                   {isFetchingNextPage ? "Loading…" : "Load more recipes"}
                 </button>
               </div>

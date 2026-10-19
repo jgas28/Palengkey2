@@ -14,14 +14,7 @@ export interface OrderItem {
 }
 
 export type PaymentMethod =
-  | "cod"
-  | "qrph"
-  | "bpi"
-  | "paymongo"
-  | "card"
-  | "gcash"
-  | "maya"
-  | "ubp";
+  "cod" | "qrph" | "bpi" | "paymongo" | "card" | "gcash" | "maya" | "ubp";
 export type PaymentStatus = "pending" | "paid" | "expired" | "failed";
 
 export interface CashlessPayment {
@@ -101,7 +94,12 @@ export interface Order {
   cashless_payment: CashlessPayment | null;
   rider: OrderRider | null;
   /** Where the order is bought — for the route map. Coordinates are decimal strings. */
-  market?: { id: number; name: string; latitude: string | number | null; longitude: string | number | null } | null;
+  market?: {
+    id: number;
+    name: string;
+    latitude: string | number | null;
+    longitude: string | number | null;
+  } | null;
   cancellation_reason: string | null;
   delivery_photo: string | null;
   received_at?: string;

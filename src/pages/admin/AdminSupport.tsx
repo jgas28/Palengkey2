@@ -13,6 +13,7 @@ import {
   ManagePill,
   ManageRow,
   ManageTabs,
+  PagerBar,
 } from "@/components/admin/AdminManageList";
 
 const STATUSES: { value: SupportThreadStatus | "all"; label: string }[] = [
@@ -33,10 +34,11 @@ function timeAgo(iso: string | null): string | null {
 export default function AdminSupport() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<SupportThreadStatus | "all">("open");
+  const [page, setPage] = useState(1);
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["adminSupportThreads", status],
-    queryFn: () => listAdminSupportThreads(status),
+    queryKey: ["adminSupportThreads", status, page],
+    queryFn: () => listAdminSupportThreads(status, page),
     placeholderData: keepPreviousData,
     refetchInterval: 15000,
   });
@@ -57,7 +59,10 @@ export default function AdminSupport() {
           count: null,
         }))}
         value={status}
-        onChange={setStatus}
+        onChange={(value) => {
+          setStatus(value);
+          setPage(1);
+        }}
       />
 
       {isLoading && (
@@ -75,7 +80,17 @@ export default function AdminSupport() {
       )}
 
       {data && data.data.length > 0 && (
-        <ManageList>
+        <ManageList
+          footer={
+            <PagerBar
+              page={data.current_page}
+              lastPage={data.last_page}
+              total={data.total}
+              perPage={data.per_page}
+              onPage={setPage}
+            />
+          }
+        >
           {data.data.map((thread) => {
             const customer = [thread.customer?.fname, thread.customer?.lname]
               .filter(Boolean)

@@ -26,6 +26,7 @@ import {
 } from "@/services/api/adminLookups";
 import { useAdminAuthStore } from "@/stores/adminAuthStore";
 import { useToastStore } from "@/stores/toastStore";
+import type { AdminItemAvailability, AdminItemMarketListing } from "@/types/adminItem";
 
 const WIZARD_STEPS = [
   { id: 1, title: "Details", hint: "Customer-facing information" },
@@ -33,6 +34,38 @@ const WIZARD_STEPS = [
   { id: 3, title: "Photos", hint: "Cover and gallery images" },
   { id: 4, title: "Review", hint: "Check before publishing" },
 ] as const;
+
+const AVAILABILITY_OPTIONS: {
+  value: AdminItemAvailability;
+  title: string;
+  hint: string;
+}[] = [
+  {
+    value: "available",
+    title: "Available",
+    hint: "In the market and ready for today's orders.",
+  },
+  {
+    value: "out_of_stock",
+    title: "Out of stock",
+    hint: "Sold out today — comes back automatically tomorrow.",
+  },
+  {
+    value: "unavailable",
+    title: "Unavailable",
+    hint: "Seasonal or hard to source — hidden until you turn it back on.",
+  },
+];
+
+const AVAILABILITY_LABEL: Record<AdminItemAvailability, string> = {
+  available: "Available now",
+  out_of_stock: "Out of stock · back tomorrow",
+  unavailable: "Unavailable",
+};
+
+function listingAvailability(listing: AdminItemMarketListing): AdminItemAvailability {
+  return listing.availability ?? (listing.is_available ? "available" : "unavailable");
+}
 
 const fieldLabel = "mb-1.5 block text-xs font-semibold text-slate-700";
 const fieldBase =
@@ -201,7 +234,10 @@ export default function AdminItemForm() {
   const [bulkMinKg, setBulkMinKg] = useState("");
   const [bulkDiscountPerKg, setBulkDiscountPerKg] = useState("");
   const [price, setPrice] = useState(item?.market?.price?.toString() ?? "");
-  const [isAvailable, setIsAvailable] = useState(item?.market?.is_available ?? true);
+  const [availability, setAvailability] = useState<AdminItemAvailability>(
+    item?.market ? listingAvailability(item.market) : "available",
+  );
+  const isAvailable = availability === "available";
   const [cutoffTime, setCutoffTime] = useState(item?.market?.cutoff_time ?? "");
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const coverPreview = useMemo(
@@ -233,8 +269,8 @@ export default function AdminItemForm() {
   }
 
   if (item && hydratedMarketId !== (item.market?.market_id ?? marketId)) {
-    setPrice(item.market?.price?.toString() ?? "");
-    setIsAvailable(item.market?.is_available ?? true);
+    setPrice((item.market?.price ?? item.market?.last_price)?.toString() ?? "");
+    setAvailability(item.market ? listingAvailability(item.market) : "available");
     setCutoffTime(item.market?.cutoff_time ?? "");
     setHydratedMarketId(item.market?.market_id ?? marketId);
   }
@@ -301,11 +337,12 @@ export default function AdminItemForm() {
   });
 
   const marketMutation = useMutation({
-    mutationFn: (next?: { is_available: boolean }) =>
+    mutationFn: (next?: { availability: AdminItemAvailability }) =>
       updateAdminItemMarketListing(id!, {
         market_id: isSuperAdmin ? marketId : undefined,
         price: price ? Number(price) : null,
-        is_available: next?.is_available ?? isAvailable,
+        is_available: (next?.availability ?? availability) === "available",
+        availability: next?.availability ?? availability,
         cutoff_time: cutoffTime || undefined,
       }),
     onSuccess: invalidateItem,
@@ -499,8 +536,10 @@ export default function AdminItemForm() {
                   type="button"
                   disabled={marketMutation.isPending}
                   onClick={() => {
-                    const next = !isAvailable;
-                    if (next && !(Number(price) > 0)) {
+                    const next: AdminItemAvailability = isAvailable
+                      ? "out_of_stock"
+                      : "available";
+                    if (next === "available" && !(Number(price) > 0)) {
                       showToast(
                         "Add a vendor price before making it available.",
                         "error",
@@ -508,12 +547,14 @@ export default function AdminItemForm() {
                       return;
                     }
                     marketMutation.mutate(
-                      { is_available: next },
+                      { availability: next },
                       {
                         onSuccess: () => {
-                          setIsAvailable(next);
+                          setAvailability(next);
                           showToast(
-                            next ? "Marked available." : "Marked unavailable.",
+                            next === "available"
+                              ? "Marked available."
+                              : "Marked out of stock — it comes back tomorrow.",
                             "success",
                           );
                         },
@@ -526,7 +567,7 @@ export default function AdminItemForm() {
                       : "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
                   }`}
                 >
-                  {isAvailable ? "Mark unavailable" : "Mark available"}
+                  {isAvailable ? "Mark out of stock" : "Mark available"}
                 </button>
               )}
               <button
@@ -768,25 +809,16 @@ export default function AdminItemForm() {
                 <p className="mb-3 text-xs text-slate-500">
                   Choose whether customers can order this item.
                 </p>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {[
-                    {
-                      value: true,
-                      title: "Available",
-                      hint: "In the market and ready for today's orders.",
-                    },
-                    {
-                      value: false,
-                      title: "Unavailable",
-                      hint: "Sold out or out of season — hidden from customers.",
-                    },
-                  ].map((option) => {
-                    const selected = isAvailable === option.value;
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {AVAILABILITY_OPTIONS.filter(
+                    (option) => isEditing || option.value !== "out_of_stock",
+                  ).map((option) => {
+                    const selected = availability === option.value;
                     return (
                       <button
                         key={option.title}
                         type="button"
-                        onClick={() => setIsAvailable(option.value)}
+                        onClick={() => setAvailability(option.value)}
                         aria-pressed={selected}
                         className={`flex items-start gap-3 rounded-xl border bg-white p-3.5 text-left transition-colors ${
                           selected
@@ -1081,7 +1113,7 @@ export default function AdminItemForm() {
                     ["Market", marketName ?? "—", 2],
                     ["Vendor price", vendorPrice ? peso(vendorPrice) : "—", 2],
                     ["Customer price", customerPrice ? peso(customerPrice) : "—", 2],
-                    ["Availability", isAvailable ? "Available now" : "Unavailable", 2],
+                    ["Availability", AVAILABILITY_LABEL[availability], 2],
                     ["Cutoff", cutoffTime ? clock(cutoffTime) : "None", 2],
                     ["Bulk pricing", bulkSummary, 2],
                   ] as const

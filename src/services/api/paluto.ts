@@ -15,7 +15,9 @@ export async function listPalutoStalls(marketId: number): Promise<PalutoStallSum
 }
 
 export async function getPalutoStall(stallId: number): Promise<PalutoStallMenu> {
-  const { data } = await apiClient.get<PalutoStallMenu>(`/customer/paluto/stalls/${stallId}`);
+  const { data } = await apiClient.get<PalutoStallMenu>(
+    `/customer/paluto/stalls/${stallId}`,
+  );
   return data;
 }
 

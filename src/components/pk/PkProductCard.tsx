@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Icon from "@/components/pk/Icon";
-import type { ItemSummary } from "@/types/item";
+import { availabilityLabel, type ItemSummary } from "@/types/item";
 
 export interface PkProductCardProps {
   item: ItemSummary;
@@ -12,7 +12,8 @@ export interface PkProductCardProps {
 /** The design's product card (.product-card), bound to a real catalog item. */
 export default function PkProductCard({ item, onView }: PkProductCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
-  const unavailable = item.price === null;
+  const status = availabilityLabel(item);
+  const unavailable = status !== null;
   const tag = item.type ?? "Fresh today";
 
   return (
@@ -40,7 +41,19 @@ export default function PkProductCard({ item, onView }: PkProductCardProps) {
           </div>
         )}
         <span className="fresh-tag">{tag}</span>
-        {unavailable && <span className="stock-badge unavailable">Unavailable</span>}
+        {status && (
+          <span
+            className="stock-badge unavailable"
+            style={
+              item.availability === "out_of_stock"
+                ? { background: "#b26a00", color: "#fff" }
+                : undefined
+            }
+            title={status.detail}
+          >
+            {status.title}
+          </span>
+        )}
         {!unavailable && item.is_cutoff && (
           <span className="stock-badge" style={{ background: "var(--teal-dark)" }}>
             Order later
@@ -55,12 +68,14 @@ export default function PkProductCard({ item, onView }: PkProductCardProps) {
         <h3>{item.name}</h3>
         <div className="product-bottom">
           <p>
-            {unavailable ? (
-              <strong style={{ color: "var(--muted)" }}>—</strong>
+            {status ? (
+              <strong style={{ color: "var(--muted)", fontSize: 13 }}>
+                {status.detail}
+              </strong>
             ) : (
               <strong>₱{Number(item.price).toLocaleString("en-PH")}</strong>
             )}
-            <span> / {item.unit ?? "pc"}</span>
+            {!status && <span> / {item.unit ?? "pc"}</span>}
           </p>
           <button
             type="button"
@@ -68,8 +83,8 @@ export default function PkProductCard({ item, onView }: PkProductCardProps) {
             disabled={unavailable}
             onClick={() => !unavailable && onView()}
           >
-            {unavailable ? (
-              "Unavailable"
+            {status ? (
+              status.title
             ) : (
               <>
                 <Icon name="plus" size={17} /> Add

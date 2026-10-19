@@ -8,11 +8,12 @@ import type {
 
 export async function listAdminFeedback(
   filter: FeedbackFilter,
+  page = 1,
 ): Promise<{ feedback: AdminFeedbackPage; counts: FeedbackCounts }> {
   const { data } = await adminApiClient.get<{
     feedback: AdminFeedbackPage;
     counts: FeedbackCounts;
-  }>("/admin/feedback", { params: { filter } });
+  }>("/admin/feedback", { params: { filter, page } });
   return data;
 }
 

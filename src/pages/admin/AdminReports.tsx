@@ -18,7 +18,7 @@ import {
   PaymentsPanel,
   ProductsPanel,
 } from "@/pages/admin/reports/ExtraReportPanels";
-import { ManageHeader, ManageTabs } from "@/components/admin/AdminManageList";
+import { ManageHeader, ManageTabs, PagedRows } from "@/components/admin/AdminManageList";
 
 function peso(amount: number): string {
   return `₱${amount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
@@ -208,14 +208,16 @@ function SalesPanel({ startDate, endDate }: PanelProps) {
                 <th className="px-4 py-3">Sales</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
-              {data.sales_by_market.map((row) => (
-                <tr key={row.market_id}>
-                  <td className="px-4 py-3 font-medium text-text">{row.market_name}</td>
-                  <td className="px-4 py-3 text-text-muted">{row.total_orders}</td>
-                  <td className="px-4 py-3 text-text-muted">{peso(row.total_sales)}</td>
-                </tr>
-              ))}
+            <tbody className="divide-y divide-slate-100">
+              <PagedRows colSpan={4}>
+                {data.sales_by_market.map((row) => (
+                  <tr key={row.market_id}>
+                    <td className="px-4 py-3 font-medium text-text">{row.market_name}</td>
+                    <td className="px-4 py-3 text-text-muted">{row.total_orders}</td>
+                    <td className="px-4 py-3 text-text-muted">{peso(row.total_sales)}</td>
+                  </tr>
+                ))}
+              </PagedRows>
               {data.sales_by_market.length === 0 && (
                 <tr>
                   <td colSpan={3} className="px-4 py-6 text-center text-text-muted">
@@ -243,22 +245,24 @@ function SalesPanel({ startDate, endDate }: PanelProps) {
                 <th className="px-4 py-3">Total</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
-              {data.orders.map((order) => (
-                <tr key={order.id}>
-                  <td className="px-4 py-3 font-medium text-text">
-                    {order.order_number}
-                  </td>
-                  <td className="px-4 py-3 text-text-muted">
-                    {new Date(order.created_at).toLocaleDateString("en-PH")}
-                  </td>
-                  <td className="px-4 py-3 text-text-muted">{order.market_name}</td>
-                  <td className="px-4 py-3 text-text-muted">{order.customer_name}</td>
-                  <td className="px-4 py-3 text-text-muted">
-                    {peso(order.total_amount)}
-                  </td>
-                </tr>
-              ))}
+            <tbody className="divide-y divide-slate-100">
+              <PagedRows colSpan={6}>
+                {data.orders.map((order) => (
+                  <tr key={order.id}>
+                    <td className="px-4 py-3 font-medium text-text">
+                      {order.order_number}
+                    </td>
+                    <td className="px-4 py-3 text-text-muted">
+                      {new Date(order.created_at).toLocaleDateString("en-PH")}
+                    </td>
+                    <td className="px-4 py-3 text-text-muted">{order.market_name}</td>
+                    <td className="px-4 py-3 text-text-muted">{order.customer_name}</td>
+                    <td className="px-4 py-3 text-text-muted">
+                      {peso(order.total_amount)}
+                    </td>
+                  </tr>
+                ))}
+              </PagedRows>
               {data.orders.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-text-muted">
@@ -358,21 +362,24 @@ function VerificationsPanel({ startDate, endDate }: PanelProps) {
               <th className="px-4 py-3">Reviewed by</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {data.verifications.map((v) => (
-              <tr key={v.id}>
-                <td className="px-4 py-3 font-medium text-text">
-                  {v.customer_name}
-                  <div className="text-xs text-text-muted">{v.customer_email}</div>
-                </td>
-                <td className="px-4 py-3 text-text-muted">{v.id_type}</td>
-                <td className="px-4 py-3 capitalize text-text-muted">{v.status}</td>
-                <td className="px-4 py-3 text-text-muted">
-                  {v.submitted_at && new Date(v.submitted_at).toLocaleDateString("en-PH")}
-                </td>
-                <td className="px-4 py-3 text-text-muted">{v.reviewed_by ?? "—"}</td>
-              </tr>
-            ))}
+          <tbody className="divide-y divide-slate-100">
+            <PagedRows colSpan={6}>
+              {data.verifications.map((v) => (
+                <tr key={v.id}>
+                  <td className="px-4 py-3 font-medium text-text">
+                    {v.customer_name}
+                    <div className="text-xs text-text-muted">{v.customer_email}</div>
+                  </td>
+                  <td className="px-4 py-3 text-text-muted">{v.id_type}</td>
+                  <td className="px-4 py-3 capitalize text-text-muted">{v.status}</td>
+                  <td className="px-4 py-3 text-text-muted">
+                    {v.submitted_at &&
+                      new Date(v.submitted_at).toLocaleDateString("en-PH")}
+                  </td>
+                  <td className="px-4 py-3 text-text-muted">{v.reviewed_by ?? "—"}</td>
+                </tr>
+              ))}
+            </PagedRows>
             {data.verifications.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-text-muted">
@@ -449,17 +456,19 @@ function ActivitiesPanel({ startDate, endDate }: PanelProps) {
                 <th className="px-4 py-3">Cancelled</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
-              {data.market_activity.map((row) => (
-                <tr key={row.market_id}>
-                  <td className="px-4 py-3 font-medium text-text">{row.market_name}</td>
-                  <td className="px-4 py-3 text-text-muted">{row.total_orders}</td>
-                  <td className="px-4 py-3 text-text-muted">{peso(row.total_sales)}</td>
-                  <td className="px-4 py-3 text-text-muted">{row.completed_orders}</td>
-                  <td className="px-4 py-3 text-text-muted">{row.pending_orders}</td>
-                  <td className="px-4 py-3 text-text-muted">{row.cancelled_orders}</td>
-                </tr>
-              ))}
+            <tbody className="divide-y divide-slate-100">
+              <PagedRows colSpan={7}>
+                {data.market_activity.map((row) => (
+                  <tr key={row.market_id}>
+                    <td className="px-4 py-3 font-medium text-text">{row.market_name}</td>
+                    <td className="px-4 py-3 text-text-muted">{row.total_orders}</td>
+                    <td className="px-4 py-3 text-text-muted">{peso(row.total_sales)}</td>
+                    <td className="px-4 py-3 text-text-muted">{row.completed_orders}</td>
+                    <td className="px-4 py-3 text-text-muted">{row.pending_orders}</td>
+                    <td className="px-4 py-3 text-text-muted">{row.cancelled_orders}</td>
+                  </tr>
+                ))}
+              </PagedRows>
               {data.market_activity.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-6 text-center text-text-muted">
@@ -486,19 +495,21 @@ function ActivitiesPanel({ startDate, endDate }: PanelProps) {
                 <th className="px-4 py-3">Avg. value</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
-              {data.rider_activity.map((row) => (
-                <tr key={row.rider_id}>
-                  <td className="px-4 py-3 font-medium text-text">{row.rider_name}</td>
-                  <td className="px-4 py-3 text-text-muted">{row.total_deliveries}</td>
-                  <td className="px-4 py-3 text-text-muted">
-                    {peso(row.total_delivery_amount)}
-                  </td>
-                  <td className="px-4 py-3 text-text-muted">
-                    {peso(row.average_delivery_value)}
-                  </td>
-                </tr>
-              ))}
+            <tbody className="divide-y divide-slate-100">
+              <PagedRows colSpan={5}>
+                {data.rider_activity.map((row) => (
+                  <tr key={row.rider_id}>
+                    <td className="px-4 py-3 font-medium text-text">{row.rider_name}</td>
+                    <td className="px-4 py-3 text-text-muted">{row.total_deliveries}</td>
+                    <td className="px-4 py-3 text-text-muted">
+                      {peso(row.total_delivery_amount)}
+                    </td>
+                    <td className="px-4 py-3 text-text-muted">
+                      {peso(row.average_delivery_value)}
+                    </td>
+                  </tr>
+                ))}
+              </PagedRows>
               {data.rider_activity.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-6 text-center text-text-muted">

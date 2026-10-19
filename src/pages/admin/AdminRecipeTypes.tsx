@@ -8,8 +8,9 @@ import {
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
-import { Spinner } from "@/components/common/LoadingState";
+import { Soup } from "lucide-react";
 import ErrorState from "@/components/common/ErrorState";
+import { Card, EmptyPanel, SkeletonRows } from "@/components/admin/AdminUi";
 import {
   createAdminRecipeType,
   deactivateAdminRecipeType,
@@ -19,19 +20,29 @@ import {
 } from "@/services/api/adminRecipeTypes";
 import { useToastStore } from "@/stores/toastStore";
 import type { AdminRecipeType } from "@/types/adminRecipeType";
-import { ManageHeader } from "@/components/admin/AdminManageList";
+import {
+  ManageHeader,
+  ManageIcon,
+  ManageList,
+  ManagePill,
+  ManageRow,
+  ManageToolbar,
+  PagerBar,
+  RowAction,
+} from "@/components/admin/AdminManageList";
 
 export default function AdminRecipeTypes() {
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<AdminRecipeType | null>(null);
   const [name, setName] = useState("");
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["adminRecipeTypes", search],
-    queryFn: () => listAdminRecipeTypes({ search: search || undefined }),
+    queryKey: ["adminRecipeTypes", search, page],
+    queryFn: () => listAdminRecipeTypes({ search: search || undefined, page }),
     placeholderData: keepPreviousData,
   });
 
@@ -113,83 +124,89 @@ export default function AdminRecipeTypes() {
     else createMutation.mutate();
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-8">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (isError || !data) {
-    return <ErrorState onRetry={() => void refetch()} />;
-  }
-
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <ManageHeader
         eyebrow="Paluto & recipes"
         title="Recipe types"
         description="Cooking-style tags for Paluto's filter chips (Soup, Fried, Grilled) — separate from grocery categories."
+        actionLabel="Add recipe type"
+        onAction={openCreateForm}
       />
 
-      <div className="flex items-center justify-between gap-3">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search recipe types..."
-          className="h-10 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
-        />
-        <Button size="sm" onClick={openCreateForm}>
-          Add recipe type
-        </Button>
-      </div>
+      <ManageToolbar
+        search={search}
+        onSearch={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
+        placeholder="Search recipe types"
+      />
 
-      <ul className="flex flex-col divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-        {data.data.length === 0 && (
-          <li className="px-4 py-6 text-center text-sm text-text-muted">
-            No recipe types yet.
-          </li>
-        )}
-        {data.data.map((recipeType) => (
-          <li
-            key={recipeType.id}
-            className="flex items-center justify-between gap-3 px-4 py-3"
-          >
-            <button
-              type="button"
-              onClick={() => openEditForm(recipeType)}
-              className="flex-1 text-left font-medium text-text"
-            >
-              {recipeType.name}
-            </button>
-            <span
-              className={`text-xs font-semibold ${recipeType.status ? "text-status-delivered" : "text-text-muted"}`}
-            >
-              {recipeType.status ? "Active" : "Inactive"}
-            </span>
-            {recipeType.status ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                loading={deactivateMutation.isPending}
-                onClick={() => deactivateMutation.mutate(recipeType.id)}
-              >
-                Deactivate
-              </Button>
-            ) : (
-              <Button
-                variant="secondary"
-                size="sm"
-                loading={restoreMutation.isPending}
-                onClick={() => restoreMutation.mutate(recipeType.id)}
-              >
-                Restore
-              </Button>
-            )}
-          </li>
-        ))}
-      </ul>
+      {isLoading && (
+        <Card>
+          <SkeletonRows rows={4} />
+        </Card>
+      )}
+      {isError && <ErrorState onRetry={() => void refetch()} />}
+
+      {data && data.data.length === 0 && (
+        <Card>
+          <EmptyPanel
+            title={search ? "No recipe types match." : "No recipe types yet."}
+            description="Add tags like Soup, Fried or Grilled for Paluto's filters."
+          />
+        </Card>
+      )}
+
+      {data && data.data.length > 0 && (
+        <ManageList
+          footer={
+            <PagerBar
+              page={data.current_page}
+              lastPage={data.last_page}
+              total={data.total}
+              perPage={data.per_page}
+              onPage={setPage}
+            />
+          }
+        >
+          {data.data.map((recipeType) => (
+            <ManageRow
+              key={recipeType.id}
+              onOpen={() => openEditForm(recipeType)}
+              dimmed={!recipeType.status}
+              leading={<ManageIcon icon={<Soup size={18} />} />}
+              title={recipeType.name}
+              subtitle="Paluto filter tag"
+              actions={
+                recipeType.status ? (
+                  <RowAction
+                    tone="danger"
+                    disabled={deactivateMutation.isPending}
+                    onClick={() => deactivateMutation.mutate(recipeType.id)}
+                  >
+                    Deactivate
+                  </RowAction>
+                ) : (
+                  <RowAction
+                    tone="success"
+                    disabled={restoreMutation.isPending}
+                    onClick={() => restoreMutation.mutate(recipeType.id)}
+                  >
+                    Restore
+                  </RowAction>
+                )
+              }
+              pills={
+                <ManagePill tone={recipeType.status ? "active" : "muted"}>
+                  {recipeType.status ? "Active" : "Inactive"}
+                </ManagePill>
+              }
+            />
+          ))}
+        </ManageList>
+      )}
 
       <Modal
         isOpen={formOpen}

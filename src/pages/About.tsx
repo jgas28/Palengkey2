@@ -5,7 +5,10 @@ import { photos } from "@/components/pk/photos";
 const VALUES = [
   ["Freshness first", "Every order is handpicked from trusted market stalls."],
   ["Fair for vendors", "We help local sellers reach more Filipino households."],
-  ["Made for real life", "From detailed cuts to Paluto, shopping works the way the palengke does."],
+  [
+    "Made for real life",
+    "From detailed cuts to Paluto, shopping works the way the palengke does.",
+  ],
 ];
 
 /** The design's About page. */
@@ -20,14 +23,21 @@ export default function About() {
             <p className="kicker">Our story</p>
             <h1>Fresh from the market. Built for Filipino families.</h1>
             <p>
-              Palengkey connects neighborhood markets, trusted vendors, personal shoppers, and riders
-              in one thoughtful experience.
+              Palengkey connects neighborhood markets, trusted vendors, personal shoppers,
+              and riders in one thoughtful experience.
             </p>
-            <button type="button" className="btn primary" onClick={() => navigate("/shop")}>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => navigate("/shop")}
+            >
               Shop the palengke <Icon name="arrow" />
             </button>
           </div>
-          <img src={photos.market} alt="Local market shopper receiving fresh vegetables" />
+          <img
+            src={photos.palengke}
+            alt="Local market shopper receiving fresh vegetables"
+          />
         </div>
       </section>
       <section className="section shell values">
