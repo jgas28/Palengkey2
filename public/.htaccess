@@ -1,0 +1,32 @@
+# Single-page app: let React Router handle every path that isn't a real file.
+# Without this, Apache answers /shop, /login, /admin/login ... with its own 404,
+# because only index.html exists on disk. (Copied into dist/ by Vite on build.)
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Tidy doubled slashes, e.g. //admin/login/ -> /admin/login/
+  RewriteCond %{THE_REQUEST} \s[^?]*//
+  RewriteRule ^(.*)$ /$1 [R=301,L,NE]
+
+  RewriteRule ^index\.html$ - [L]
+
+  # Real files and folders (JS, CSS, images, the Firebase worker) are served as-is.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  RewriteRule ^ /index.html [L]
+</IfModule>
+
+# Fallback if mod_rewrite is off (Apache 2.2.16+).
+<IfModule !mod_rewrite.c>
+  FallbackResource /index.html
+</IfModule>
+
+# Always fetch a fresh index.html so new deploys show up; hashed assets can cache long.
+<IfModule mod_headers.c>
+  <FilesMatch "index\.html$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>

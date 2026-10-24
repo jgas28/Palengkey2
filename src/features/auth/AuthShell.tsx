@@ -8,7 +8,7 @@ import PkToast from "@/components/pk/PkToast";
 /** The design's auth page — market photo with quote on the left, card on the right. */
 export default function AuthShell({
   children,
-  quote = "“Your trusted palengke, now closer to home.”",
+  quote = "“Your trusted palengke, now closer to your home.”",
   homeHref = "/",
 }: {
   children: ReactNode;
