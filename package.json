@@ -12,7 +12,9 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "cap:sync": "cap sync"
+    "cap:sync": "cap sync",
+    "build:android": "tsc --noEmit && vite build --mode android",
+    "android:sync": "npm run build:android && cap sync android"
   },
   "dependencies": {
     "@capacitor/browser": "^6.0.3",
@@ -34,7 +36,7 @@
   },
   "devDependencies": {
     "@capacitor/android": "^6.1.2",
-    "@capacitor/cli": "^8.5.0",
+    "@capacitor/cli": "^6.2.2",
     "@capacitor/ios": "^6.1.2",
     "@eslint/js": "^9.11.1",
     "@testing-library/dom": "^10.4.1",

@@ -28,6 +28,10 @@ export const env = {
   // what Android uses; iOS needs its own client from Google Cloud Console.
   googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined,
   googleIosClientId: import.meta.env.VITE_GOOGLE_IOS_CLIENT_ID as string | undefined,
+  // Native (Android/iOS) push needs google-services.json / GoogleService-Info.plist
+  // bundled in the app; registering without them crashes on launch. Set to "true"
+  // only for builds that include those files.
+  nativePushEnabled: import.meta.env.VITE_NATIVE_PUSH_ENABLED === "true",
 };
 
 /** Push notifications are an enhancement — the app must work fine without them configured. */

@@ -33,6 +33,7 @@ import {
 import { InitialsAvatar } from "@/components/admin/AdminUi";
 import AdminOrderBell from "@/features/admin/AdminOrderBell";
 import { useQuery } from "@tanstack/react-query";
+import { getMaintenance, maintenanceQueryKey } from "@/services/api/adminSettings";
 import { listAdminOrders } from "@/services/api/adminOrders";
 import { useAdminAuthStore } from "@/stores/adminAuthStore";
 import { adminLogout } from "@/services/api/adminAuth";
@@ -248,6 +249,14 @@ export default function AdminLayout() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const canSeeOrders = user ? ADMIN.includes(user.role) : false;
+  // Reminder bar while the customer site is closed (super admin only).
+  const { data: maintenance } = useQuery({
+    queryKey: maintenanceQueryKey,
+    queryFn: getMaintenance,
+    enabled: user?.role === "super_admin",
+    refetchInterval: 60_000,
+  });
+
   const { data: newOrderCount = 0 } = useQuery({
     queryKey: ["adminNewOrders"],
     queryFn: () => listAdminOrders({ status: "order_received", page: 1 }),
@@ -612,6 +621,24 @@ export default function AdminLayout() {
         </header>
 
         <main className="flex-1 px-4 py-6 md:px-8">
+          {maintenance?.enabled && (
+            <div
+              role="status"
+              className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900"
+            >
+              <span>
+                <strong>Maintenance mode is on.</strong> Customers see the maintenance
+                page.
+              </span>
+              <button
+                type="button"
+                onClick={() => navigate("/admin/settings")}
+                className="font-semibold text-amber-900 underline"
+              >
+                Manage
+              </button>
+            </div>
+          )}
           <Outlet />
         </main>
       </div>

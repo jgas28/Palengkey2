@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\Admin\ItemController;
 use App\Http\Controllers\Api\Admin\ItemImageController;
 use App\Http\Controllers\Api\Admin\LookupController;
 use App\Http\Controllers\Api\Admin\MarketController;
+use App\Http\Controllers\Api\Admin\MaintenanceController;
 use App\Http\Controllers\Api\Admin\MarketItemController;
 use App\Http\Controllers\Api\Admin\OrderController;
 use App\Http\Controllers\Api\Admin\PalutoDishController;
@@ -39,7 +40,7 @@ Route::prefix('admin')->group(function () {
     // 5 tries a minute per email + IP (see AppServiceProvider).
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:admin-login');
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'token.type:admin'])->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
 
@@ -158,6 +159,9 @@ Route::prefix('admin')->group(function () {
             Route::post('/careers', [CareerController::class, 'store']);
             Route::patch('/careers/{career}', [CareerController::class, 'update']);
             Route::delete('/careers/{career}', [CareerController::class, 'destroy']);
+
+            Route::get('/maintenance', [MaintenanceController::class, 'show']);
+            Route::put('/maintenance', [MaintenanceController::class, 'update']);
 
             Route::get('/settings', [SettingController::class, 'index']);
             Route::put('/settings', [SettingController::class, 'update']);

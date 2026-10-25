@@ -33,7 +33,8 @@ describe("ErrorBoundary", () => {
       </ErrorBoundary>,
     );
 
-    expect(screen.getByText("Something went wrong.")).toBeInTheDocument();
+    expect(screen.getByText("Naku, may aberya.")).toBeInTheDocument();
+    expect(screen.getByText(/Reference: PLK-500-/)).toBeInTheDocument();
     expect(screen.queryByText(/boom/i)).not.toBeInTheDocument();
   });
 });

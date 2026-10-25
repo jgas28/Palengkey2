@@ -33,9 +33,11 @@ use Illuminate\Support\Facades\Route;
 Route::get('/ping', fn () => response()->json(['message' => 'pong']));
 
 // Public, unprefixed (matches the reference contract exactly — do not nest under /customer or /admin).
-Route::get('/popup-ads', [PopupAdController::class, 'index']);
+Route::get('/popup-ads', [PopupAdController::class, 'index'])->middleware('customer.maintenance');
 
-Route::prefix('customer')->group(function () {
+// Customer API — closed while super admin turns on maintenance mode (admin, rider
+// and webhook routes stay open).
+Route::prefix('customer')->middleware('customer.maintenance')->group(function () {
     // Public catalog (no auth).
     Route::get('/markets', [MarketApiController::class, 'index']);
     Route::get('/categories', [CategoryApiController::class, 'index']);
@@ -78,8 +80,8 @@ Route::prefix('customer')->group(function () {
     Route::post('/cart/add-paluto-dish', [CartController::class, 'addPalutoDish']);
     Route::delete('/cart/recipe-bundle/{bundle}', [CartController::class, 'removeRecipeBundle']);
 
-    // Authenticated (Sanctum bearer token).
-    Route::middleware('auth:sanctum')->group(function () {
+    // Authenticated (Sanctum bearer token) — customer tokens only.
+    Route::middleware(['auth:sanctum', 'token.type:customer'])->group(function () {
         Route::get('/me', [CustomerAuthController::class, 'me']);
         Route::post('/logout', [CustomerAuthController::class, 'logout']);
         Route::post('/logout-all', [CustomerAuthController::class, 'logoutAll']);

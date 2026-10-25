@@ -27,7 +27,7 @@ class RiderAuthController extends Controller
             return response()->json(['success' => false, 'message' => 'Your rider account is inactive. Please contact your market admin.'], 403);
         }
 
-        $token = $rider->createToken('rider-app')->plainTextToken;
+        $token = $rider->createToken('rider-app', ['*'], now()->addDays(30))->plainTextToken;
 
         return response()->json([
             'success' => true,

@@ -567,7 +567,7 @@ class CustomerAuthController extends Controller
     private function issueDeviceToken(Customer $customer, Request $request): string
     {
         $device = substr($request->userAgent() ?? 'device', 0, 120);
-        $tokenId = $this->extractTokenId($token = $customer->createToken($device)->plainTextToken);
+        $tokenId = $this->extractTokenId($token = $customer->createToken($device, ['*'], now()->addYears(1))->plainTextToken);
 
         CustomerDevice::updateOrCreate(
             ['customer_id' => $customer->id, 'device_id' => md5($request->userAgent() ?? 'device')],

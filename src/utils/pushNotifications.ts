@@ -22,6 +22,8 @@ export async function registerForPushNotifications(): Promise<void> {
 }
 
 async function registerNativePush(): Promise<void> {
+  // Without the Firebase config file in the native app, register() crashes the app.
+  if (!env.nativePushEnabled) return;
   const permission = await PushNotifications.requestPermissions();
   if (permission.receive !== "granted") return;
 

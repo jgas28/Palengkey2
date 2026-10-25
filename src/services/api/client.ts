@@ -3,6 +3,7 @@ import { env } from "@/config/env";
 import { useAuthStore } from "@/stores/authStore";
 import { ApiError } from "@/services/api/apiError";
 import { getDeviceId } from "@/utils/deviceId";
+import { goToMaintenance } from "@/features/system/maintenance";
 
 export const apiClient = axios.create({
   baseURL: env.apiUrl,
@@ -25,6 +26,14 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Laravel maintenance mode (php artisan down) answers everything with 503.
+    if (error.response?.status === 503) {
+      goToMaintenance(
+        error.response.headers?.["retry-after"],
+        error.response.data?.back_at,
+      );
+    }
+
     if (error.response?.status === 401) {
       // Token is missing/expired/revoked server-side — drop the local session so
       // route guards send the customer back to /login.

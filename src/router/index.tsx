@@ -34,6 +34,8 @@ const DeliveryAreas = lazy(() => import("@/pages/DeliveryAreas"));
 const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("@/pages/TermsOfService"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
+const Maintenance = lazy(() => import("@/pages/system/Maintenance"));
+const ErrorPage = lazy(() => import("@/pages/system/ErrorPage"));
 const Login = lazy(() => import("@/pages/auth/Login"));
 const Register = lazy(() => import("@/pages/auth/Register"));
 const OtpVerify = lazy(() => import("@/pages/auth/OtpVerify"));
@@ -132,8 +134,6 @@ export default function AppRouter() {
             <Route path="checkout/bpi/:orderId" element={<BpiPayment />} />
             <Route path="checkout/pay/:orderId" element={<BpiPayment />} />
           </Route>
-
-          <Route path="*" element={<NotFound />} />
         </Route>
 
         <Route element={<AuthLayout />}>
@@ -162,7 +162,10 @@ export default function AppRouter() {
             <Route path="recipe-types" element={<AdminRecipeTypes />} />
             <Route path="paluto-stalls" element={<AdminPalutoStalls />} />
             <Route path="paluto-stalls/:stallId/dishes" element={<AdminPalutoDishes />} />
-            <Route path="paluto-stalls/:stallId/dishes/new" element={<AdminPalutoDishForm />} />
+            <Route
+              path="paluto-stalls/:stallId/dishes/new"
+              element={<AdminPalutoDishForm />}
+            />
             <Route
               path="paluto-stalls/:stallId/dishes/:dishId/edit"
               element={<AdminPalutoDishForm />}
@@ -198,6 +201,11 @@ export default function AppRouter() {
             <Route path="cod-submissions" element={<AdminCodSubmissions />} />
           </Route>
         </Route>
+
+        {/* Standalone system pages (no shop header/footer) — Figma /maintenance, /error, 404. */}
+        <Route path="maintenance" element={<Maintenance />} />
+        <Route path="error" element={<ErrorPage />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
   );

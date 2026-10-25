@@ -1,4 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import ErrorPage from "@/pages/system/ErrorPage";
+import { makeErrorReference } from "@/features/system/errorReference";
 
 interface Props {
   children: ReactNode;
@@ -6,18 +8,24 @@ interface Props {
 
 interface State {
   hasError: boolean;
+  reference?: string;
 }
 
 export default class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false };
 
   static getDerivedStateFromError(): State {
-    return { hasError: true };
+    return { hasError: true, reference: makeErrorReference(500) };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     // Logged separately from the customer-facing message shown below (skill §27).
-    console.error("Unhandled UI error:", error, info.componentStack);
+    // The reference matches what the customer sees, so a report can be traced here.
+    console.error(
+      `Unhandled UI error [${this.state.reference ?? "?"}]:`,
+      error,
+      info.componentStack,
+    );
   }
 
   handleRetry = () => {
@@ -26,21 +34,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div className="flex min-h-full flex-col items-center justify-center gap-4 px-6 py-16 text-center">
-          <h1 className="text-lg font-semibold">Something went wrong.</h1>
-          <p className="text-sm text-text-muted">
-            Please try again. If this keeps happening, contact support.
-          </p>
-          <button
-            type="button"
-            onClick={this.handleRetry}
-            className="rounded-pill bg-primary-500 px-6 py-2 text-sm font-medium text-white shadow-soft"
-          >
-            Try again
-          </button>
-        </div>
-      );
+      return <ErrorPage reference={this.state.reference} onRetry={this.handleRetry} />;
     }
 
     return this.props.children;

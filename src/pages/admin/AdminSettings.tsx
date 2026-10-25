@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronRight, SlidersHorizontal } from "lucide-react";
 import { Card } from "@/components/admin/AdminUi";
+import MaintenanceCard from "@/features/admin/MaintenanceCard";
 import Input from "@/components/ui/Input";
 import { Spinner } from "@/components/common/LoadingState";
 import ErrorState from "@/components/common/ErrorState";
@@ -80,6 +81,8 @@ export default function AdminSettings() {
           </button>
         }
       />
+
+      <MaintenanceCard />
 
       <Card className="overflow-hidden">
         <ul className="divide-y divide-slate-100">
