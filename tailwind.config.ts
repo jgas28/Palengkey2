@@ -63,7 +63,7 @@ export default {
         "gradient-status-cancelled": "linear-gradient(135deg, #F87171 0%, #DC2626 100%)",
       },
       fontFamily: {
-        sans: ["Plus Jakarta Sans", "DM Sans", "system-ui", "sans-serif"],
+        sans: ["Inter", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
         display: ["Playfair Display", "Georgia", "serif"],
       },
       borderRadius: {

@@ -12,4 +12,19 @@
   body {
     @apply bg-background text-text font-sans antialiased;
   }
+
+  /* Admin / super admin (customer pages are body.pk with their own fonts):
+     Inter everywhere, sans headings instead of the decorative serif, and
+     tabular figures so prices and totals line up in tables. */
+  body:not(.pk) {
+    font-feature-settings: "cv11", "ss01";
+  }
+  body:not(.pk) .font-display {
+    font-family: theme("fontFamily.sans");
+    letter-spacing: -0.015em;
+  }
+  body:not(.pk) table,
+  body:not(.pk) .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
 }

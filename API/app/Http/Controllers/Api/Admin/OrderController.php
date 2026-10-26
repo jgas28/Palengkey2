@@ -368,8 +368,9 @@ class OrderController extends Controller
     }
 
     /**
-     * Streams a two-page PDF: a legal-size picking list for market staff,
-     * followed by a grid of 3"x2" stick-on item labels (name, weight/UOM,
+     * Streams a PDF: a legal-size picking list for market staff (raw vendor
+     * prices, check boxes), the customer order list (customer prices and fees),
+     * then a grid of 3"x2" stick-on item labels (name, weight/UOM,
      * packed date) for bagging produce before dispatch. Not a carrier
      * shipping label — no barcode or waybill.
      */
@@ -377,9 +378,12 @@ class OrderController extends Controller
     {
         $this->authorizeOrderAccess($request, $order);
 
-        $order->loadMissing('items.item.unit');
+        $order->loadMissing('items.item.unit', 'customer');
 
-        $pdf = Pdf::loadView('admin.orders.print', compact('order'));
+        $logoPath = public_path('login/name.png');
+        $logo = is_file($logoPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($logoPath)) : null;
+
+        $pdf = Pdf::loadView('admin.orders.print', compact('order', 'logo'));
 
         return $pdf->stream("Order-{$order->order_number}.pdf");
     }
