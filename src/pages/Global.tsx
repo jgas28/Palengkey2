@@ -13,6 +13,7 @@ import { FALLBACK_HERO_STATS } from "@/utils/heroStats";
 import { useMarketStore } from "@/stores/marketStore";
 import type { Category } from "@/types/category";
 import type { ItemSummary } from "@/types/item";
+import MarketPill from "@/features/home/MarketPill";
 
 /** Icon per category, matched on the category name (no icon field in the CMS). */
 function categoryIcon(name: string): IconName {
@@ -148,9 +149,7 @@ export default function Global() {
         <section className="hero">
           <div className="shell hero-grid">
             <div className="hero-copy">
-              <div className="location-pill">
-                <span></span> Now delivering from {marketName}
-              </div>
+              <MarketPill fallbackName={market?.name} />
               <h1>
                 Your palengke,
                 <br />

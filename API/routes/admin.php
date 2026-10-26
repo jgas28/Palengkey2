@@ -196,13 +196,13 @@ Route::prefix('admin')->group(function () {
             Route::get('/popup-ads', [PopupAdController::class, 'index']);
             Route::get('/popup-ads/vouchers', [PopupAdController::class, 'vouchers']);
             Route::post('/popup-ads', [PopupAdController::class, 'store']);
-            Route::post('/popup-ads/{popupAd}', [PopupAdController::class, 'update']);
-            Route::delete('/popup-ads/{popupAd}', [PopupAdController::class, 'destroy']);
+            Route::post('/popup-ads/{popupAd}', [PopupAdController::class, 'update'])->whereNumber('popupAd');
+            Route::delete('/popup-ads/{popupAd}', [PopupAdController::class, 'destroy'])->whereNumber('popupAd');
 
             Route::get('/hero-content', [HeroContentController::class, 'index']);
             Route::post('/hero-content', [HeroContentController::class, 'store']);
-            Route::post('/hero-content/{heroContent}', [HeroContentController::class, 'update']);
-            Route::delete('/hero-content/{heroContent}', [HeroContentController::class, 'destroy']);
+            Route::post('/hero-content/{heroContent}', [HeroContentController::class, 'update'])->whereNumber('heroContent');
+            Route::delete('/hero-content/{heroContent}', [HeroContentController::class, 'destroy'])->whereNumber('heroContent');
             Route::post('/hero-content/reorder', [HeroContentController::class, 'reorder']);
 
             Route::get('/curated-products', [CuratedProductController::class, 'index']);

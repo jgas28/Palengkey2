@@ -55,7 +55,6 @@ export async function updateAdminHeroContent(
   payload: HeroContentPayload,
 ): Promise<AdminHeroContent> {
   const form = toFormData(payload);
-  form.append("_method", "PATCH");
   const { data } = await adminApiClient.post<AdminHeroContent>(
     `/admin/hero-content/${heroId}`,
     form,

@@ -8,6 +8,7 @@ import { formatBatch } from "@/features/recipes/ingredientFormat";
 import { listRecipes, listRecipeTypes } from "@/services/api/recipes";
 import { useMarketStore } from "@/stores/marketStore";
 import recipesHero from "@/assets/images/recipes-hero.jpg";
+import MarketPill from "@/features/home/MarketPill";
 
 /** The design's Recipes page — global catalog; ingredients priced at the selected market in the drawer. */
 export default function Recipes() {
@@ -59,6 +60,7 @@ export default function Recipes() {
       <section className="page-hero recipe-hero">
         <div className="shell page-hero-grid">
           <div className="recipe-intro">
+            <MarketPill />
             <p className="kicker">Cook it yourself</p>
             <h1>Recipes for every Filipino table.</h1>
             <p>

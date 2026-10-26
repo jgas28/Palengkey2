@@ -6,6 +6,7 @@ import Icon from "@/components/pk/Icon";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { getActivePopupAds } from "@/services/api/popupAds";
 import { useAuthStore } from "@/stores/authStore";
+import { sanitizeRichText } from "@/utils/safeHtml";
 
 const SESSION_KEY = "palengkey_popup_ads_seen";
 const AUTO_ADVANCE_MS = 6000;
@@ -141,9 +142,10 @@ export default function PopupAdModal() {
             )}
 
             {ad.body && (
-              <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-500">
-                {ad.body}
-              </p>
+              <p
+                className="mt-3 text-sm leading-6 text-slate-500 [&_b]:font-bold [&_b]:text-slate-800 [&_strong]:font-bold [&_strong]:text-slate-800 [&_i]:italic [&_em]:italic [&_u]:underline [&_u]:underline-offset-2"
+                dangerouslySetInnerHTML={{ __html: sanitizeRichText(ad.body) }}
+              />
             )}
 
             {ad.voucher ? (

@@ -56,7 +56,7 @@ class RecipeController extends Controller
             'status' => 'boolean',
             'ingredients' => 'nullable|array',
             'ingredients.*.item_id' => 'required_with:ingredients|exists:items,id,status,1',
-            'ingredients.*.kind' => 'required_with:ingredients|in:meat,vegetable,condiment,spice',
+            'ingredients.*.kind' => 'nullable|in:meat,vegetable,condiment,spice',
             'ingredients.*.quantity' => 'required_with:ingredients|numeric|min:0.001',
             'ingredients.*.unit_id' => 'required_with:ingredients|exists:units,id,status,1',
             'ingredients.*.is_optional' => 'boolean',
@@ -125,7 +125,7 @@ class RecipeController extends Controller
             'status' => 'boolean',
             'ingredients' => 'sometimes|array|min:1',
             'ingredients.*.item_id' => 'required_with:ingredients|exists:items,id,status,1',
-            'ingredients.*.kind' => 'required_with:ingredients|in:meat,vegetable,condiment,spice',
+            'ingredients.*.kind' => 'nullable|in:meat,vegetable,condiment,spice',
             'ingredients.*.quantity' => 'required_with:ingredients|numeric|min:0.001',
             'ingredients.*.unit_id' => 'required_with:ingredients|exists:units,id,status,1',
             'ingredients.*.is_optional' => 'boolean',
@@ -197,7 +197,7 @@ class RecipeController extends Controller
         $data = $request->validate([
             'ingredients' => 'required|array|min:1',
             'ingredients.*.item_id' => 'required|exists:items,id,status,1',
-            'ingredients.*.kind' => 'required|in:meat,vegetable,condiment,spice',
+            'ingredients.*.kind' => 'nullable|in:meat,vegetable,condiment,spice',
             'ingredients.*.quantity' => 'required|numeric|min:0.001',
             'ingredients.*.unit_id' => 'required|exists:units,id,status,1',
             'ingredients.*.is_optional' => 'boolean',
@@ -237,7 +237,7 @@ class RecipeController extends Controller
      */
     private function syncIngredients(Recipe $recipe, array $ingredients): void
     {
-        $items = Item::whereIn('id', collect($ingredients)->pluck('item_id'))->get()->keyBy('id');
+        $items = Item::with('category')->whereIn('id', collect($ingredients)->pluck('item_id'))->get()->keyBy('id');
 
         RecipeIngredient::where('recipe_id', $recipe->id)->delete();
 
@@ -245,7 +245,7 @@ class RecipeController extends Controller
             RecipeIngredient::create([
                 'recipe_id' => $recipe->id,
                 'item_id' => $ingredient['item_id'],
-                'kind' => $ingredient['kind'] ?? 'meat',
+                'kind' => RecipeIngredient::kindForCategory($items[$ingredient['item_id']]->category?->name),
                 'quantity' => $ingredient['quantity'],
                 'unit_id' => $items[$ingredient['item_id']]->unit_id,
                 'is_optional' => $ingredient['is_optional'] ?? false,

@@ -10,6 +10,7 @@ use App\Models\PalutoDish;
 use App\Models\PalutoDishIngredient;
 use App\Models\PalutoStall;
 use App\Models\Recipe;
+use App\Models\RecipeIngredient;
 use App\Services\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,7 +27,7 @@ class PalutoDishController extends Controller
 {
     private const INGREDIENT_LINE_RULES = [
         'ingredients.*.item_id' => 'required|exists:items,id,status,1',
-        'ingredients.*.kind' => 'required|in:meat,vegetable,condiment,spice',
+        'ingredients.*.kind' => 'nullable|in:meat,vegetable,condiment,spice',
         'ingredients.*.quantity' => 'required|numeric|min:0.001',
         'ingredients.*.is_optional' => 'boolean',
         'ingredients.*.is_provided' => 'boolean',
@@ -264,7 +265,7 @@ class PalutoDishController extends Controller
     /** Replaces the dish's ingredient lines with the given ones. */
     private function syncIngredients(PalutoDish $dish, array $ingredients): void
     {
-        $items = Item::whereIn('id', collect($ingredients)->pluck('item_id'))->get()->keyBy('id');
+        $items = Item::with('category')->whereIn('id', collect($ingredients)->pluck('item_id'))->get()->keyBy('id');
 
         PalutoDishIngredient::where('paluto_dish_id', $dish->id)->delete();
 
@@ -272,7 +273,7 @@ class PalutoDishController extends Controller
             PalutoDishIngredient::create([
                 'paluto_dish_id' => $dish->id,
                 'item_id' => $ingredient['item_id'],
-                'kind' => $ingredient['kind'],
+                'kind' => RecipeIngredient::kindForCategory($items[$ingredient['item_id']]->category?->name),
                 'quantity' => $ingredient['quantity'],
                 // Always the item's own selling unit — price is quantity × the
                 // item's per-unit market price, with no unit conversion.

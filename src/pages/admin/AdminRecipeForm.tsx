@@ -1,3 +1,4 @@
+import { kindFromCategory } from "@/features/recipes/ingredientFormat";
 import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
@@ -17,11 +18,7 @@ import {
   type RecipeIngredientInput,
 } from "@/services/api/adminRecipes";
 import { listAdminItems } from "@/services/api/adminItems";
-import {
-  listAdminMarkets,
-  listAdminRecipeTypes,
-  listAdminUnits,
-} from "@/services/api/adminLookups";
+import { listAdminRecipeTypes, listAdminUnits } from "@/services/api/adminLookups";
 import { useToastStore } from "@/stores/toastStore";
 import type { RecipeIngredientKind, RecipePricingUnit } from "@/types/adminRecipe";
 
@@ -81,10 +78,6 @@ export default function AdminRecipeForm() {
   const { data: units = [] } = useQuery({
     queryKey: ["adminUnits"],
     queryFn: listAdminUnits,
-  });
-  const { data: markets = [] } = useQuery({
-    queryKey: ["adminMarkets"],
-    queryFn: listAdminMarkets,
   });
 
   const {
@@ -157,12 +150,10 @@ export default function AdminRecipeForm() {
     setSteps((rows) => rows.filter((row) => row.key !== key));
   }
 
-  // Ingredient picker — simple debounced typeahead against the existing item catalog,
-  // optionally scoped to items actually sold at one market so recipes are only built
-  // from ingredients that are realistically available where they'll be cooked.
+  // Ingredient picker — debounced typeahead over the whole item catalog. Recipes
+  // belong to every market; customers see prices and availability at their own.
   const [itemSearch, setItemSearch] = useState("");
   const [debouncedItemSearch, setDebouncedItemSearch] = useState("");
-  const [ingredientMarketId, setIngredientMarketId] = useState<number | "">("");
 
   useEffect(() => {
     const timeout = setTimeout(() => setDebouncedItemSearch(itemSearch.trim()), 300);
@@ -170,25 +161,30 @@ export default function AdminRecipeForm() {
   }, [itemSearch]);
 
   const { data: itemResults, isFetching: itemsFetching } = useQuery({
-    queryKey: ["adminItemSearch", debouncedItemSearch, ingredientMarketId],
+    queryKey: ["adminItemSearch", debouncedItemSearch, "catalog"],
     queryFn: () =>
       listAdminItems({
         search: debouncedItemSearch,
         status: "1",
-        marketId: ingredientMarketId || undefined,
+        catalog: true,
         page: 1,
       }),
     enabled: debouncedItemSearch.length > 1,
   });
 
-  function addIngredient(item: { id: number; name: string; unit_id: number }) {
+  function addIngredient(item: {
+    id: number;
+    name: string;
+    unit_id: number;
+    category: string | null;
+  }) {
     setIngredients((rows) => [
       ...rows,
       {
         key: nextRowKey(),
         item_id: item.id,
         item_name: item.name,
-        kind: "meat",
+        kind: kindFromCategory(item.category),
         quantity: "1",
         unit_id: item.unit_id,
         is_optional: false,
@@ -479,32 +475,7 @@ export default function AdminRecipeForm() {
             <p className="text-sm text-text-muted">
               Quantities are for {baseQuantity || "1"}{" "}
               {pricingUnit === "kg" ? "kg" : "serving(s)"} — customers scale from there,
-              priced at their selected market.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-text" htmlFor="ingredient-market">
-              Filter by market
-            </label>
-            <select
-              id="ingredient-market"
-              value={ingredientMarketId}
-              onChange={(e) =>
-                setIngredientMarketId(e.target.value ? Number(e.target.value) : "")
-              }
-              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
-            >
-              <option value="">All markets</option>
-              {markets.map((market) => (
-                <option key={market.id} value={market.id}>
-                  {market.name}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-text-muted">
-              Only shows items sold at the selected market, so ingredients are ones this
-              recipe can realistically source.
+              priced at their own selected market (prices differ per market).
             </p>
           </div>
 
@@ -539,6 +510,7 @@ export default function AdminRecipeForm() {
                           id: item.id,
                           name: item.name,
                           unit_id: item.unit_id,
+                          category: item.category,
                         })
                       }
                       className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-background"
@@ -576,23 +548,12 @@ export default function AdminRecipeForm() {
                     <tr key={row.key}>
                       <td className="px-3 py-2 font-medium text-text">{row.item_name}</td>
                       <td className="px-3 py-2">
-                        <select
-                          value={row.kind}
-                          onChange={(e) =>
-                            updateIngredient(row.key, {
-                              kind: e.target.value as RecipeIngredientKind,
-                            })
-                          }
-                          className="h-9 rounded-lg border border-border bg-surface px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+                        <span
+                          title="Set from the item's category"
+                          className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700"
                         >
-                          {(Object.keys(KIND_LABELS) as RecipeIngredientKind[]).map(
-                            (kind) => (
-                              <option key={kind} value={kind}>
-                                {KIND_LABELS[kind]}
-                              </option>
-                            ),
-                          )}
-                        </select>
+                          {KIND_LABELS[row.kind]}
+                        </span>
                       </td>
                       <td className="px-3 py-2">
                         <input

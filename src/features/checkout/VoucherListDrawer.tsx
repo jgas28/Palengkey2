@@ -71,7 +71,12 @@ export default function VoucherListDrawer({
                   🎟️
                 </span>
                 <span className="flex flex-1 flex-col items-start gap-0.5">
-                  <span className="font-bold text-primary-700">{voucher.code}</span>
+                  <strong
+                    className="text-base tracking-wide text-primary-700"
+                    style={{ fontWeight: 800 }}
+                  >
+                    {voucher.code}
+                  </strong>
                   {voucher.description && (
                     <span className="text-sm text-text-muted">{voucher.description}</span>
                   )}

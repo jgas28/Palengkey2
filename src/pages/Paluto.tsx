@@ -6,6 +6,7 @@ import { photos } from "@/components/pk/photos";
 import MarketPickerDrawer from "@/features/home/MarketPickerDrawer";
 import { listPalutoStalls } from "@/services/api/paluto";
 import { useMarketStore } from "@/stores/marketStore";
+import MarketPill from "@/features/home/MarketPill";
 
 /** The design's Paluto page — hero, then the cooking stalls at the selected market. */
 export default function Paluto() {
@@ -29,6 +30,7 @@ export default function Paluto() {
       <section className="page-hero paluto-hero">
         <div className="shell page-hero-grid">
           <div>
+            <MarketPill />
             <p className="kicker">Cook for me</p>
             <h1>Paluto, made simple.</h1>
             <p>

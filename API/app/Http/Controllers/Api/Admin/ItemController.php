@@ -24,7 +24,9 @@ class ItemController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $marketId = $this->resolveMarketId($request, $user);
+        // catalog=1: every item regardless of market (recipe ingredients — recipes
+        // belong to all markets and are priced at the customer's market).
+        $marketId = $request->boolean('catalog') ? null : $this->resolveMarketId($request, $user);
 
         $query = Item::query()->with(['category', 'type', 'unit', 'images']);
 

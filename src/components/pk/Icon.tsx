@@ -12,6 +12,8 @@ export type IconName =
   | "fish"
   | "facebook"
   | "instagram"
+  | "tiktok"
+  | "twitter-x"
   | "leaf"
   | "menu"
   | "message"
@@ -53,6 +55,8 @@ const iconPaths: Record<IconName, ReactNode> = {
       <path d="M17.5 6.5h.01" />
     </>
   ),
+  tiktok: <path d="M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5M14 3c.4 2.7 2.3 4.6 5 5" />,
+  "twitter-x": <path d="M4 4h4.5L20 20h-4.5L4 4Zm16 0-6.6 7.4M4 20l6.6-7.4" />,
   leaf: (
     <path d="M20 4C11 4 5 8 5 15c0 2 1 4 3 5 1-6 5-9 9-11-4 3-6 6-7 11 7 0 10-7 10-16Z" />
   ),

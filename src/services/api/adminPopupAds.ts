@@ -38,19 +38,21 @@ export interface PopupAdPayload {
 }
 
 function toFormData(payload: PopupAdPayload): FormData {
+  // Optional fields are always sent: an empty string (null on the API) is how
+  // an edit clears a subtitle, voucher or date.
   const form = new FormData();
   form.append("type", payload.type);
-  if (payload.voucher_id) form.append("voucher_id", String(payload.voucher_id));
+  form.append("voucher_id", payload.voucher_id ? String(payload.voucher_id) : "");
   form.append("title", payload.title);
-  if (payload.subtitle) form.append("subtitle", payload.subtitle);
-  if (payload.body) form.append("body", payload.body);
-  if (payload.badge_text) form.append("badge_text", payload.badge_text);
-  if (payload.cta_label) form.append("cta_label", payload.cta_label);
-  if (payload.cta_url) form.append("cta_url", payload.cta_url);
+  form.append("subtitle", payload.subtitle ?? "");
+  form.append("body", payload.body ?? "");
+  form.append("badge_text", payload.badge_text ?? "");
+  form.append("cta_label", payload.cta_label ?? "");
+  form.append("cta_url", payload.cta_url ?? "");
   if (payload.image) form.append("image", payload.image);
   form.append("is_active", payload.is_active ? "1" : "0");
-  if (payload.starts_at) form.append("starts_at", payload.starts_at);
-  if (payload.ends_at) form.append("ends_at", payload.ends_at);
+  form.append("starts_at", payload.starts_at ?? "");
+  form.append("ends_at", payload.ends_at ?? "");
   form.append("sort_order", String(payload.sort_order ?? 0));
   return form;
 }
@@ -68,7 +70,6 @@ export async function updateAdminPopupAd(
   payload: PopupAdPayload,
 ): Promise<AdminPopupAd> {
   const form = toFormData(payload);
-  form.append("_method", "PATCH");
   const { data } = await adminApiClient.post<AdminPopupAd>(
     `/admin/popup-ads/${popupAdId}`,
     form,

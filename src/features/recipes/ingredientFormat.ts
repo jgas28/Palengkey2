@@ -7,6 +7,18 @@ export const INGREDIENT_KIND_LABELS: Record<IngredientKind, string> = {
   spice: "Spice",
 };
 
+/**
+ * Ingredient kind implied by the item's category, used when an ingredient is
+ * picked (admins can still change it). Grocery items default to condiment.
+ */
+export function kindFromCategory(category: string | null | undefined): IngredientKind {
+  const name = (category ?? "").toLowerCase();
+  if (/vegetable|fruit/.test(name)) return "vegetable";
+  if (/spice|herb/.test(name)) return "spice";
+  if (/grocery|condiment|sauce/.test(name)) return "condiment";
+  return "meat";
+}
+
 /** Trims a scaled ingredient/quantity value to at most 2 decimals for display. */
 export function formatQuantity(value: number): string {
   return Number(value.toFixed(2)).toString();

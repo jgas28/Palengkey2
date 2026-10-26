@@ -13,6 +13,8 @@ export interface ListAdminItemsParams {
   categoryId?: number;
   availability?: "available" | "unavailable";
   page?: number;
+  /** Search the whole catalog, ignoring the admin's assigned market. */
+  catalog?: boolean;
 }
 
 export async function listAdminItems(
@@ -26,6 +28,7 @@ export async function listAdminItems(
       category_id: params.categoryId,
       availability: params.availability,
       page: params.page,
+      catalog: params.catalog ? 1 : undefined,
     },
   });
   return data;

@@ -76,6 +76,20 @@ class PopupAdController extends Controller
 
     private function validated(Request $request, bool $imageRequired): array
     {
+        $data = $this->validateRequest($request, $imageRequired);
+
+        // Body allows only <b>/<strong>/<i>/<em>/<u>/<br>, with no attributes
+        // (the app sanitizes again before showing it).
+        if (! empty($data['body'])) {
+            $body = strip_tags($data['body'], '<b><strong><i><em><u><br>');
+            $data['body'] = preg_replace('/<(\/?)(br|strong|em|b|i|u)\b[^>]*>/i', '<$1$2>', $body);
+        }
+
+        return $data;
+    }
+
+    private function validateRequest(Request $request, bool $imageRequired): array
+    {
         return $request->validate([
             'type' => ['required', Rule::in(array_keys(PopupAd::TYPES))],
             'voucher_id' => ['nullable', 'exists:vouchers,id'],

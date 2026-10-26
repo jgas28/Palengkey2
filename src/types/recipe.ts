@@ -1,3 +1,4 @@
+import type { ItemAvailability } from "@/types/item";
 /** The Recipes catalog — cook-it-yourself guides whose ingredients can be bought raw. */
 
 export type PricingUnit = "kg" | "serving";
@@ -32,6 +33,12 @@ export interface RecipeIngredient {
   note: string | null;
   /** Per-unit price at the requested market; null when that market has no price for it. */
   unit_price: string | null;
+  /** Live status at the requested market (same rules as the shop). */
+  sold_here?: boolean;
+  availability?: ItemAvailability;
+  available_on?: string | null;
+  /** Past today's cutoff at that market — shows "Order later". */
+  is_cutoff?: boolean;
 }
 
 export interface RecipeDetail {

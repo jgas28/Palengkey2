@@ -14,7 +14,9 @@ body.pk {
   --dark: #203238;
   --white: #fff;
   --display: "Playfair Display", Georgia, serif;
-  --body: "DM Sans", sans-serif;
+  --body: "Plus Jakarta Sans", "DM Sans", sans-serif;
+  /* Shared banner background: Paluto, Recipes, About, Careers. */
+  --hero-teal: linear-gradient(120deg, #003f46, #007c87);
   --shadow: 0 14px 45px rgba(10, 64, 69, 0.09);
 }
 
@@ -47,11 +49,18 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
 :where(body.pk) .profile-link { height: 40px; padding: 0 7px; color: var(--teal-dark); background: transparent; font-size: 12px; }
 :where(body.pk) .mobile-menu, :where(body.pk) .mobile-nav { display: none; }
 
-:where(body.pk) .hero { min-height: 740px; padding-top: 76px; overflow: hidden; background: radial-gradient(circle at 77% 20%, rgba(51,191,205,.2), transparent 28%), linear-gradient(115deg, #effbfb 0%, #f9fcf8 55%, #e5f7f6 100%); }
+:where(body.pk) .hero { min-height: 740px; padding-top: 76px; overflow: hidden; color: white; background: var(--hero-teal); }
 :where(body.pk) .hero-grid { display: grid; grid-template-columns: 1.02fr .98fr; align-items: center; gap: 70px; min-height: 664px; }
 :where(body.pk) .hero-copy { padding: 42px 0; }
 :where(body.pk) .location-pill { display: inline-flex; align-items: center; gap: 9px; padding: 8px 13px; border: 1px solid #bee3e6; background: rgba(255,255,255,.8); border-radius: 999px; color: var(--teal-dark); font-size: 12px; font-weight: 700; letter-spacing: .01em; }
 :where(body.pk) .location-pill span { width: 7px; height: 7px; background: #16a34a; border-radius: 50%; box-shadow: 0 0 0 4px rgba(22,163,74,.12); }
+:where(body.pk) .market-pill { font-family: inherit; cursor: pointer; text-align: left; max-width: 100%; transition: border-color .2s, box-shadow .2s; }
+:where(body.pk) .market-pill:hover { border-color: var(--teal); box-shadow: 0 6px 18px rgba(0,115,126,.12); }
+:where(body.pk) .market-pill:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+:where(body.pk) .market-pill > span { flex: none; }
+:where(body.pk) .market-pill strong { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:where(body.pk) .market-pill em { display: inline-flex; align-items: center; gap: 2px; margin-left: 4px; padding-left: 10px; border-left: 1px solid #bee3e6; color: var(--teal); font-style: normal; white-space: nowrap; }
+:where(body.pk) .inner-page .market-pill { margin-bottom: 14px; }
 :where(body.pk) h1, :where(body.pk) h2 { margin: 0; font-family: var(--display); }
 :where(body.pk) .hero h1 { margin: 24px 0 20px; font-size: clamp(54px, 5.5vw, 78px); line-height: .98; letter-spacing: -3px; }
 :where(body.pk) .hero h1 em { color: var(--teal); font-weight: 600; }
@@ -67,6 +76,14 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
 :where(body.pk) .link-arrow, :where(body.pk) .paluto-link, :where(body.pk) .market-banner a, :where(body.pk) .split-card a { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
 :where(body.pk) .link-arrow { color: var(--teal-dark); }
 :where(body.pk) .paluto-link { padding: 10px 15px; color: #8f5d08; background: var(--amber-pale); border-radius: 999px; }
+/* Home banner on the shared teal: light text, white search, amber Paluto pill. */
+:where(body.pk) .hero h1 em { color: #75dce4; }
+:where(body.pk) .hero .hero-lead { color: #cae4e6; }
+:where(body.pk) .hero .search-box { border-color: transparent; box-shadow: 0 16px 40px rgba(0,30,34,.28); }
+:where(body.pk) .hero .quick-links { color: #a9d3d6; }
+:where(body.pk) .hero .quick-links button { color: white; border-bottom-color: rgba(255,255,255,.45); }
+:where(body.pk) .hero .link-arrow { color: white; }
+:where(body.pk) .hero .paluto-link { color: #533700; background: var(--amber); }
 :where(body.pk) .hero-visual { position: relative; height: 530px; margin-right: -25px; }
 :where(body.pk) .photo { position: absolute; overflow: hidden; border: 7px solid rgba(255,255,255,.9); box-shadow: var(--shadow); }
 :where(body.pk) .photo-main { width: 67%; height: 76%; top: 9%; left: 8%; border-radius: 120px 22px 90px 22px; }
@@ -153,7 +170,7 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
 
 :where(body.pk) .deal-wrap { padding: 25px 0 95px; }
 :where(body.pk) .deal { display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; background: var(--amber-pale); border: 1px solid #f9e5b8; border-radius: 28px; }
-:where(body.pk) .deal-copy { padding: 58px 65px; }
+:where(body.pk) .deal-copy { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 48px 60px; }
 :where(body.pk) .deal-tag { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 30px; padding: 7px 10px; color: #704a08; background: var(--amber); border-radius: 5px; font-size: 9px; font-weight: 800; letter-spacing: .1em; }
 :where(body.pk) .deal-copy .kicker { color: #a56c08; }
 :where(body.pk) .deal-copy > p:not(.kicker) { max-width: 500px; color: #695f50; line-height: 1.65; }
@@ -163,7 +180,9 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
 :where(body.pk) .deal-price span { padding: 5px 8px; color: #187241; background: #e7f6eb; border-radius: 999px; font-size: 10px; font-weight: 800; }
 :where(body.pk) .dark { height: 48px; padding: 0 20px; color: white; background: var(--dark); border-radius: 12px; }
 :where(body.pk) .dark:hover { background: #102329; }
-:where(body.pk) .deal-image { position: relative; min-height: 440px; }
+:where(body.pk) .deal-image { position: relative; min-height: 360px; }
+/* Photo fills the panel instead of setting its height (tall product shots stretched the card). */
+:where(body.pk) .deal-image img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 :where(body.pk) .deal-image::after { position: absolute; inset: 0; content: ""; background: linear-gradient(90deg, var(--amber-pale), transparent 25%); }
 :where(body.pk) .deal-image > span { position: absolute; z-index: 2; right: 30px; top: 30px; display: flex; align-items: center; justify-content: center; flex-direction: column; width: 75px; height: 75px; color: #513500; background: var(--amber); border-radius: 50%; font-family: var(--display); font-size: 21px; font-weight: 700; transform: rotate(7deg); }
 :where(body.pk) .deal-image small { font-family: var(--body); font-size: 9px; letter-spacing: .1em; }
@@ -189,7 +208,7 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
 :where(body.pk) .steps article { position: relative; padding: 0 25px; text-align: center; }
 :where(body.pk) .step-number { position: absolute; top: -13px; left: calc(50% + 30px); color: #c9dcdc; font-family: var(--display); font-size: 24px; font-style: italic; }
 :where(body.pk) .step-icon { display: grid; place-items: center; width: 74px; height: 74px; margin: 0 auto 21px; color: var(--teal-dark); background: var(--teal-pale); border: 1px solid #bbe2e5; border-radius: 24px 24px 24px 8px; }
-:where(body.pk) .steps h3 { margin: 0 0 9px; font-family: var(--display); font-size: 21px; }
+:where(body.pk) .steps h3 { margin: 0 0 9px; font-family: var(--body); font-size: 18px; font-weight: 700; letter-spacing: -.2px; }
 :where(body.pk) .steps p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
 :where(body.pk) .step-line { border-top: 1px dashed #acd0d3; }
 :where(body.pk) .suki-level { display: flex; align-items: center; gap: 11px; padding: 11px 15px; background: var(--amber-pale); border-radius: 12px; }
@@ -228,14 +247,19 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 10px); } }
 
 :where(body.pk) .inner-page { padding-top: 76px; min-height: 80vh; background: white; }
+/* Teal banners run up under the fixed header (like the home hero) instead of
+   leaving a white strip: the page drops its header spacer, the banner takes it. */
+:where(body.pk) .inner-page:has(> .paluto-hero:first-child, > .recipe-hero:first-child, > .careers-hero:first-child, > .about-hero:first-child) { padding-top: 0; }
+:where(body.pk) .inner-page > .paluto-hero:first-child, :where(body.pk) .inner-page > .recipe-hero:first-child, :where(body.pk) .inner-page > .about-hero:first-child { padding-top: calc(var(--header-h, 76px) + env(safe-area-inset-top)); }
+:where(body.pk) .inner-page > .careers-hero:first-child { padding-top: calc(var(--header-h, 76px) + 110px + env(safe-area-inset-top)); }
 :where(body.pk) .page-hero { overflow: hidden; }
 :where(body.pk) .page-hero-grid { display: grid; grid-template-columns: 1fr .85fr; align-items: center; gap: 80px; min-height: 520px; }
 :where(body.pk) .page-hero h1, :where(body.pk) .recipe-intro h1, :where(body.pk) .simple-page h1 { margin: 8px 0 20px; font-family: var(--display); font-size: clamp(48px, 6vw, 72px); line-height: 1; letter-spacing: -2.5px; }
 :where(body.pk) .page-hero-grid > div:first-child > p:not(.kicker), :where(body.pk) .recipe-intro > p:not(.kicker), :where(body.pk) .simple-page > p:not(.kicker) { max-width: 610px; color: #536164; font-size: 16px; line-height: 1.75; }
 :where(body.pk) .page-cta { display: inline-flex; align-items: center; gap: 9px; margin-top: 17px; padding: 13px 18px; color: white; background: var(--teal); border-radius: 12px; font-size: 13px; font-weight: 700; }
-:where(body.pk) .paluto-hero { color: white; background: linear-gradient(120deg, #003f46, #007c87); }
-:where(body.pk) .paluto-hero .kicker { color: #75dce4; }
-:where(body.pk) .paluto-hero .page-hero-grid > div:first-child > p:not(.kicker) { color: #cae4e6; }
+:where(body.pk) .paluto-hero, :where(body.pk) .recipe-hero, :where(body.pk) .careers-hero, :where(body.pk) .about-hero { color: white; background: var(--hero-teal); }
+:where(body.pk) .paluto-hero .kicker, :where(body.pk) .recipe-hero .kicker, :where(body.pk) .careers-hero .kicker, :where(body.pk) .about-hero .kicker { color: #75dce4; }
+:where(body.pk) .paluto-hero .page-hero-grid > div:first-child > p:not(.kicker), :where(body.pk) .recipe-hero .page-hero-grid > .recipe-intro:first-child > p:not(.kicker), :where(body.pk) .careers-hero .simple-page > p:not(.kicker), :where(body.pk) .about-hero .about-grid > div > p:not(.kicker) { color: #cae4e6; }
 :where(body.pk) .paluto-hero .page-cta { color: #533700; background: var(--amber); }
 :where(body.pk) .page-hero-image { position: relative; height: 420px; align-self: end; margin-top: 45px; overflow: hidden; border-radius: 100px 22px 0 0; }
 :where(body.pk) .page-hero-image::after { position: absolute; inset: 0; content: ""; background: linear-gradient(0deg, rgba(0,63,70,.55), transparent 55%); }
@@ -264,7 +288,8 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
 :where(body.pk) .paluto-note { display: flex; gap: 15px; margin-top: 25px; padding: 22px; color: #355154; background: var(--teal-pale); border-radius: 16px; }
 :where(body.pk) .paluto-note > svg { flex: 0 0 auto; color: var(--teal); }
 :where(body.pk) .paluto-note p { margin: 4px 0 0; font-size: 11px; line-height: 1.6; }
-:where(body.pk) .recipe-hero { padding: 0; background: radial-gradient(circle at 20% -20%, #f9d989, transparent 45%), linear-gradient(120deg, #fff8e8, #effafa); }
+:where(body.pk) .recipe-hero { padding: 0; }
+:where(body.pk) .recipe-hero .recipe-search { border-color: transparent; }
 :where(body.pk) .recipe-hero .recipe-intro { padding: 60px 0; }
 :where(body.pk) .recipe-search { display: flex; align-items: center; gap: 12px; width: min(580px, 100%); margin: 29px 0 0; padding: 7px 16px; background: white; border: 1px solid #d9e4df; border-radius: 14px; box-shadow: var(--shadow); }
 :where(body.pk) .recipe-search svg { color: var(--teal); }
@@ -294,7 +319,7 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
 :where(body.pk) .drawer-action > div { display: flex; flex-direction: column; }
 :where(body.pk) .drawer-action small { color: var(--muted); font-size: 9px; }
 :where(body.pk) .drawer-action strong { font-family: var(--display); font-size: 22px; }
-:where(body.pk) .careers-hero { padding: 110px 0; background: linear-gradient(125deg, var(--dark), #31545a); }
+:where(body.pk) .careers-hero { padding: 110px 0; }
 :where(body.pk) .simple-page { color: white; }
 :where(body.pk) .simple-page > p:not(.kicker) { color: #c4d3d5; }
 :where(body.pk) .jobs { display: grid; grid-template-columns: .8fr 1.2fr; gap: 70px; }
@@ -304,6 +329,9 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
 :where(body.pk) .jobs article p { margin: 5px 0 0; color: var(--muted); font-size: 10px; }
 :where(body.pk) .jobs article a { display: flex; align-items: center; gap: 7px; color: var(--teal-dark); font-size: 11px; font-weight: 700; }
 :where(body.pk) .shop-page { background: var(--bg); }
+/* Shop page item cards use Helvetica (name, category, price, Add button). */
+:where(body.pk) .shop-page .product-card, :where(body.pk) .shop-page .product-card h3, :where(body.pk) .shop-page .product-card .btn { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+:where(body.pk) .shop-page .product-body h3 { font-size: 17px; font-weight: 600; letter-spacing: -.2px; }
 :where(body.pk) .shop-top { position: sticky; z-index: 12; top: 76px; padding: 17px 0 20px; background: rgba(255,255,255,.96); border-bottom: 1px solid var(--line); backdrop-filter: blur(14px); }
 :where(body.pk) .shop-breadcrumb { display: flex; align-items: center; gap: 5px; margin-bottom: 13px; color: var(--muted); font-size: 9px; }
 :where(body.pk) .shop-breadcrumb a { color: var(--teal-dark); }
@@ -676,7 +704,6 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
 :where(body.pk) .notification-list small { color: #8a9899; font-size: 8px; }
 :where(body.pk) .notification-list article > i { width: 7px; height: 7px; background: var(--teal); border-radius: 50%; }
 :where(body.pk) .notification-list article > svg { color: var(--muted); }
-:where(body.pk) .about-hero { color: white; background: var(--dark); }
 :where(body.pk) .about-grid { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 70px; min-height: 570px; }
 :where(body.pk) .about-grid h1 { margin: 0 0 20px; font-family: var(--display); font-size: 58px; line-height: 1.04; letter-spacing: -2px; }
 :where(body.pk) .about-grid > div > p:not(.kicker) { color: #c1d0d2; line-height: 1.7; }
@@ -785,6 +812,8 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
   :where(body.pk) .cart-button .cart-label { display: none; }
   :where(body.pk) .hero { min-height: auto; padding-top: 66px; }
   :where(body.pk) .inner-page { padding-top: 66px; }
+  :where(body.pk) .inner-page:has(> .paluto-hero:first-child, > .recipe-hero:first-child, > .careers-hero:first-child, > .about-hero:first-child) { --header-h: 66px; }
+  :where(body.pk) .inner-page > .careers-hero:first-child { padding-top: calc(66px + 75px + env(safe-area-inset-top)); }
   :where(body.pk) .hero-grid { display: flex; flex-direction: column; gap: 5px; }
   :where(body.pk) .hero-copy { padding: 42px 0 18px; }
   :where(body.pk) .location-pill { font-size: 10px; }
@@ -827,7 +856,7 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
   :where(body.pk) .deal-wrap { padding-bottom: 66px; }
   :where(body.pk) .deal { grid-template-columns: 1fr; }
   :where(body.pk) .deal-copy { padding: 34px 27px; }
-  :where(body.pk) .deal-image { min-height: 280px; order: -1; }
+  :where(body.pk) .deal-image { min-height: 240px; order: -1; }
   :where(body.pk) .deal-image::after { background: linear-gradient(0deg, var(--amber-pale), transparent 35%); }
   :where(body.pk) .split-cards { grid-template-columns: 1fr; }
   :where(body.pk) .split-card { min-height: 440px; }

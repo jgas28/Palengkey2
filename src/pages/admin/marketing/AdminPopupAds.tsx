@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   useMutation,
   useQuery,
@@ -22,6 +22,7 @@ import {
   type PopupAdPayload,
 } from "@/services/api/adminPopupAds";
 import { useToastStore } from "@/stores/toastStore";
+import { sanitizeRichText } from "@/utils/safeHtml";
 import type { AdminPopupAd, PopupAdType } from "@/types/adminPopupAd";
 
 const TYPE_LABELS: Record<PopupAdType, string> = {
@@ -95,6 +96,34 @@ export default function AdminPopupAds() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<AdminPopupAd | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const imagePreview = useMemo(
+    () => (form.image ? URL.createObjectURL(form.image) : null),
+    [form.image],
+  );
+  useEffect(
+    () => () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+    },
+    [imagePreview],
+  );
+
+  /** Wraps the selected body text in <b>/<i>/<u> (e.g. a voucher code). */
+  function wrapBody(tag: "b" | "i" | "u") {
+    const el = bodyRef.current;
+    const start = el?.selectionStart ?? form.body.length;
+    const end = el?.selectionEnd ?? form.body.length;
+    const selected = form.body.slice(start, end) || "text";
+    const next = `${form.body.slice(0, start)}<${tag}>${selected}</${tag}>${form.body.slice(end)}`;
+    setForm({ ...form, body: next });
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(
+        start + tag.length + 2,
+        start + tag.length + 2 + selected.length,
+      );
+    });
+  }
 
   const {
     data: page,
@@ -370,141 +399,209 @@ export default function AdminPopupAds() {
       <Modal
         isOpen={formOpen}
         onClose={closeForm}
+        size="xl"
         title={editing ? "Edit popup ad" : "Add popup ad"}
       >
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
-            Type
-            <select
-              value={form.type}
-              onChange={(e) => setForm({ ...form, type: e.target.value as PopupAdType })}
-              className="h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
-            >
-              {(Object.keys(TYPE_LABELS) as PopupAdType[]).map((type) => (
-                <option key={type} value={type}>
-                  {TYPE_LABELS[type]}
-                </option>
-              ))}
-            </select>
-          </label>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <div className="grid gap-5 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+            {/* Wording */}
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
+                  Type
+                  <select
+                    value={form.type}
+                    onChange={(e) =>
+                      setForm({ ...form, type: e.target.value as PopupAdType })
+                    }
+                    className={
+                      "h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
+                    }
+                  >
+                    {(Object.keys(TYPE_LABELS) as PopupAdType[]).map((type) => (
+                      <option key={type} value={type}>
+                        {TYPE_LABELS[type]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
+                  Linked voucher
+                  <select
+                    value={form.voucher_id}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        voucher_id: e.target.value ? Number(e.target.value) : "",
+                      })
+                    }
+                    className={
+                      "h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
+                    }
+                  >
+                    <option value="">None</option>
+                    {vouchers.map((voucher) => (
+                      <option key={voucher.id} value={voucher.id}>
+                        {voucher.code}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
 
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
-            Linked voucher (optional)
-            <select
-              value={form.voucher_id}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  voucher_id: e.target.value ? Number(e.target.value) : "",
-                })
-              }
-              className="h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
-            >
-              <option value="">None</option>
-              {vouchers.map((voucher) => (
-                <option key={voucher.id} value={voucher.id}>
-                  {voucher.code}
-                </option>
-              ))}
-            </select>
-          </label>
+              <Input
+                label="Title"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                required
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Subtitle (optional)"
+                  value={form.subtitle}
+                  onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
+                />
+                <Input
+                  label="Badge text (optional)"
+                  value={form.badge_text}
+                  onChange={(e) => setForm({ ...form, badge_text: e.target.value })}
+                />
+              </div>
 
-          <Input
-            label="Title"
-            value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-            required
-          />
-          <Input
-            label="Subtitle (optional)"
-            value={form.subtitle}
-            onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
-          />
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
-            Body (optional)
-            <textarea
-              value={form.body}
-              onChange={(e) => setForm({ ...form, body: e.target.value })}
-              rows={2}
-              className="rounded-lg border border-border bg-surface p-3 text-sm font-normal text-text focus:outline-none focus:ring-2 focus:ring-primary-300"
-            />
-          </label>
-          <Input
-            label="Badge text (optional)"
-            value={form.badge_text}
-            onChange={(e) => setForm({ ...form, badge_text: e.target.value })}
-          />
+              <div className="flex flex-col gap-1.5 text-sm font-medium text-text">
+                <div className="flex items-center justify-between gap-2">
+                  <label htmlFor="popup-body">Body (optional)</label>
+                  <div className="flex gap-1" role="toolbar" aria-label="Text formatting">
+                    <button
+                      type="button"
+                      onClick={() => wrapBody("b")}
+                      className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 bg-white text-sm font-bold text-slate-700 hover:border-primary-300"
+                      title="Bold (select text first)"
+                    >
+                      B
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => wrapBody("i")}
+                      className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 bg-white text-sm italic text-slate-700 hover:border-primary-300"
+                      title="Italic (select text first)"
+                    >
+                      I
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => wrapBody("u")}
+                      className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 bg-white text-sm text-slate-700 underline hover:border-primary-300"
+                      title="Underline (select text first)"
+                    >
+                      U
+                    </button>
+                  </div>
+                </div>
+                <textarea
+                  id="popup-body"
+                  ref={bodyRef}
+                  value={form.body}
+                  maxLength={1000}
+                  onChange={(e) => setForm({ ...form, body: e.target.value })}
+                  rows={4}
+                  placeholder="e.g. Use <b><i>SUKI100</i></b> for ₱100 off your first order"
+                  className="rounded-xl border border-slate-200 bg-white p-3 font-mono text-[13px] font-normal text-slate-800 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100"
+                />
+                <span className="text-xs font-normal text-slate-500">
+                  Select words, then B / I / U. Allowed: &lt;b&gt;, &lt;i&gt;, &lt;u&gt;,
+                  line breaks.
+                </span>
+                {form.body.trim() && (
+                  <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-sm font-normal leading-6 text-slate-700">
+                    <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                      Preview
+                    </span>
+                    <span
+                      dangerouslySetInnerHTML={{ __html: sanitizeRichText(form.body) }}
+                    />
+                  </div>
+                )}
+              </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="CTA label (optional)"
-              value={form.cta_label}
-              onChange={(e) => setForm({ ...form, cta_label: e.target.value })}
-            />
-            <Input
-              label="CTA URL (optional)"
-              value={form.cta_url}
-              onChange={(e) => setForm({ ...form, cta_url: e.target.value })}
-            />
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Button label (optional)"
+                  value={form.cta_label}
+                  onChange={(e) => setForm({ ...form, cta_label: e.target.value })}
+                />
+                <Input
+                  label="Button link (optional)"
+                  value={form.cta_url}
+                  placeholder="/shop"
+                  onChange={(e) => setForm({ ...form, cta_url: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {/* Image, schedule, status */}
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5 text-sm font-medium text-text">
+                {editing ? "Image" : "Image (required)"}
+                <label className="relative flex aspect-[4/3] cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 text-center text-xs font-normal text-slate-500 hover:border-primary-300">
+                  {imagePreview || editing?.image_url ? (
+                    <img
+                      src={imagePreview ?? editing?.image_url}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span>Click to choose an image</span>
+                  )}
+                  <span className="absolute bottom-2 right-2 rounded-lg bg-white/95 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow">
+                    {imagePreview || editing ? "Replace" : "Choose"}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={(e) =>
+                      setForm({ ...form, image: e.target.files?.[0] ?? null })
+                    }
+                  />
+                </label>
+              </div>
+
+              <Input
+                label="Starts at (optional)"
+                type="datetime-local"
+                value={form.starts_at}
+                onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
+              />
+              <Input
+                label="Ends at (optional)"
+                type="datetime-local"
+                value={form.ends_at}
+                onChange={(e) => setForm({ ...form, ends_at: e.target.value })}
+              />
+              <div className="grid grid-cols-2 items-end gap-3">
+                <Input
+                  label="Sort order"
+                  type="number"
+                  min="0"
+                  value={form.sort_order}
+                  onChange={(e) => setForm({ ...form, sort_order: e.target.value })}
+                />
+                <label className="flex h-12 items-center gap-2 text-sm font-medium text-text">
+                  <input
+                    type="checkbox"
+                    checked={form.is_active}
+                    onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+                    className="h-4 w-4 accent-primary-600"
+                  />
+                  Published
+                </label>
+              </div>
+            </div>
           </div>
 
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
-            {editing ? "Replace image (optional)" : "Image"}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setForm({ ...form, image: e.target.files?.[0] ?? null })}
-              className="text-sm text-text-muted"
-            />
-          </label>
-          {editing && (
-            <img
-              src={editing.image_url}
-              alt={editing.title}
-              className="h-24 w-full rounded-card object-cover"
-            />
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Starts at (optional)"
-              type="datetime-local"
-              value={form.starts_at}
-              onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
-            />
-            <Input
-              label="Ends at (optional)"
-              type="datetime-local"
-              value={form.ends_at}
-              onChange={(e) => setForm({ ...form, ends_at: e.target.value })}
-            />
-          </div>
-
-          <Input
-            label="Sort order"
-            type="number"
-            min="0"
-            value={form.sort_order}
-            onChange={(e) => setForm({ ...form, sort_order: e.target.value })}
-          />
-
-          <label className="flex items-center gap-2 text-sm text-text">
-            <input
-              type="checkbox"
-              checked={form.is_active}
-              onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-            />
-            Active
-          </label>
-
-          <div className="flex gap-3">
-            <Button
-              type="submit"
-              loading={createMutation.isPending || updateMutation.isPending}
-            >
-              {editing ? "Save changes" : "Create popup ad"}
-            </Button>
-            {editing && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+            {editing ? (
               <Button
                 type="button"
                 variant="danger"
@@ -517,7 +614,20 @@ export default function AdminPopupAds() {
               >
                 Delete
               </Button>
+            ) : (
+              <span />
             )}
+            <div className="flex gap-2">
+              <Button type="button" variant="secondary" onClick={closeForm}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                loading={createMutation.isPending || updateMutation.isPending}
+              >
+                {editing ? "Save changes" : "Create popup ad"}
+              </Button>
+            </div>
           </div>
         </form>
       </Modal>

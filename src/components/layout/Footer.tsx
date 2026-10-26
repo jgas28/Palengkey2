@@ -50,6 +50,22 @@ export default function Footer() {
             >
               <Icon name="instagram" />
             </a>
+            <a
+              href="https://x.com"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Palengkey on X"
+            >
+              <Icon name="twitter-x" />
+            </a>
+            <a
+              href="https://tiktok.com"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Palengkey on TikTok"
+            >
+              <Icon name="tiktok" />
+            </a>
           </div>
           <div className="store-badges">
             <StoreBadge store="apple" />

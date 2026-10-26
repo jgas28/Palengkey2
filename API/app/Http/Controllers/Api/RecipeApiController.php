@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Market;
 use App\Models\MarketPriceSnapshot;
 use App\Models\Recipe;
+use App\Support\MarketAvailability;
 use App\Support\PriceDisplay;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class RecipeApiController extends Controller
 {
@@ -64,6 +67,16 @@ class RecipeApiController extends Controller
                 ->keyBy('item_id')
             : collect();
 
+        $pivots = $marketId
+            ? DB::table('market_items')
+                ->where('market_id', $marketId)
+                ->whereIn('item_id', $recipe->ingredients->pluck('item_id')->unique())
+                ->get(['item_id', 'cutoff_time', 'cutoff_timezone', ...MarketAvailability::columns()])
+                ->keyBy('item_id')
+            : collect();
+
+        $market = $marketId ? Market::find($marketId) : null;
+
         return response()->json([
             'id' => $recipe->id,
             'name' => $recipe->name,
@@ -75,8 +88,9 @@ class RecipeApiController extends Controller
             'pricing_unit' => $recipe->pricing_unit,
             'base_quantity' => $recipe->base_quantity,
             'market_id' => $marketId ? (int) $marketId : null,
-            'ingredients' => $recipe->ingredients->map(function ($ingredient) use ($snapshots) {
+            'ingredients' => $recipe->ingredients->map(function ($ingredient) use ($snapshots, $pivots, $market) {
                 $snapshot = $snapshots[$ingredient->item_id] ?? null;
+                $pivot = $pivots[$ingredient->item_id] ?? null;
 
                 return [
                     'id' => $ingredient->id,
@@ -91,6 +105,12 @@ class RecipeApiController extends Controller
                     'unit_price' => $snapshot
                         ? number_format(PriceDisplay::markedUp($snapshot->price), 2, '.', '')
                         : null,
+                    // Live status at the chosen market, same rules as the shop.
+                    'sold_here' => $market !== null && ($snapshot !== null || $pivot !== null),
+                    ...MarketAvailability::forItem($snapshot !== null, $pivot),
+                    'is_cutoff' => $market && $ingredient->item
+                        ? $ingredient->item->isPastCutoffForMarketData($pivot, $market)
+                        : false,
                 ];
             }),
         ]);

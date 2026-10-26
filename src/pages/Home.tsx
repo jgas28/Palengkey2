@@ -11,6 +11,7 @@ import { listProductTypes } from "@/services/api/productTypes";
 import { listItems } from "@/services/api/items";
 import { getCurrentCoordinates } from "@/utils/geolocation";
 import { useMarketStore } from "@/stores/marketStore";
+import MarketPill from "@/features/home/MarketPill";
 
 const SORT_OPTIONS = [
   { value: "recommended", label: "Featured" },
@@ -141,20 +142,7 @@ export default function Home() {
         </div>
         <div className="shell shop-tools">
           <div>
-            <button
-              type="button"
-              className="market-selector"
-              onClick={() => setPickerOpen(true)}
-            >
-              <span>
-                <Icon name="bag" size={17} />
-              </span>
-              <div>
-                <small>Shopping from</small>
-                <strong>{selectedMarket?.name ?? "Choose a market"}</strong>
-              </div>
-              <Icon name="chevron" size={16} />
-            </button>
+            <MarketPill />
             <h1>Fresh market goods</h1>
           </div>
           <label className="catalog-search">

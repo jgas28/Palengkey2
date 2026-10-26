@@ -1,4 +1,4 @@
-import { useEffect, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
@@ -6,12 +6,21 @@ const FOCUSABLE_SELECTOR =
 /**
  * Traps Tab focus within containerRef while isOpen, closes on Escape, and
  * restores focus to the previously-focused element on close/unmount.
+ *
+ * onClose is read through a ref: callers usually pass a new function on every
+ * render, and re-running the effect on each keystroke used to yank focus back
+ * to the first field while typing.
  */
 export function useFocusTrap(
   containerRef: RefObject<HTMLElement | null>,
   isOpen: boolean,
   onClose: () => void,
 ) {
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -23,11 +32,15 @@ export function useFocusTrap(
     const getFocusable = () =>
       Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
 
-    (getFocusable()[0] ?? container).focus();
+    // Start in the first form field when there is one, not on the close button.
+    const firstField = container.querySelector<HTMLElement>(
+      "input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])",
+    );
+    (firstField ?? getFocusable()[0] ?? container).focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -54,5 +67,5 @@ export function useFocusTrap(
       document.removeEventListener("keydown", handleKeyDown);
       previouslyFocused?.focus();
     };
-  }, [isOpen, containerRef, onClose]);
+  }, [isOpen, containerRef]);
 }

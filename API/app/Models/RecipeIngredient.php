@@ -25,6 +25,23 @@ class RecipeIngredient extends Model
         ];
     }
 
+    /**
+     * Ingredient kind follows the item's category (recipes and paluto dishes):
+     * vegetables/fruits → vegetable, spices/herbs → spice, grocery/condiments →
+     * condiment, everything else (meat, poultry, fish, seafood, frozen) → meat.
+     */
+    public static function kindForCategory(?string $category): string
+    {
+        $name = strtolower((string) $category);
+
+        return match (true) {
+            (bool) preg_match('/vegetable|fruit/', $name) => 'vegetable',
+            (bool) preg_match('/spice|herb/', $name) => 'spice',
+            (bool) preg_match('/grocery|condiment|sauce/', $name) => 'condiment',
+            default => 'meat',
+        };
+    }
+
     public function recipe()
     {
         return $this->belongsTo(Recipe::class);

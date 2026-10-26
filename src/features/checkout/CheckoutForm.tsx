@@ -598,7 +598,8 @@ export default function CheckoutForm() {
                   fontWeight: 700,
                 }}
               >
-                ✓ {appliedVoucher.code} applied — you save {formatPeso(discountAmount)}
+                ✓ <strong style={{ fontWeight: 800 }}>{appliedVoucher.code}</strong>{" "}
+                applied — you save {formatPeso(discountAmount)}
               </p>
             )}
           </div>

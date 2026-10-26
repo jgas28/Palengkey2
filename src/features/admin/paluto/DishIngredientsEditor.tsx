@@ -4,6 +4,7 @@ import { Spinner } from "@/components/common/LoadingState";
 import { listAdminItems } from "@/services/api/adminItems";
 import { getAdminStallMarketPrices } from "@/services/api/adminPalutoDishes";
 import { formatPeso } from "@/utils/currency";
+import { kindFromCategory } from "@/features/recipes/ingredientFormat";
 import {
   isBlockingRow,
   nextRowKey,
@@ -90,6 +91,7 @@ export default function DishIngredientsEditor({
     name: string;
     unit: string | null;
     price: number | null;
+    category: string | null;
   }) {
     onChange([
       ...rows,
@@ -97,7 +99,7 @@ export default function DishIngredientsEditor({
         key: nextRowKey(),
         item_id: item.id,
         item_name: item.name,
-        kind: "meat",
+        kind: kindFromCategory(item.category),
         quantity: "1",
         unit_name: item.unit,
         is_optional: false,
@@ -171,6 +173,7 @@ export default function DishIngredientsEditor({
                       name: item.name,
                       unit: item.unit,
                       price: item.market?.price ?? null,
+                      category: item.category,
                     })
                   }
                   className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-background"
@@ -231,24 +234,12 @@ export default function DishIngredientsEditor({
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      <select
-                        value={row.kind}
-                        onChange={(e) =>
-                          updateRow(row.key, {
-                            kind: e.target.value as RecipeIngredientKind,
-                          })
-                        }
-                        aria-label={`Category for ${row.item_name}`}
-                        className="h-9 rounded-lg border border-border bg-surface px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+                      <span
+                        title="Set from the item's category"
+                        className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700"
                       >
-                        {(Object.keys(KIND_LABELS) as RecipeIngredientKind[]).map(
-                          (kind) => (
-                            <option key={kind} value={kind}>
-                              {KIND_LABELS[kind]}
-                            </option>
-                          ),
-                        )}
-                      </select>
+                        {KIND_LABELS[row.kind]}
+                      </span>
                     </td>
                     <td className="px-3 py-2">
                       {/* Unit is locked to the item's own selling unit — cost is quantity ×

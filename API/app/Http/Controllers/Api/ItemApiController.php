@@ -7,6 +7,7 @@ use App\Models\Item;
 use App\Models\Market;
 use App\Models\MarketPriceSnapshot;
 use App\Support\BulkPricing;
+use App\Support\MarketAvailability;
 use App\Support\PriceDisplay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -78,7 +79,7 @@ class ItemApiController extends Controller
         $marketItemPivots = DB::table('market_items')
             ->where('market_id', $marketId)
             ->whereIn('item_id', $items->pluck('id'))
-            ->get(['item_id', 'cutoff_time', 'cutoff_timezone', ...$this->availabilityColumns()])
+            ->get(['item_id', 'cutoff_time', 'cutoff_timezone', ...MarketAvailability::columns()])
             ->keyBy('item_id');
 
         $market = Market::find($marketId);
@@ -99,7 +100,7 @@ class ItemApiController extends Controller
                 'is_muslim_friendly' => str_contains(strtolower($item->type?->name ?? ''), 'halal'),
                 'cutoff_time' => $item->getCutoffTimeStringForMarketData($pivot, $market),
                 'is_cutoff' => $item->isPastCutoffForMarketData($pivot, $market),
-                ...$this->availability($snap !== null, $pivot),
+                ...MarketAvailability::forItem($snap !== null, $pivot),
                 ...$this->bulkInfo($item, $snap?->price),
             ];
         });
@@ -122,7 +123,7 @@ class ItemApiController extends Controller
         $pivot = DB::table('market_items')
             ->where('market_id', $marketId)
             ->where('item_id', $item->id)
-            ->first(['item_id', ...$this->availabilityColumns()]);
+            ->first(['item_id', ...MarketAvailability::columns()]);
 
         if (! $snapshot && ! $pivot) {
             return response()->json(['message' => 'Item not sold at this market'], 404);
@@ -146,32 +147,9 @@ class ItemApiController extends Controller
             'price_at' => $snapshot?->price_at,
             'cutoff_time' => $item->getCutoffTimeStringForMarket($marketId),
             'is_cutoff' => $item->isPastCutoffForMarket($marketId),
-            ...$this->availability($snapshot !== null, $pivot),
+            ...MarketAvailability::forItem($snapshot !== null, $pivot),
             ...$this->bulkInfo($item, $snapshot?->price),
         ]);
-    }
-
-    /**
-     * available = has a live price; out_of_stock = sold out today, back on
-     * available_on; unavailable = seasonal, back when an admin turns it on.
-     */
-    private function availability(bool $hasPrice, ?object $pivot): array
-    {
-        $until = $pivot->out_of_stock_until ?? null;
-
-        return [
-            'availability' => $hasPrice ? 'available' : ($until ? 'out_of_stock' : 'unavailable'),
-            'available_on' => ! $hasPrice && $until ? substr((string) $until, 0, 10) : null,
-        ];
-    }
-
-    /** market_items columns to read (the restock date only once its migration has run). */
-    private function availabilityColumns(): array
-    {
-        static $hasColumn = null;
-        $hasColumn ??= \Illuminate\Support\Facades\Schema::hasColumn('market_items', 'out_of_stock_until');
-
-        return $hasColumn ? ['out_of_stock_until'] : [];
     }
 
     /** For the quick-view bulk banner: threshold and wholesale price, null when not eligible. */

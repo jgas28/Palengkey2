@@ -14,6 +14,8 @@ import {
 } from "@/features/recipes/ingredientFormat";
 import { useToastStore } from "@/stores/toastStore";
 import { formatPeso } from "@/utils/currency";
+import { availabilityLabel } from "@/types/item";
+import type { RecipeIngredient } from "@/types/recipe";
 
 export interface RecipeDetailDrawerProps {
   recipeId: number | null;
@@ -47,6 +49,9 @@ export default function RecipeDetailDrawer({
     queryKey: ["recipe", recipeId, marketId],
     queryFn: () => getRecipe(recipeId!, marketId ?? undefined),
     enabled: recipeId !== null,
+    // Prices and stock change during the day — keep the open drawer current.
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
   });
 
   // Reset to the recipe's natural batch size each time a different recipe is opened.
@@ -227,10 +232,17 @@ export default function RecipeDetailDrawer({
                       {ingredient.name} — {formatQuantity(scaledQty)} {ingredient.unit}
                       {ingredient.is_optional ? " (optional)" : ""}
                       <br />
-                      <small style={{ color: unavailable ? "#b26a00" : "var(--muted)" }}>
+                      <small
+                        style={{
+                          color:
+                            unavailable || (priced && ingredient.is_cutoff)
+                              ? "#b26a00"
+                              : "var(--muted)",
+                        }}
+                      >
                         {unavailable
-                          ? `Not sold at ${marketName}`
-                          : `${INGREDIENT_KIND_LABELS[ingredient.kind]}${ingredient.note ? ` · ${ingredient.note}` : ""}`}
+                          ? unavailableText(ingredient, marketName)
+                          : `${INGREDIENT_KIND_LABELS[ingredient.kind]}${ingredient.note ? ` · ${ingredient.note}` : ""}${priced && ingredient.is_cutoff ? " · Order later" : ""}`}
                       </small>
                     </span>
                   </label>
@@ -283,4 +295,16 @@ export default function RecipeDetailDrawer({
       )}
     </PkDrawer>
   );
+}
+
+/** Why an ingredient can't be bought at the selected market right now. */
+function unavailableText(
+  ingredient: RecipeIngredient,
+  marketName: string | null | undefined,
+): string {
+  if (ingredient.sold_here === false) return `Not sold at ${marketName ?? "this market"}`;
+  const label = availabilityLabel({ ...ingredient, price: null });
+  return label
+    ? `${label.title} · ${label.detail}`
+    : `Not available at ${marketName ?? "this market"}`;
 }
