@@ -30,6 +30,7 @@ const SupportThread = lazy(() => import("@/pages/support/SupportThread"));
 const About = lazy(() => import("@/pages/About"));
 const Careers = lazy(() => import("@/pages/Careers"));
 const Faq = lazy(() => import("@/pages/Faq"));
+const Reviews = lazy(() => import("@/pages/Reviews"));
 const DeliveryAreas = lazy(() => import("@/pages/DeliveryAreas"));
 const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("@/pages/TermsOfService"));
@@ -108,6 +109,7 @@ export default function AppRouter() {
           <Route path="about" element={<About />} />
           <Route path="careers" element={<Careers />} />
           <Route path="faq" element={<Faq />} />
+          <Route path="reviews" element={<Reviews />} />
           <Route path="delivery-areas" element={<DeliveryAreas />} />
           <Route path="privacy-policy" element={<PrivacyPolicy />} />
           <Route path="terms-of-service" element={<TermsOfService />} />

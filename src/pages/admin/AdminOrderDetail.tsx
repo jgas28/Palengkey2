@@ -19,14 +19,12 @@ import {
 } from "lucide-react";
 import {
   assignAdminOrderRider,
-  assignAdminOrderShopper,
   cancelAdminOrder,
   getAdminOrder,
   listActiveAdminRiders,
   printAdminOrderLabels,
   updateAdminOrderRecipeBundleCookingStatus,
   updateAdminOrderStatus,
-  listActiveAdminShoppers,
 } from "@/services/api/adminOrders";
 import { useToastStore } from "@/stores/toastStore";
 import type {
@@ -192,27 +190,6 @@ export default function AdminOrderDetail() {
   const { data: riders } = useQuery({
     queryKey: ["adminActiveRiders"],
     queryFn: listActiveAdminRiders,
-  });
-
-  const shopperMarketId = order?.market?.id;
-  const { data: shoppers } = useQuery({
-    queryKey: ["adminActiveShoppers", shopperMarketId ?? null],
-    queryFn: () => listActiveAdminShoppers(shopperMarketId),
-    enabled: !!order,
-  });
-
-  const assignShopperMutation = useMutation({
-    mutationFn: (shopperId: number | null) => assignAdminOrderShopper(id, shopperId),
-    onSuccess: (data) => {
-      invalidate();
-      showToast(data.message, "success");
-    },
-    onError: (error) => {
-      showToast(
-        error instanceof Error ? error.message : "Could not assign shopper.",
-        "error",
-      );
-    },
   });
 
   function invalidate() {
@@ -780,37 +757,9 @@ export default function AdminOrderDetail() {
             <SectionHeader
               icon={<Truck size={18} />}
               title="Fulfillment"
-              subtitle="Shopper and rider assignment"
+              subtitle="Rider assignment"
             />
             <div className="flex flex-col gap-4 pt-4">
-              <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-slate-700">
-                  Assigned shopper
-                </span>
-                <select
-                  value={order.shopper?.id ?? ""}
-                  disabled={
-                    assignShopperMutation.isPending || order.status === "cancelled"
-                  }
-                  onChange={(e) =>
-                    assignShopperMutation.mutate(
-                      e.target.value ? Number(e.target.value) : null,
-                    )
-                  }
-                  className={fulfillmentSelect}
-                >
-                  <option value="">Unassigned</option>
-                  {order.shopper &&
-                    !shoppers?.some((s) => s.id === order.shopper?.id) && (
-                      <option value={order.shopper.id}>{order.shopper.name}</option>
-                    )}
-                  {shoppers?.map((shopper) => (
-                    <option key={shopper.id} value={shopper.id}>
-                      {shopper.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-semibold text-slate-700">
                   Delivery rider

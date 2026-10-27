@@ -52,6 +52,7 @@ Route::prefix('customer')->middleware('customer.maintenance')->group(function ()
     Route::get('/paluto/stalls/{stall}', [PalutoApiController::class, 'stall']);
     Route::get('/delivery-areas', [ContentController::class, 'deliveryAreas']);
     Route::get('/featured-reviews', [ContentController::class, 'featuredReviews']);
+    Route::get('/reviews', [ContentController::class, 'reviews']);
     Route::get('/review-stats', [ContentController::class, 'reviewStats']);
     Route::get('/hero-stats', [ContentController::class, 'heroStats']);
     Route::get('/careers', [CareerApiController::class, 'index']);

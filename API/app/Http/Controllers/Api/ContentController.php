@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Market;
 use App\Models\OrderFeedback;
 use App\Models\Setting;
+use Illuminate\Http\Request;
 
 class ContentController extends Controller
 {
@@ -54,6 +55,44 @@ class ContentController extends Controller
             ]);
 
         return response()->json($reviews);
+    }
+
+    /**
+     * Written 4- and 5-star reviews for the public reviews page, newest first,
+     * optionally one star value only. `breakdown` counts them per star.
+     */
+    public function reviews(Request $request)
+    {
+        $rating = $request->integer('rating');
+
+        $written = fn () => OrderFeedback::query()
+            ->whereNotNull('comment')
+            ->where('comment', '!=', '')
+            ->where('rating', '>=', 4);
+
+        $reviews = $written()
+            ->with(['customer:id,fname', 'market:id,name'])
+            ->when(in_array($rating, [4, 5], true), fn ($q) => $q->where('rating', $rating))
+            ->latest()
+            ->paginate(12)
+            ->through(fn (OrderFeedback $review) => [
+                'id' => $review->id,
+                'public_customer_name' => $review->public_customer_name,
+                'comment' => $review->comment,
+                'rating' => $review->rating,
+                'market_name' => $review->market?->name,
+                'created_at' => $review->created_at?->toDateString(),
+            ]);
+
+        $breakdown = $written()
+            ->selectRaw('rating, COUNT(*) as total')
+            ->groupBy('rating')
+            ->pluck('total', 'rating');
+
+        return response()->json([
+            ...$reviews->toArray(),
+            'breakdown' => collect([5, 4])->mapWithKeys(fn ($star) => [$star => (int) ($breakdown[$star] ?? 0)]),
+        ]);
     }
 
     /** Live totals for the landing page's review badge (every submitted rating). */

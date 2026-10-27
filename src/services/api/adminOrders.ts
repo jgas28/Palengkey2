@@ -1,6 +1,5 @@
 import { adminApiClient } from "@/services/api/adminClient";
 import type {
-  AdminShopper,
   AdminActiveRider,
   AdminOrderCounts,
   AdminOrderDetail,
@@ -147,30 +146,6 @@ export async function assignAdminOrderRider(
 export async function listActiveAdminRiders(): Promise<AdminActiveRider[]> {
   const { data } = await adminApiClient.get<AdminActiveRider[]>(
     "/admin/orders/riders/active",
-  );
-  return data;
-}
-
-export async function listActiveAdminShoppers(
-  marketId?: number,
-): Promise<AdminShopper[]> {
-  const { data } = await adminApiClient.get<AdminShopper[]>(
-    "/admin/orders/shoppers/active",
-    {
-      params: marketId ? { market_id: marketId } : undefined,
-    },
-  );
-  return data;
-}
-
-/** Sets (or clears) the staff member shopping this order. */
-export async function assignAdminOrderShopper(
-  orderId: number,
-  shopperId: number | null,
-): Promise<{ message: string }> {
-  const { data } = await adminApiClient.patch<{ message: string }>(
-    `/admin/orders/${orderId}/shopper`,
-    { shopper_id: shopperId },
   );
   return data;
 }

@@ -86,7 +86,6 @@ export interface AdminOrderSummary {
   created_at: string;
   customer: AdminOrderCustomer | null;
   rider: AdminOrderRider | null;
-  shopper?: { id: number; name: string } | null;
   market?: { id: number; name: string } | null;
   delivery_slot?: string | null;
 }
@@ -146,10 +145,4 @@ export interface AdminActiveRider {
   name: string;
   phone: string;
   vehicle_type: string;
-}
-
-export interface AdminShopper {
-  id: number;
-  name: string;
-  market_id: number | null;
 }

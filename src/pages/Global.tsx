@@ -526,8 +526,8 @@ export default function Global() {
                     {"★".repeat(Math.round(review.rating))}
                     {"☆".repeat(5 - Math.round(review.rating))}
                   </div>
-                  <h3>“{review.comment.split(/[.!?]/)[0].trim()}.”</h3>
-                  <p>{review.comment}</p>
+                  {/* The review once, as the quote (it used to repeat as title + body). */}
+                  <blockquote>“{review.comment.trim()}”</blockquote>
                   <div className="person">
                     <span>{review.public_customer_name.charAt(0)}</span>
                     <div>
@@ -540,6 +540,11 @@ export default function Global() {
                   </div>
                 </article>
               ))}
+            </div>
+            <div className="reviews-more">
+              <Link className="link-arrow" to="/reviews">
+                See all reviews <Icon name="arrow" size={18} />
+              </Link>
             </div>
           </section>
         )}

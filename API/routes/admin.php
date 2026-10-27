@@ -72,7 +72,6 @@ Route::prefix('admin')->group(function () {
             Route::delete('/items/{item}/images/{image}', [ItemImageController::class, 'destroy']);
 
             Route::get('/orders/riders/active', [OrderController::class, 'activeRiders']);
-            Route::get('/orders/shoppers/active', [OrderController::class, 'activeShoppers']);
             Route::get('/orders', [OrderController::class, 'index']);
             Route::get('/orders/{order}', [OrderController::class, 'show']);
             Route::get('/orders/{order}/print', [OrderController::class, 'print']);
@@ -86,7 +85,6 @@ Route::prefix('admin')->group(function () {
             Route::delete('/orders/{order}/items/{orderItem}', [OrderController::class, 'destroyItem']);
             Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);
             Route::post('/orders/{order}/assign-rider', [OrderController::class, 'assignRider']);
-            Route::patch('/orders/{order}/shopper', [OrderController::class, 'assignShopper']);
 
             Route::get('/riders/tracking', [RiderController::class, 'tracking']);
             Route::get('/riders', [RiderController::class, 'index']);

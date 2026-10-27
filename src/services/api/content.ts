@@ -1,5 +1,10 @@
 import { apiClient } from "@/services/api/client";
-import type { DeliveryAreas, FeaturedReview, HeroStat } from "@/types/content";
+import type {
+  DeliveryAreas,
+  FeaturedReview,
+  HeroStat,
+  ReviewsPage,
+} from "@/types/content";
 
 export async function getDeliveryAreas(): Promise<DeliveryAreas> {
   const { data } = await apiClient.get<DeliveryAreas>("/customer/delivery-areas");
@@ -8,6 +13,17 @@ export async function getDeliveryAreas(): Promise<DeliveryAreas> {
 
 export async function getFeaturedReviews(): Promise<FeaturedReview[]> {
   const { data } = await apiClient.get<FeaturedReview[]>("/customer/featured-reviews");
+  return data;
+}
+
+/** Every written review, newest first; rating limits it to one star value. */
+export async function getReviews(params: {
+  page: number;
+  rating?: number;
+}): Promise<ReviewsPage> {
+  const { data } = await apiClient.get<ReviewsPage>("/customer/reviews", {
+    params: { page: params.page, rating: params.rating },
+  });
   return data;
 }
 

@@ -98,7 +98,7 @@ class OrderController extends Controller
     {
         $this->authorizeOrderAccess($request, $order);
 
-        $order->load(['items', 'customer', 'rider', 'voucher', 'cashlessPayment', 'recipeBundles.stall', 'market:id,name', 'shopper:id,name']);
+        $order->load(['items', 'customer', 'rider', 'voucher', 'cashlessPayment', 'recipeBundles.stall', 'market:id,name']);
 
         return response()->json($order);
     }
@@ -386,43 +386,6 @@ class OrderController extends Controller
         $pdf = Pdf::loadView('admin.orders.print', compact('order', 'logo'));
 
         return $pdf->stream("Order-{$order->order_number}.pdf");
-    }
-
-    /** Staff who can be assigned to shop an order: market admins/owners of the order's market. */
-    public function activeShoppers(Request $request)
-    {
-        $user = $request->user();
-        $marketId = $user->role === 'super_admin' ? $request->query('market_id') : $user->market_id;
-
-        $shoppers = \App\Models\User::query()
-            ->whereIn('role', ['admin', 'owner'])
-            ->when($marketId, fn ($q) => $q->where('market_id', $marketId))
-            ->orderBy('name')
-            ->get(['id', 'name', 'market_id']);
-
-        return response()->json($shoppers);
-    }
-
-    public function assignShopper(Request $request, Order $order)
-    {
-        $this->authorizeOrderAccess($request, $order);
-
-        if (! \Illuminate\Support\Facades\Schema::hasColumn('orders', 'shopper_id')) {
-            return response()->json(['message' => 'Run the latest migration to enable shopper assignment.'], 422);
-        }
-
-        $data = $request->validate(['shopper_id' => 'nullable|integer|exists:users,id']);
-        $shopper = isset($data['shopper_id']) ? \App\Models\User::findOrFail($data['shopper_id']) : null;
-
-        if ($shopper && $request->user()->role !== 'super_admin' && $shopper->market_id !== $request->user()->market_id) {
-            return response()->json(['message' => 'This staff member is not in your market.'], 403);
-        }
-
-        $old = $order->shopper_id;
-        $order->update(['shopper_id' => $shopper?->id]);
-        AuditLogger::log('order_shopper_assigned', $order, $order->id, ['shopper_id' => $old], ['shopper_id' => $shopper?->id]);
-
-        return response()->json(['message' => $shopper ? 'Shopper assigned.' : 'Shopper removed.', 'order' => $order->fresh('shopper:id,name')]);
     }
 
     public function activeRiders(Request $request)
