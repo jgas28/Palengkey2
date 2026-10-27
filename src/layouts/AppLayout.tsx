@@ -6,10 +6,12 @@ import PkToast from "@/components/pk/PkToast";
 import { usePkTheme } from "@/components/pk/usePkTheme";
 import PushNotificationRegistrar from "@/features/notifications/PushNotificationRegistrar";
 import PopupAdModal from "@/features/marketing/PopupAdModal";
+import { useValidSelectedMarket } from "@/features/home/useValidSelectedMarket";
 
 /** Customer app shell — the Figma design's fixed header, full-bleed pages, footer and chat bubble. */
 export default function AppLayout() {
   usePkTheme();
+  useValidSelectedMarket();
 
   return (
     <div>
