@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type KeyboardEvent,
+} from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
 import AuthShell from "@/features/auth/AuthShell";
@@ -89,7 +95,37 @@ export default function OtpVerifyForm() {
     }
   }
 
+  /** Spread several digits (paste, SMS autofill) over the boxes from `index`. */
+  function fillFrom(index: number, raw: string) {
+    const incoming = raw
+      .replace(/\D/g, "")
+      .slice(0, OTP_LENGTH - index)
+      .split("");
+    if (incoming.length === 0) return;
+    setDigits((prev) => {
+      const next = [...prev];
+      incoming.forEach((digit, offset) => {
+        next[index + offset] = digit;
+      });
+      return next;
+    });
+    refs.current[Math.min(index + incoming.length, OTP_LENGTH - 1)]?.focus();
+  }
+
+  function handlePaste(index: number, event: ClipboardEvent<HTMLInputElement>) {
+    event.preventDefault();
+    // A full code always starts at the first box, wherever it was pasted.
+    const pasted = event.clipboardData.getData("text").replace(/\D/g, "");
+    fillFrom(pasted.length >= OTP_LENGTH ? 0 : index, pasted);
+  }
+
   function handleDigitChange(index: number, value: string) {
+    const typed = value.replace(/\D/g, "");
+    // SMS autofill drops the whole code into one box.
+    if (typed.length >= OTP_LENGTH) return fillFrom(0, typed);
+    // Typing into a box that already holds a digit: keep the new one.
+    if (typed.length === 2 && digits[index]) value = typed.slice(-1);
+    else if (typed.length > 1) return fillFrom(index, typed);
     if (!/^[0-9]?$/.test(value)) return;
     setDigits((prev) => {
       const next = [...prev];
@@ -189,11 +225,13 @@ export default function OtpVerifyForm() {
                 }}
                 type="text"
                 inputMode="numeric"
-                maxLength={1}
+                autoComplete={i === 0 ? "one-time-code" : "off"}
                 aria-label={`Digit ${i + 1}`}
                 value={digit}
                 onChange={(event) => handleDigitChange(i, event.target.value)}
                 onKeyDown={(event) => handleKeyDown(i, event)}
+                onPaste={(event) => handlePaste(i, event)}
+                onFocus={(event) => event.target.select()}
                 disabled={verifying}
                 style={{
                   width: 46,

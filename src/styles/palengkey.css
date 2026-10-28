@@ -1032,3 +1032,42 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
   :where(body.pk) .picker-head h2 { font-size: 28px; }
   :where(body.pk) .market-options > button { grid-template-columns: 38px 1fr auto; padding: 11px; }
 }
+
+/* Basket line the market marked out of stock / unavailable after it was added. */
+:where(body.pk) .cart-unavailable {
+  display: inline-block;
+  width: fit-content;
+  margin: 2px 0 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fdecec;
+  color: #b13c3c;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* Checkout: how the voucher discount was worked out, one row per target. */
+:where(body.pk) .order-summary .voucher-breakdown {
+  display: grid;
+  gap: 4px;
+  margin: -4px 0 10px;
+  padding: 8px 10px;
+  list-style: none;
+  border-radius: 10px;
+  background: #effaf3;
+  color: #2f6b45;
+  font-size: 11px;
+}
+:where(body.pk) .order-summary .voucher-breakdown li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+:where(body.pk) .order-summary .voucher-breakdown strong {
+  font-weight: 700;
+  white-space: nowrap;
+}
+:where(body.pk) .order-summary .voucher-breakdown .is-warning {
+  color: #b13c3c;
+  font-weight: 700;
+}

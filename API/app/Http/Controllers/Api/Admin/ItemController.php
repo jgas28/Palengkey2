@@ -28,6 +28,11 @@ class ItemController extends Controller
         // belong to all markets and are priced at the customer's market).
         $marketId = $request->boolean('catalog') ? null : $this->resolveMarketId($request, $user);
 
+        // A market admin without a market would otherwise get every market's listings.
+        if (! $marketId && ! $request->boolean('catalog') && $user->role !== 'super_admin') {
+            return response()->json(['message' => 'Your account is not assigned to a market.'], 422);
+        }
+
         $query = Item::query()->with(['category', 'type', 'unit', 'images']);
 
         if ($marketId) {
@@ -99,6 +104,12 @@ class ItemController extends Controller
     /** Swap the cover photo of an existing item. */
     public function replaceCover(Request $request, Item $item)
     {
+        $user = $request->user();
+
+        if ($user->role !== 'super_admin' && ! $this->itemBelongsToMarket($item, $user->market_id)) {
+            abort(403);
+        }
+
         $request->validate(['picture_url' => 'required|image|max:4096']);
 
         $old = $item->picture_url;

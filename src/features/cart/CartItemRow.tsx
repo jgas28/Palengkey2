@@ -5,12 +5,22 @@ import { removeCartItem, updateCartItem } from "@/services/api/cart";
 import { cartQueryKey } from "@/features/cart/useCart";
 import { useToastStore } from "@/stores/toastStore";
 import { formatPeso } from "@/utils/currency";
-import type { CartItemRow as CartItemRowType } from "@/types/cart";
+import { isOrderable, type CartItemRow as CartItemRowType } from "@/types/cart";
 
 export interface CartItemRowProps {
   item: CartItemRowType;
   selected: boolean;
   onToggleSelect: () => void;
+}
+
+function unavailableText(item: CartItemRowType): string {
+  if (item.availability !== "out_of_stock") return "No longer available";
+  if (!item.available_on) return "Out of stock today";
+  const date = new Date(`${item.available_on}T00:00:00`).toLocaleDateString("en-PH", {
+    month: "short",
+    day: "numeric",
+  });
+  return `Out of stock · back ${date}`;
 }
 
 function formatWeight(kg: number): string {
@@ -51,8 +61,13 @@ export default function CartItemRow({
     onError: onError("Could not remove item."),
   });
 
+  const orderable = isOrderable(item);
+
   return (
-    <article className="cart-line" style={selected ? undefined : { opacity: 0.6 }}>
+    <article
+      className={`cart-line ${orderable ? "" : "is-unavailable"}`}
+      style={selected && orderable ? undefined : { opacity: 0.6 }}
+    >
       <label
         className="cart-thumb"
         style={{ position: "relative", overflow: "hidden", cursor: "pointer" }}
@@ -60,7 +75,8 @@ export default function CartItemRow({
         {item.image ? <img src={item.image} alt="" /> : <Icon name="leaf" />}
         <input
           type="checkbox"
-          checked={selected}
+          checked={selected && orderable}
+          disabled={!orderable}
           onChange={onToggleSelect}
           aria-label={`Select ${item.name}`}
           style={{
@@ -79,6 +95,7 @@ export default function CartItemRow({
           {item.is_cutoff ? " · Order later" : ""}
         </p>
         <h3>{item.name}</h3>
+        {!orderable && <span className="cart-unavailable">{unavailableText(item)}</span>}
         <small>
           {item.weight_kg !== null ? `${formatWeight(item.weight_kg)} each · ` : ""}
           {item.is_bulk && item.regular_unit_price ? (

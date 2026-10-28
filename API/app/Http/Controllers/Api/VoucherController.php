@@ -67,6 +67,7 @@ class VoucherController extends Controller
                 'discount_value' => $voucher->discount_value,
                 'applies_to' => $voucher->applies_to,
                 'max_discount_amount' => $voucher->max_discount_amount,
+                'min_order_amount' => $voucher->min_order_amount,
                 'usage_limit' => $voucher->usage_limit,
                 'per_customer_limit' => $voucher->perCustomerUsageLimit(),
             ],

@@ -19,6 +19,7 @@ use App\Models\VoucherUsage;
 use App\Services\InvoiceSeriesService;
 use App\Services\PayMongoService;
 use App\Support\BulkPricing;
+use App\Support\MarketAvailability;
 use App\Support\PriceDisplay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -178,8 +179,25 @@ class CheckoutController extends Controller
             $marketItemPivots = DB::table('market_items')
                 ->whereIn('market_id', $marketIds)
                 ->whereIn('item_id', $productIds)
-                ->get(['item_id', 'market_id', 'cutoff_time', 'cutoff_timezone'])
+                ->get(['item_id', 'market_id', 'cutoff_time', 'cutoff_timezone', 'is_available', ...MarketAvailability::columns()])
                 ->keyBy(fn ($row) => $row->item_id.'-'.$row->market_id);
+
+            // Marked out of stock / unavailable (or the item deactivated) after it
+            // went into the cart: never orderable, not even as an order-later.
+            $blockUnavailable = function ($cartItem) use ($marketItemPivots) {
+                $pivot = $marketItemPivots[$cartItem->item_id.'-'.$cartItem->market_id] ?? null;
+
+                if ($pivot?->is_available && $cartItem->item?->status) {
+                    return;
+                }
+
+                $status = MarketAvailability::forItem(false, $pivot);
+                $name = $cartItem->item?->name ?? 'An item';
+
+                abort(422, $status['availability'] === 'out_of_stock'
+                    ? "{$name} is out of stock today. Remove it from your cart to continue."
+                    : "{$name} is no longer available. Remove it from your cart to continue.");
+            };
 
             $subtotal = 0;
             $validatedItems = [];
@@ -204,6 +222,8 @@ class CheckoutController extends Controller
                 // have closed/marked items unavailable for today by the time the
                 // reservation is fulfilled tomorrow; the cart's last known price
                 // is used instead of requiring a live snapshot.
+                $blockUnavailable($cartItem);
+
                 $item = $cartItem->item;
                 $itemPivot = $marketItemPivots[$cartItem->item_id.'-'.$cartItem->market_id] ?? null;
                 $isPastCutoff = (bool) $item?->isPastCutoffForMarketData($itemPivot, $market);
@@ -286,6 +306,8 @@ class CheckoutController extends Controller
                 $bundleIngredientsSubtotal = 0;
 
                 foreach ($bundle->items as $ingredientItem) {
+                    $blockUnavailable($ingredientItem);
+
                     $key = $ingredientItem->market_id.'-'.$ingredientItem->item_id;
                     $snapshot = $snapshots[$key] ?? null;
 

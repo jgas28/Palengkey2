@@ -66,9 +66,10 @@ export default function DeleteAccountForm() {
         <PkField
           label="6-digit code"
           inputMode="numeric"
-          maxLength={6}
+          autoComplete="one-time-code"
           value={otp}
-          onChange={(event) => setOtp(event.target.value.replace(/\D/g, ""))}
+          // No maxLength: a pasted "123 456" must keep all six digits.
+          onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))}
           error={otpError}
         />
 

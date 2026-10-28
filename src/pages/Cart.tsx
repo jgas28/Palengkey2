@@ -14,6 +14,7 @@ import { useMarketStore } from "@/stores/marketStore";
 import { formatPeso } from "@/utils/currency";
 import { calculateServiceFee } from "@/utils/serviceFee";
 import CartBulkBanner from "@/features/bulk/CartBulkBanner";
+import { isOrderable } from "@/types/cart";
 
 export default function Cart() {
   const { data: cart, isLoading, isError, refetch } = useCart();
@@ -35,7 +36,7 @@ export default function Cart() {
 
   useEffect(() => {
     if (!cart) return;
-    const validIds = new Set(cart.items.map((item) => item.id));
+    const validIds = new Set(cart.items.filter(isOrderable).map((item) => item.id));
     setSelectedIds((prev) => {
       const next = new Set(prev);
       for (const id of validIds) {
@@ -51,7 +52,9 @@ export default function Cart() {
 
   useEffect(() => {
     if (!cart) return;
-    const validBundleIds = new Set((cart.recipe_bundles ?? []).map((bundle) => bundle.id));
+    const validBundleIds = new Set(
+      (cart.recipe_bundles ?? []).map((bundle) => bundle.id),
+    );
     setSelectedBundleIds((prev) => {
       const next = new Set(prev);
       for (const id of validBundleIds) {
@@ -72,7 +75,10 @@ export default function Cart() {
       showToast("Cart cleared", "success");
     },
     onError: (error) => {
-      showToast(error instanceof Error ? error.message : "Could not clear cart.", "error");
+      showToast(
+        error instanceof Error ? error.message : "Could not clear cart.",
+        "error",
+      );
     },
   });
 
@@ -92,8 +98,13 @@ export default function Cart() {
     if (!cart) return;
     const bundles = cart.recipe_bundles ?? [];
     const fullySelected =
-      selectedIds.size === cart.items.length && selectedBundleIds.size === bundles.length;
-    setSelectedIds(fullySelected ? new Set() : new Set(cart.items.map((i) => i.id)));
+      selectedIds.size === cart.items.filter(isOrderable).length &&
+      selectedBundleIds.size === bundles.length;
+    setSelectedIds(
+      fullySelected
+        ? new Set()
+        : new Set(cart.items.filter(isOrderable).map((i) => i.id)),
+    );
     setSelectedBundleIds(fullySelected ? new Set() : new Set(bundles.map((b) => b.id)));
   }
 
@@ -137,7 +148,8 @@ export default function Cart() {
     setSelectedBundleIds((prev) => {
       const next = new Set(prev);
       for (const bundle of cart.recipe_bundles ?? []) {
-        if (bundle.ingredients.some((ingredient) => ingredient.is_cutoff)) next.delete(bundle.id);
+        if (bundle.ingredients.some((ingredient) => ingredient.is_cutoff))
+          next.delete(bundle.id);
       }
       return next;
     });
@@ -159,10 +171,13 @@ export default function Cart() {
   const hasCutoffItems =
     !!cart &&
     (cart.items.some((item) => item.is_cutoff) ||
-      recipeBundles.some((bundle) => bundle.ingredients.some((ingredient) => ingredient.is_cutoff)));
+      recipeBundles.some((bundle) =>
+        bundle.ingredients.some((ingredient) => ingredient.is_cutoff),
+      ));
+  const unavailableCount = cart?.items.filter((item) => !isOrderable(item)).length ?? 0;
   const allSelected =
     !!cart &&
-    selectedIds.size === cart.items.length &&
+    selectedIds.size === cart.items.length - unavailableCount &&
     selectedBundleIds.size === recipeBundles.length;
   const totalSelectedCount = selectedIds.size + selectedBundleIds.size;
   const serviceFee =
@@ -177,7 +192,14 @@ export default function Cart() {
             <button
               type="button"
               onClick={() => setMarketPickerOpen(true)}
-              style={{ padding: 0, color: "inherit", background: "none", border: 0, font: "inherit", letterSpacing: "inherit" }}
+              style={{
+                padding: 0,
+                color: "inherit",
+                background: "none",
+                border: 0,
+                font: "inherit",
+                letterSpacing: "inherit",
+              }}
             >
               {selectedMarket.name} · Change
             </button>
@@ -201,7 +223,11 @@ export default function Cart() {
               <Icon name="x" size={34} />
               <h3>Something went wrong</h3>
               <p>Please try again.</p>
-              <button type="button" className="btn primary" onClick={() => void refetch()}>
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => void refetch()}
+              >
                 Try again
               </button>
             </div>
@@ -210,7 +236,11 @@ export default function Cart() {
               <Icon name="bag" size={34} />
               <h3>Your basket is empty</h3>
               <p>Fresh finds are waiting at the market.</p>
-              <button type="button" className="btn primary" onClick={() => navigate("/shop")}>
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => navigate("/shop")}
+              >
                 Start shopping
               </button>
             </div>
@@ -233,7 +263,16 @@ export default function Cart() {
                     <button
                       type="button"
                       onClick={excludeCutoffItems}
-                      style={{ marginTop: 6, padding: 0, color: "inherit", background: "none", border: 0, fontSize: 10, fontWeight: 700, textDecoration: "underline" }}
+                      style={{
+                        marginTop: 6,
+                        padding: 0,
+                        color: "inherit",
+                        background: "none",
+                        border: 0,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        textDecoration: "underline",
+                      }}
                     >
                       Leave them out of this order
                     </button>
@@ -242,6 +281,23 @@ export default function Cart() {
                 {hasCutoffItems && <span>Order later</span>}
               </div>
 
+              {unavailableCount > 0 && (
+                <div className="notice cutoff-reached">
+                  <Icon name="x" />
+                  <div>
+                    <strong>
+                      {unavailableCount === 1
+                        ? "1 item is no longer available"
+                        : `${unavailableCount} items are no longer available`}
+                    </strong>
+                    <p>
+                      The market marked them out of stock. They’re left out of your order
+                      — remove them or check back later.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {cart?.bulk && (
                 <div style={{ margin: "0 0 0" }}>
                   <CartBulkBanner bulk={cart.bulk} />
@@ -249,7 +305,15 @@ export default function Cart() {
               )}
 
               <label
-                style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 20px", borderTop: "1px solid var(--line)", fontSize: 11, fontWeight: 700 }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "12px 20px",
+                  borderTop: "1px solid var(--line)",
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}
               >
                 <input
                   type="checkbox"
@@ -278,8 +342,18 @@ export default function Cart() {
               ))}
             </>
           )}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <button type="button" className="continue-link" onClick={() => navigate("/shop")}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <button
+              type="button"
+              className="continue-link"
+              onClick={() => navigate("/shop")}
+            >
               <Icon name="arrow" size={17} /> Continue shopping
             </button>
             {!isEmpty && (
@@ -333,7 +407,8 @@ export default function Cart() {
               <Icon name="sparkle" size={14} />
               <span>
                 Add {formatPeso(amountToMinimum)} more to switch from the flat{" "}
-                {formatPeso(settings.service_fee_fixed_amount)} fee to {settings.service_fee_percent}%.
+                {formatPeso(settings.service_fee_fixed_amount)} fee to{" "}
+                {settings.service_fee_percent}%.
               </span>
             </div>
           )}
@@ -349,7 +424,10 @@ export default function Cart() {
         </aside>
       </div>
 
-      <MarketPickerDrawer isOpen={marketPickerOpen} onClose={() => setMarketPickerOpen(false)} />
+      <MarketPickerDrawer
+        isOpen={marketPickerOpen}
+        onClose={() => setMarketPickerOpen(false)}
+      />
     </main>
   );
 }

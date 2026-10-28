@@ -16,8 +16,10 @@ export interface VoucherValidation {
   description: string | null;
   discount_type: "percentage" | "fixed";
   discount_value: number;
-  applies_to: string;
+  /** subtotal | service_fee | delivery_fee — each gets the voucher on its own. */
+  applies_to: string[] | null;
   max_discount_amount: number | null;
+  min_order_amount?: number | null;
   usage_limit: number | null;
   per_customer_limit: number | null;
 }

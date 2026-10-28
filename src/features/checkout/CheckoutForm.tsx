@@ -5,6 +5,7 @@ import Icon from "@/components/pk/Icon";
 import AddressPickerDrawer from "@/features/addresses/AddressPickerDrawer";
 import CheckoutRouteMap from "@/features/checkout/CheckoutRouteMap";
 import VoucherListDrawer from "@/features/checkout/VoucherListDrawer";
+import { voucherBreakdown } from "@/features/checkout/voucherBreakdown";
 import { readPendingVoucher } from "@/features/checkout/pendingVoucher";
 import { useCart, cartQueryKey } from "@/features/cart/useCart";
 import { listAddresses } from "@/services/api/addresses";
@@ -16,6 +17,7 @@ import { calculateDeliveryVat, calculateServiceFee } from "@/utils/serviceFee";
 import { formatPeso } from "@/utils/currency";
 import { ORDER_LATER_SLOTS, type CheckoutPaymentMethod } from "@/types/checkout";
 import type { Address } from "@/types/address";
+import { isOrderable } from "@/types/cart";
 import type { VoucherValidation } from "@/types/voucher";
 
 interface LocationState {
@@ -104,7 +106,6 @@ export default function CheckoutForm() {
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [voucherCode, setVoucherCode] = useState(readPendingVoucher);
   const [appliedVoucher, setAppliedVoucher] = useState<VoucherValidation | null>(null);
-  const [discountAmount, setDiscountAmount] = useState(0);
   const [orderLaterSlot, setOrderLaterSlot] = useState<string>(
     ORDER_LATER_SLOTS[0].value,
   );
@@ -118,7 +119,8 @@ export default function CheckoutForm() {
   }, [addresses, selectedAddress]);
 
   const selectedItems = useMemo(
-    () => cart?.items.filter((item) => itemIds.includes(item.id)) ?? [],
+    () =>
+      cart?.items.filter((item) => itemIds.includes(item.id) && isOrderable(item)) ?? [],
     [cart, itemIds],
   );
 
@@ -183,6 +185,19 @@ export default function CheckoutForm() {
   const bulkDeliverySubsidy = bulkActive
     ? Math.min(deliveryFeeGross, Number(cart?.bulk?.delivery_subsidy_cap ?? 0))
     : 0;
+  // Worked out here from the real fees (the voucher check only knows the
+  // subtotal); checkout recomputes the same thing on the server.
+  const voucherCalc = appliedVoucher
+    ? voucherBreakdown(appliedVoucher, {
+        subtotal,
+        service_fee: serviceFee ?? 0,
+        delivery_fee: Math.max(0, deliveryFeeGross - bulkDeliverySubsidy),
+      })
+    : null;
+  const discountAmount = voucherCalc?.total ?? 0;
+  const voucherBelowMinimum = Boolean(
+    appliedVoucher?.min_order_amount && subtotal < appliedVoucher.min_order_amount,
+  );
   const estimatedTotal =
     subtotal +
     deliveryFeeGross +
@@ -193,14 +208,12 @@ export default function CheckoutForm() {
   const voucherMutation = useMutation({
     mutationFn: (code: string) =>
       validateVoucher(code.trim().toUpperCase(), subtotal, marketId ?? undefined),
-    onSuccess: ({ voucher, discount_amount }) => {
+    onSuccess: ({ voucher }) => {
       setAppliedVoucher(voucher);
-      setDiscountAmount(discount_amount);
       showToast("Voucher applied", "success");
     },
     onError: (error) => {
       setAppliedVoucher(null);
-      setDiscountAmount(0);
       showToast(error instanceof Error ? error.message : "Invalid voucher.", "error");
     },
   });
@@ -215,7 +228,8 @@ export default function CheckoutForm() {
       checkout({
         address_id: selectedAddress!.id,
         payment_method: paymentMethod,
-        item_ids: itemIds,
+        // Lines marked out of stock since the basket was opened are left out.
+        item_ids: selectedItems.map((item) => item.id),
         recipe_bundle_ids: recipeBundleIds,
         voucher_code: appliedVoucher?.code,
         order_later_slot: hasCutoffItems ? orderLaterSlot : undefined,
@@ -626,11 +640,41 @@ export default function CheckoutForm() {
               <strong>-{formatPeso(bulkDeliverySubsidy)}</strong>
             </div>
           )}
-          {discountAmount > 0 && (
-            <div style={{ color: "#16a34a" }}>
-              <span>Voucher discount</span>
-              <strong>-{formatPeso(discountAmount)}</strong>
-            </div>
+          {appliedVoucher && voucherCalc && (
+            <>
+              <div style={{ color: "#16a34a" }}>
+                <span>Voucher discount ({appliedVoucher.code})</span>
+                <strong>-{formatPeso(discountAmount)}</strong>
+              </div>
+              <ul className="voucher-breakdown">
+                {voucherCalc.lines.map((line) => (
+                  <li key={line.target}>
+                    <span>
+                      {appliedVoucher.discount_type === "percentage"
+                        ? `${appliedVoucher.discount_value}% of ${line.label} ${formatPeso(line.base)}`
+                        : `${formatPeso(appliedVoucher.discount_value)} off ${line.label} (${formatPeso(line.base)})`}
+                      {line.capped && appliedVoucher.max_discount_amount
+                        ? ` · capped at ${formatPeso(appliedVoucher.max_discount_amount)}`
+                        : ""}
+                      {appliedVoucher.discount_type === "fixed" &&
+                      line.discount < appliedVoucher.discount_value
+                        ? ` · limited to the ${line.label}`
+                        : ""}
+                    </span>
+                    <strong>-{formatPeso(line.discount)}</strong>
+                  </li>
+                ))}
+                {appliedVoucher.min_order_amount ? (
+                  <li className={voucherBelowMinimum ? "is-warning" : undefined}>
+                    <span>
+                      {voucherBelowMinimum
+                        ? `Needs a ${formatPeso(appliedVoucher.min_order_amount)} minimum order — add ${formatPeso(appliedVoucher.min_order_amount - subtotal)} more`
+                        : `Minimum order ${formatPeso(appliedVoucher.min_order_amount)} met`}
+                    </span>
+                  </li>
+                ) : null}
+              </ul>
+            </>
           )}
           <div className="summary-total">
             <span>Total</span>

@@ -18,12 +18,21 @@ export interface CartItemRow {
   subtotal: string;
   cutoff_time: string | null;
   is_cutoff: boolean;
+  /** Live state at its market; only "available" lines can be checked out. */
+  availability?: "available" | "out_of_stock" | "unavailable";
+  /** Restock date (YYYY-MM-DD) when out of stock. */
+  available_on?: string | null;
   /** Priced at the bulk (wholesale) tier — `unit_price` is the bulk price. */
   is_bulk?: boolean;
   /** Per-unit price without the bulk tier, for the strikethrough. */
   regular_unit_price?: string;
   /** null when this item isn't bulk-eligible. */
   bulk_min_kg?: number | null;
+}
+
+/** False once an admin marks the item out of stock or unavailable. */
+export function isOrderable(item: CartItemRow): boolean {
+  return (item.availability ?? "available") === "available";
 }
 
 export interface CartBulkProgress {

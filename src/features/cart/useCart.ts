@@ -9,5 +9,8 @@ export function useCart() {
   return useQuery({
     queryKey: cartQueryKey,
     queryFn: () => getCart(),
+    // Availability can change while the basket is open.
+    refetchOnMount: "always",
+    refetchInterval: 60_000,
   });
 }

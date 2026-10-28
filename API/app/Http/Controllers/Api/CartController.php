@@ -14,6 +14,7 @@ use App\Models\PalutoDishIngredient;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use App\Support\BulkPricing;
+use App\Support\MarketAvailability;
 use App\Support\PriceDisplay;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -439,6 +440,8 @@ class CartController extends Controller
     /** @return JsonResponse|array */
     private function formatCart(Cart $cart, bool $asArray = false)
     {
+        $this->applyLivePrices($cart);
+
         $total = 0;
 
         // Recipe-ingredient lines are rendered inside recipe_bundles below, not the flat
@@ -451,7 +454,7 @@ class CartController extends Controller
         $marketItemPivots = DB::table('market_items')
             ->whereIn('market_id', $marketIds)
             ->whereIn('item_id', $itemIds)
-            ->get(['item_id', 'market_id', 'cutoff_time', 'cutoff_timezone'])
+            ->get(['item_id', 'market_id', 'cutoff_time', 'cutoff_timezone', 'is_available', ...MarketAvailability::columns()])
             ->keyBy(fn ($row) => $row->item_id.'-'.$row->market_id);
 
         $markets = Market::whereIn('id', $marketIds)->get()->keyBy('id');
@@ -507,6 +510,8 @@ class CartController extends Controller
                 'subtotal' => number_format($subtotal, 2, '.', ''),
                 'cutoff_time' => $item->item->getCutoffTimeStringForMarketData($pivot, $market),
                 'is_cutoff' => $item->item->isPastCutoffForMarketData($pivot, $market),
+                // Live state: an admin may mark it out of stock after it was added.
+                ...MarketAvailability::forItem((bool) ($pivot?->is_available && $item->item->status), $pivot),
                 'is_bulk' => $isBulk,
                 'regular_unit_price' => number_format($regularUnitPrice, 2, '.', ''),
                 'bulk_min_kg' => $bulk[$item->item_id]['threshold_kg'] ?? null,
@@ -541,7 +546,11 @@ class CartController extends Controller
                 ];
             });
 
-            $cookingFee = (float) $bundle->cooking_fee;
+            // Same as checkout: the dish's current rate, not the one saved when added.
+            $dish = $bundle->paluto_dish_id ? $bundle->dish : null;
+            $liveDish = $dish && $dish->status && (int) $dish->paluto_stall_id === (int) $bundle->paluto_stall_id;
+            $cookingFee = $liveDish ? (float) $dish->cookingFeeFor((float) $bundle->quantity) : (float) $bundle->cooking_fee;
+            $rate = $liveDish ? $dish->rate : $bundle->rate_at_purchase;
             $bundleSubtotal = round($ingredientsSubtotal + $cookingFee, 2);
             $total = round((float) $total + $bundleSubtotal, 2);
 
@@ -556,7 +565,7 @@ class CartController extends Controller
                 'is_accepting_orders' => $bundle->stall?->is_accepting_orders ?? null,
                 'quantity' => $bundle->quantity,
                 'pricing_unit' => $bundle->pricing_unit,
-                'rate_at_purchase' => $bundle->rate_at_purchase,
+                'rate_at_purchase' => $rate,
                 'cooking_fee' => number_format($cookingFee, 2, '.', ''),
                 'ingredients' => $ingredients,
                 'ingredients_subtotal' => number_format($ingredientsSubtotal, 2, '.', ''),
@@ -590,6 +599,33 @@ class CartController extends Controller
     }
 
     /** Total kg on one cart line (per-piece weight × pieces); 0 for non-weight items. */
+    /**
+     * Show every line at its market's current price (checkout charges the live
+     * price too), not the price it had when added. Lines without a live price
+     * (out of stock / unavailable) keep their last one; they can't be checked out.
+     */
+    private function applyLivePrices(Cart $cart): void
+    {
+        $lines = $cart->items->concat($cart->recipeBundles->flatMap(fn (CartRecipeBundle $bundle) => $bundle->items));
+
+        if ($lines->isEmpty()) {
+            return;
+        }
+
+        $snapshots = MarketPriceSnapshot::whereIn('market_id', $lines->pluck('market_id')->filter()->unique())
+            ->whereIn('item_id', $lines->pluck('item_id')->unique())
+            ->get(['market_id', 'item_id', 'price'])
+            ->keyBy(fn ($snapshot) => $snapshot->market_id.'-'.$snapshot->item_id);
+
+        foreach ($lines as $line) {
+            $live = $snapshots[$line->market_id.'-'.$line->item_id] ?? null;
+
+            if ($live) {
+                $line->price = number_format((float) $live->price, 2, '.', '');
+            }
+        }
+    }
+
     private function lineWeightKg(CartItem $item): float
     {
         if (! $this->isWeightUnit($item->item?->unit)) {

@@ -79,6 +79,8 @@ export default function AdminInventory() {
     mutationFn: () => updateAdminInventoryBoard(Object.values(edits), marketId),
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: ["adminInventory", marketId] });
+      void queryClient.invalidateQueries({ queryKey: ["adminItems"] });
+      void queryClient.invalidateQueries({ queryKey: ["adminItem"] });
       setEdits({});
       showToast(
         result.errors.length > 0
@@ -102,6 +104,8 @@ export default function AdminInventory() {
     },
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: ["adminInventory", marketId] });
+      void queryClient.invalidateQueries({ queryKey: ["adminItems"] });
+      void queryClient.invalidateQueries({ queryKey: ["adminItem"] });
       setImportSummary({ updated: result.updated, errors: result.errors });
       setImportFile(null);
       showToast(`Imported: ${result.updated} item(s) updated.`, "success");

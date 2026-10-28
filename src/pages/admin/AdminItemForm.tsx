@@ -210,11 +210,14 @@ export default function AdminItemForm() {
     data: item,
     isLoading: itemLoading,
     isError: itemError,
+    isFetchedAfterMount: itemFresh,
     refetch: refetchItem,
   } = useQuery({
     queryKey: ["adminItem", id, marketId],
     queryFn: () => getAdminItem(id!, marketId),
     enabled: isEditing && id !== null,
+    // Availability can change elsewhere (Inventory, the list); never trust the cache here.
+    refetchOnMount: "always",
   });
 
   // New items have no item payload yet; borrow the markup from the catalog list.
@@ -251,7 +254,7 @@ export default function AdminItemForm() {
     [coverPreview],
   );
   const [hydratedFromItem, setHydratedFromItem] = useState(false);
-  const [hydratedMarketId, setHydratedMarketId] = useState<number | undefined>(undefined);
+  const [hydratedListing, setHydratedListing] = useState<string | undefined>(undefined);
 
   if (item && !hydratedFromItem) {
     setName(item.name);
@@ -268,11 +271,14 @@ export default function AdminItemForm() {
     setHydratedFromItem(true);
   }
 
-  if (item && hydratedMarketId !== (item.market?.market_id ?? marketId)) {
+  // Refill the listing when the market changes, and once more when the fresh
+  // copy replaces the cached one; later background refetches keep unsaved edits.
+  const listingKey = `${item?.market?.market_id ?? marketId}:${itemFresh}`;
+  if (item && hydratedListing !== listingKey) {
     setPrice((item.market?.price ?? item.market?.last_price)?.toString() ?? "");
     setAvailability(item.market ? listingAvailability(item.market) : "available");
     setCutoffTime(item.market?.cutoff_time ?? "");
-    setHydratedMarketId(item.market?.market_id ?? marketId);
+    setHydratedListing(listingKey);
   }
 
   // A new item is only created at the Review step, so each step must be valid before the next.
