@@ -5,6 +5,7 @@ export type IconName =
   | "arrow"
   | "bag"
   | "bell"
+  | "cash"
   | "cart"
   | "check"
   | "chevron"
@@ -31,6 +32,13 @@ const iconPaths: Record<IconName, ReactNode> = {
   arrow: <path d="M5 12h14m-5-5 5 5-5 5" />,
   bag: <path d="M6 8h12l-1 12H7L6 8Zm3 0a3 3 0 0 1 6 0" />,
   bell: <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" />,
+  cash: (
+    <>
+      <rect x="2.5" y="6" width="19" height="12" rx="2" />
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M6 9.5v.01M18 14.5v.01" />
+    </>
+  ),
   cart: (
     <path d="M3 4h2l2.2 10.5a2 2 0 0 0 2 1.5H18a2 2 0 0 0 2-1.6L21 8H7M10 21h.01M18 21h.01" />
   ),

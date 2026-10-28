@@ -6,6 +6,12 @@ import AddressPickerDrawer from "@/features/addresses/AddressPickerDrawer";
 import CheckoutRouteMap from "@/features/checkout/CheckoutRouteMap";
 import VoucherListDrawer from "@/features/checkout/VoucherListDrawer";
 import { voucherBreakdown } from "@/features/checkout/voucherBreakdown";
+import bpiLogo from "@/assets/payment/bpi.png";
+import gcashLogo from "@/assets/payment/gcash.png";
+import mastercardLogo from "@/assets/payment/mastercard.png";
+import mayaLogo from "@/assets/payment/maya.png";
+import qrphLogo from "@/assets/payment/qrph.png";
+import visaLogo from "@/assets/payment/visa.png";
 import { readPendingVoucher } from "@/features/checkout/pendingVoucher";
 import { useCart, cartQueryKey } from "@/features/cart/useCart";
 import { listAddresses } from "@/services/api/addresses";
@@ -32,40 +38,54 @@ const PAYMENT_METHODS: {
   value: CheckoutPaymentMethod;
   label: string;
   hint: string;
-  /** Short mark in the design's payment badge. */
+  /** Text mark, shown when there's no logo or icon. */
   badge: string;
+  /** Brand logo(s) in the badge; cards show Visa and Mastercard side by side. */
+  logos?: string[];
+  icon?: "cash";
 }[] = [
   {
     value: "cod",
     label: "Cash on Delivery",
     hint: "Pay in cash when your order arrives",
     badge: "COD",
+    icon: "cash",
   },
   {
     value: "qrph",
     label: "QR Ph",
     hint: "Scan a QR code to pay instantly",
     badge: "QR",
+    logos: [qrphLogo],
   },
   {
     value: "gcash",
     label: "GCash",
     hint: "Pay with your GCash wallet",
     badge: "GC",
+    logos: [gcashLogo],
   },
   {
     value: "maya",
     label: "Maya",
     hint: "Pay with your Maya wallet",
     badge: "MY",
+    logos: [mayaLogo],
   },
   {
     value: "card",
     label: "Visa / Mastercard",
     hint: "Credit or debit card, secured by PayMongo",
     badge: "VM",
+    logos: [visaLogo, mastercardLogo],
   },
-  { value: "bpi", label: "BPI", hint: "Pay via BPI online banking", badge: "BPI" },
+  {
+    value: "bpi",
+    label: "BPI",
+    hint: "Pay via BPI online banking",
+    badge: "BPI",
+    logos: [bpiLogo],
+  },
   {
     value: "ubp",
     label: "UnionBank",
@@ -469,7 +489,18 @@ export default function CheckoutForm() {
                       checked={paymentMethod === method.value}
                       onChange={() => setPaymentMethod(method.value)}
                     />
-                    <span>{method.badge}</span>
+                    <span
+                      className={`pay-badge ${method.icon ? "is-icon" : ""} ${method.logos ? "" : `is-text pay-${method.value}`}`}
+                      aria-hidden="true"
+                    >
+                      {method.icon ? (
+                        <Icon name={method.icon} size={20} />
+                      ) : method.logos ? (
+                        method.logos.map((logo) => <img key={logo} src={logo} alt="" />)
+                      ) : (
+                        method.badge
+                      )}
+                    </span>
                     <strong>{method.label}</strong>
                     <small>{method.hint}</small>
                   </label>

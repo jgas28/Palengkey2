@@ -1071,3 +1071,35 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
   color: #b13c3c;
   font-weight: 700;
 }
+
+/* Checkout payment badges: brand logos on white, an icon for cash. */
+:where(body.pk) .payment-list label { grid-template-columns: auto 68px 1fr auto; }
+:where(body.pk) .payment-list label > .pay-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 64px;
+  height: 36px;
+  padding: 4px 6px;
+  overflow: hidden;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+:where(body.pk) .payment-list .pay-badge img {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  max-height: 24px;
+  object-fit: contain;
+}
+:where(body.pk) .payment-list .pay-badge img + img { max-width: 48%; }
+:where(body.pk) .payment-list .pay-badge.is-icon { color: #16a34a; background: #effaf3; border-color: #cdebd7; }
+:where(body.pk) .payment-list .pay-badge.is-text { font-size: 11px; font-weight: 800; letter-spacing: .02em; }
+/* UnionBank has no logo file yet: its brand orange as a text mark. */
+:where(body.pk) .payment-list .pay-badge.pay-ubp { color: white; background: #f47920; border-color: #f47920; }
+@media (max-width: 640px) {
+  :where(body.pk) .payment-list label { grid-template-columns: auto 60px 1fr; }
+  :where(body.pk) .payment-list label > .pay-badge { width: 56px; height: 32px; }
+}
