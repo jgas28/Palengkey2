@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Item;
 use App\Models\Market;
 use App\Models\MarketItem;
+use App\Services\AuditLogger;
 use App\Services\PriceRecorder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -42,6 +43,17 @@ class MarketItemController extends Controller
 
         if ($data['is_available'] && $data['price'] === null) {
             return response()->json(['message' => 'Price is required when available.'], 422);
+        }
+
+        // Making a deactivated item available brings it back too — otherwise the
+        // listing is "available" but the item stays hidden as Inactive.
+        if ($data['is_available'] && ! $item->status) {
+            if (! $item->category?->status || ($item->type_id && ! $item->type?->status) || ! $item->unit?->status) {
+                return response()->json(['message' => 'This item is inactive and its category, type, or unit is inactive. Activate those first.'], 422);
+            }
+
+            $item->update(['status' => true]);
+            AuditLogger::log('restored', $item, $item->id, null, $item->toArray());
         }
 
         PriceRecorder::record($marketId, $item->id, $data['price'] ?? null, $data['is_available']);
