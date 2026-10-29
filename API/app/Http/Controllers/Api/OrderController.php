@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\InvoiceService;
+use App\Services\PayMongoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -41,6 +42,11 @@ class OrderController extends Controller
     public function show(Request $request, Order $order)
     {
         $this->authorizeOwnership($request, $order);
+
+        // The payment screens poll this; confirm with PayMongo in case its webhook is late.
+        if ($order->status === 'pending_payment') {
+            $order = app(PayMongoService::class)->refreshOrderPayment($order);
+        }
 
         $order->load(['items.item.unit', 'cashlessPayment', 'rider', 'recipeBundles.stall', 'market:id,name,latitude,longitude']);
         $order->setAttribute('received_at', $order->created_at);

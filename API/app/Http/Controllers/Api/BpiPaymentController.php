@@ -26,13 +26,8 @@ class BpiPaymentController extends Controller
             $order->refresh();
         }
 
-        // Only advance pending_payment -> received here. The customer can land on
-        // this page more than once (retrying the redirect, browser back/forward),
-        // and by then an admin may have already moved the order further along —
-        // resetting on every "not RECEIVED yet" status would stomp that progress.
-        if ($order->payment_status === 'paid' && $order->status === 'pending_payment') {
-            $order->forceFill(['status' => 'order_received'])->save();
-        }
+        // The customer can land here more than once; only pending_payment advances.
+        $payMongo->markOrderReceivedIfPaid($order);
 
         return response()->view('customer.bpi-app-return', [
             'status' => $order->payment_status,

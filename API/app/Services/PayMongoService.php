@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CashlessPayment;
 use App\Models\Order;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -17,8 +18,8 @@ class PayMongoService
 
     public function __construct()
     {
-        $this->secretKey = env('PAYMONGO_SECRET_KEY');
-        $this->publicKey = env('PAYMONGO_PUBLIC_KEY');
+        $this->secretKey = config('services.paymongo.secret_key');
+        $this->publicKey = config('services.paymongo.public_key');
     }
 
     public function createPaymentIntent($orderId, $amount, $description = '', $metadata = [], array $allowedMethods = ['card'])
@@ -499,14 +500,67 @@ class PayMongoService
 
     public function verifyWebhookSignature($payload, $signature): bool
     {
-        if (! $signature) {
+        $secret = config('services.paymongo.webhook_secret');
+
+        if (! $signature || ! $secret) {
+            if (! $secret) {
+                Log::warning('PayMongo webhook rejected: PAYMONGO_WEBHOOK_SECRET is not set.');
+            }
+
             return false;
         }
 
-        $secret = env('PAYMONGO_WEBHOOK_SECRET', $this->secretKey);
-        $computed = hash_hmac('sha256', $payload, $secret);
+        // Header: "t=<timestamp>,te=<test-mode sig>,li=<live-mode sig>", each an
+        // HMAC-SHA256 of "<timestamp>.<raw body>" with the webhook's secret.
+        $parts = [];
+        foreach (explode(',', $signature) as $pair) {
+            [$key, $value] = array_pad(explode('=', trim($pair), 2), 2, '');
+            $parts[$key] = $value;
+        }
 
-        return hash_equals($computed, $signature) || str_contains($signature, $computed);
+        if (empty($parts['t'])) {
+            return false;
+        }
+
+        $computed = hash_hmac('sha256', $parts['t'].'.'.$payload, $secret);
+        $expected = str_starts_with((string) $this->secretKey, 'sk_live') ? ($parts['li'] ?? '') : ($parts['te'] ?? '');
+
+        return $expected !== '' && hash_equals($computed, $expected);
+    }
+
+    /**
+     * Ask PayMongo for an unpaid cashless order's payment, for when the webhook
+     * hasn't arrived (or can't reach this server). Checks at most every 10 s per
+     * order since customers' payment screens poll the order.
+     */
+    public function refreshOrderPayment(Order $order): Order
+    {
+        $cashless = $order->cashlessPayment;
+
+        if ($order->status !== 'pending_payment' || ! $cashless?->reference || $cashless->status !== 'pending') {
+            return $order;
+        }
+
+        if (! Cache::add("paymongo-sync:{$order->id}", true, 10)) {
+            return $order;
+        }
+
+        $this->syncCashlessPaymentStatus($cashless);
+        $order->refresh();
+        $this->markOrderReceivedIfPaid($order);
+
+        return $order;
+    }
+
+    /**
+     * Paid moves a waiting order to "order received" — only from pending_payment,
+     * so a late webhook or a repeated check never undoes an admin's progress.
+     */
+    public function markOrderReceivedIfPaid(Order $order): void
+    {
+        if ($order->payment_status === 'paid' && $order->status === 'pending_payment') {
+            $order->forceFill(['status' => 'order_received'])->save();
+        }
     }
 
     public function getPublicKey()

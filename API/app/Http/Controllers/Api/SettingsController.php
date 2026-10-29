@@ -23,7 +23,7 @@ class SettingsController extends Controller
 
                 'minimum_order_amount' => (float) Setting::get('minimum_order_amount', 500),
 
-                'paymongo_public_key' => env('PAYMONGO_PUBLIC_KEY', ''),
+                'paymongo_public_key' => config('services.paymongo.public_key') ?? '',
             ],
         ]);
     }

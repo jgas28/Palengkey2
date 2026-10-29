@@ -45,6 +45,15 @@ return [
         ])),
     ],
 
+    // Read through config() so the keys survive `php artisan config:cache`
+    // (env() returns null outside config files once the config is cached).
+    'paymongo' => [
+        'secret_key' => env('PAYMONGO_SECRET_KEY'),
+        'public_key' => env('PAYMONGO_PUBLIC_KEY'),
+        // Dashboard > Developers > Webhooks: the whsk_... secret of the webhook.
+        'webhook_secret' => env('PAYMONGO_WEBHOOK_SECRET'),
+    ],
+
     // Rider app: reject token-less /rider requests once every rider has the updated APK.
     'rider_api' => [
         'enforce' => env('RIDER_API_AUTH_ENFORCED', false),
