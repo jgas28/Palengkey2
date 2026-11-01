@@ -35,6 +35,17 @@ function initialize(): Promise<void> {
   return initialized;
 }
 
+// Google sends its popup back to this page with the token in the URL. The plugin
+// passes it to the opener and closes the popup as soon as it loads, but it only
+// loads on its first call, so make one here.
+if (
+  Capacitor.getPlatform() === "web" &&
+  window.opener &&
+  window.location.hash.includes("id_token")
+) {
+  void initialize().catch(() => undefined);
+}
+
 /** The user cancelled the Google prompt — not an error worth showing. */
 export function isGoogleSignInCancelled(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
