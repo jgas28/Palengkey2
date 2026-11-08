@@ -76,13 +76,14 @@ export async function verifyOtp(
   return data;
 }
 
+/** Sends one code to every channel in a single request (the API allows one code a minute). */
 export async function resendOtp(
   email: string,
-  channel?: OtpChannel,
+  channels: OtpChannel[] = ["email"],
 ): Promise<MessageResponse> {
   const { data } = await apiClient.post<MessageResponse>("/customer/resend/otp", {
     email,
-    channel,
+    channels,
   });
   return data;
 }

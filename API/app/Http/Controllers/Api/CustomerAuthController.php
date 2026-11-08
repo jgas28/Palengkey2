@@ -14,7 +14,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
 
 class CustomerAuthController extends Controller
 {
@@ -334,6 +333,11 @@ class CustomerAuthController extends Controller
     {
         $request->validate([
             'email' => 'required|email',
+            // One code for every channel picked ("Both" at sign-up) — a request
+            // per channel would trip the one-code-a-minute limit below.
+            'channels' => 'nullable|array|min:1',
+            'channels.*' => 'string|in:email,sms',
+            // Older apps send a single channel.
             'channel' => 'nullable|string|in:email,sms',
         ]);
 
@@ -358,7 +362,7 @@ class CustomerAuthController extends Controller
         }
 
         $otp = (string) random_int(100000, 999999);
-        $channel = $request->input('channel');
+        $channels = array_values(array_unique($request->input('channels') ?? [$request->input('channel') ?? 'email']));
 
         $customer->update([
             'otp_code' => $otp,
@@ -367,13 +371,45 @@ class CustomerAuthController extends Controller
             'otp_attempts' => 0,
         ]);
 
-        $result = $otpService->sendVerificationCode($customer, $otp, 10, $channel);
-
-        if (! $result['delivered']) {
-            return response()->json(['message' => $result['error']], 502);
+        $sent = [];
+        $errors = [];
+        foreach ($channels as $channel) {
+            $result = $otpService->sendVerificationCode($customer, $otp, 10, $channel);
+            if ($result['delivered']) {
+                $sent[] = $channel;
+            } else {
+                $errors[$channel] = $result['error'];
+            }
         }
 
-        return response()->json(['message' => 'A new 6-digit code has been sent to your email.']);
+        // The text didn't go through (no number, Semaphore down): rather than leave
+        // an SMS-only customer with no code at all, send it to their email and say so.
+        if (! $sent && ! in_array('email', $channels, true)) {
+            $result = $otpService->sendVerificationCode($customer, $otp, 10, 'email');
+            if ($result['delivered']) {
+                return response()->json([
+                    'message' => "We couldn't text your phone, so we sent your 6-digit code to your email instead.",
+                    'sent' => ['email'],
+                ]);
+            }
+            $errors['email'] = $result['error'];
+        }
+
+        if (! $sent) {
+            // Let the next try go through right away; nothing reached the customer.
+            $customer->update(['otp_last_sent_at' => null]);
+
+            return response()->json(['message' => $errors['email'] ?? reset($errors)], 502);
+        }
+
+        $message = 'A new 6-digit code has been sent to your '.(in_array('sms', $sent, true) && in_array('email', $sent, true)
+            ? 'email and phone.'
+            : (in_array('sms', $sent, true) ? 'phone.' : 'email.'));
+        if (isset($errors['sms'])) {
+            $message .= " We couldn't text your phone.";
+        }
+
+        return response()->json(['message' => $message, 'sent' => $sent]);
     }
 
     /*
@@ -446,7 +482,7 @@ class CustomerAuthController extends Controller
     public function me(Request $request)
     {
         return response()->json([
-            'user' => $this->userPayload($request->user(), withProfileImage: true),
+            'user' => $this->userPayload($request->user()),
         ]);
     }
 
@@ -605,7 +641,7 @@ class CustomerAuthController extends Controller
         }
     }
 
-    private function userPayload(Customer $customer, bool $forceEmailUnverified = false, bool $withProfileImage = false): array
+    private function userPayload(Customer $customer, bool $forceEmailUnverified = false): array
     {
         return [
             'id' => $customer->id,
@@ -617,25 +653,11 @@ class CustomerAuthController extends Controller
             'email_verified_at' => $forceEmailUnverified ? null : $customer->email_verified_at,
             'phone_verified_at' => $customer->phone_verified_at,
             'verification_status' => $customer->verification_status,
-            'profile_image' => $withProfileImage ? $this->profileImageUrl($customer) : null,
+            // Photos were dropped (initials instead); key kept for older apps. Saves
+            // an S3 list call on every /me.
+            'profile_image' => null,
             ...$customer->verificationFlags(),
         ];
-    }
-
-    private function profileImageUrl(Customer $customer): ?string
-    {
-        // Mirrors CustomerProfileController's disk selection — S3 once AWS creds
-        // are configured, the local public disk until then.
-        $disk = config('filesystems.disks.s3.key') ? 's3' : 'public';
-
-        try {
-            $folder = 'customers/'.$customer->id.'/profile_image';
-            $files = Storage::disk($disk)->files($folder);
-
-            return ! empty($files) ? Storage::disk($disk)->url($files[0]) : null;
-        } catch (\Throwable) {
-            return null;
-        }
     }
 
     /*

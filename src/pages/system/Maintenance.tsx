@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Icon from "@/components/pk/Icon";
 import { env } from "@/config/env";
 import SystemShell, { SUPPORT_EMAIL } from "@/features/system/SystemShell";
@@ -9,33 +9,62 @@ import {
   rememberMaintenance,
 } from "@/features/system/maintenance";
 
+/**
+ * Admin's "Preview the maintenance page" link: ?preview=<minutes>, 0 for no time,
+ * -1 for "Coming soon" — shows that choice without asking the API.
+ */
+function readPreview(): { retryAt: number | null; comingSoon: boolean } | null {
+  const value = new URLSearchParams(window.location.search).get("preview");
+  if (value === null) return null;
+  const minutes = Number(value);
+  return {
+    retryAt: minutes > 0 ? Date.now() + minutes * 60_000 : null,
+    comingSoon: minutes === -1,
+  };
+}
+
 /** Shown while the API is in maintenance mode (503). Figma: /maintenance. */
 export default function Maintenance() {
-  const [info, setInfo] = useState(readMaintenance);
+  const [preview] = useState(readPreview);
+  const [info, setInfo] = useState(() => ({ ...readMaintenance(), ...preview }));
   const [checking, setChecking] = useState(false);
   const [stillDown, setStillDown] = useState(false);
+
+  /** Asks the API; while still down, refreshes the time the admin set. Returns true once live. */
+  async function fetchStatus(): Promise<boolean> {
+    const response = await fetch(`${env.apiUrl}/customer/categories`, {
+      headers: { Accept: "application/json" },
+    });
+    if (response.ok) return true;
+    const body = (await response.json().catch(() => null)) as {
+      back_at?: string;
+      coming_soon?: boolean;
+    } | null;
+    rememberMaintenance(
+      response.headers.get("Retry-After"),
+      body?.back_at,
+      info.returnTo,
+      Boolean(body?.coming_soon),
+    );
+    setInfo(readMaintenance());
+    return false;
+  }
+
+  // The saved time may be missing or stale (page reloaded, admin changed it).
+  useEffect(() => {
+    if (!preview) void fetchStatus().catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function checkAgain() {
     setChecking(true);
     setStillDown(false);
     try {
-      const response = await fetch(`${env.apiUrl}/customer/categories`, {
-        headers: { Accept: "application/json" },
-      });
-      if (response.ok) {
+      if (await fetchStatus()) {
         clearMaintenance();
         window.location.assign(info.returnTo || "/");
         return;
       }
-      const body = (await response.json().catch(() => null)) as {
-        back_at?: string;
-      } | null;
-      rememberMaintenance(
-        response.headers.get("Retry-After"),
-        body?.back_at,
-        info.returnTo,
-      );
-      setInfo(readMaintenance());
       setStillDown(true);
     } catch {
       setStillDown(true);
@@ -60,8 +89,14 @@ export default function Maintenance() {
             <Icon name="clock" />
           </span>
           <div>
-            <small>Expected back online</small>
-            <strong>{info.retryAt ? formatBackOnline(info.retryAt) : "Very soon"}</strong>
+            <small>{info.comingSoon ? "Status" : "Expected back online"}</small>
+            <strong>
+              {info.comingSoon
+                ? "Coming soon"
+                : info.retryAt
+                  ? formatBackOnline(info.retryAt)
+                  : "Very soon"}
+            </strong>
             <p>
               {stillDown
                 ? "Still finishing up — please check again in a few minutes."

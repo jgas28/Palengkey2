@@ -17,6 +17,8 @@ export interface MaintenanceState {
   enabled: boolean;
   /** ISO time customers are told to expect the site back; null = not set. */
   until: string | null;
+  /** Customers see "Coming soon" instead of a back-online time. */
+  coming_soon: boolean;
   changed_by: string | null;
   changed_at: string | null;
 }
@@ -32,6 +34,7 @@ export async function getMaintenance(): Promise<MaintenanceState> {
 export async function setMaintenance(payload: {
   enabled: boolean;
   until?: string | null;
+  coming_soon?: boolean;
 }): Promise<MaintenanceState & { message: string }> {
   const { data } = await adminApiClient.put<MaintenanceState & { message: string }>(
     "/admin/maintenance",

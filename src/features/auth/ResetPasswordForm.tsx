@@ -4,6 +4,7 @@ import PkField from "@/components/pk/PkField";
 import AuthShell from "@/features/auth/AuthShell";
 import { resetPassword } from "@/services/api/auth";
 import { useToastStore } from "@/stores/toastStore";
+import { ButtonSpinner } from "@/components/common/LoadingState";
 
 interface LocationState {
   email?: string;
@@ -92,6 +93,7 @@ export default function ResetPasswordForm() {
           error={errors.passwordConfirmation}
         />
         <button type="submit" className="btn primary auth-submit" disabled={submitting}>
+          {submitting && <ButtonSpinner />}
           {submitting ? "Saving…" : "Reset password"}
         </button>
       </form>

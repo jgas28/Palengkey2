@@ -29,6 +29,7 @@ class CustomerMaintenance
             'message' => 'Palengkey is under maintenance. Please check back shortly.',
             'error_code' => 'maintenance',
             'back_at' => $backAt?->toIso8601String(),
+            'coming_soon' => filter_var(Setting::get('maintenance_coming_soon', false), FILTER_VALIDATE_BOOLEAN),
         ], 503);
 
         if ($backAt && $backAt->isFuture()) {

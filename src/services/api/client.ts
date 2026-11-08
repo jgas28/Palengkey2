@@ -31,6 +31,7 @@ apiClient.interceptors.response.use(
       goToMaintenance(
         error.response.headers?.["retry-after"],
         error.response.data?.back_at,
+        error.response.data?.coming_soon,
       );
     }
 

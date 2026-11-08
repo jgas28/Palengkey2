@@ -32,6 +32,13 @@
   opacity: 0.55;
 }
 
+/* "Resend code in 0:42" while the OTP resend is cooling down. */
+:where(body.pk) .auth-switch button:disabled {
+  color: var(--muted);
+  cursor: default;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Keyboard focus — the prototype relies on browser defaults that Tailwind resets. */
 :where(body.pk) a:focus-visible,
 :where(body.pk) button:focus-visible,
@@ -326,6 +333,12 @@
   border-top-color: rgba(255, 255, 255, 0.14);
 }
 
+/* Room under the last footer row for the fixed chat bubble (24px + 52px), which
+   otherwise sits on top of the Privacy/Terms links on mid-size screens. */
+:where(body.pk) footer {
+  padding-bottom: 92px;
+}
+
 :where(body.pk) .footer-form .submit,
 :where(body.pk) footer .socials a:hover {
   color: white;
@@ -412,4 +425,258 @@
 :where(body.pk) .social-login:hover:not(:disabled) {
   border-color: var(--brand-teal);
   background: #f7fdfd;
+}
+
+/* Privacy policy / terms: accordion (PkPolicyPage). */
+:where(body.pk) .policy-page aside a.active {
+  color: var(--teal-dark);
+  background: var(--teal-pale);
+  box-shadow: inset 3px 0 0 var(--teal);
+}
+:where(body.pk) .policy-intro {
+  padding: 22px 25px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+:where(body.pk) .policy-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+:where(body.pk) .policy-intro h2 {
+  margin: 0;
+  font-size: 25px;
+}
+:where(body.pk) .policy-intro small {
+  display: block;
+  margin: 4px 0 10px;
+  color: var(--teal-dark);
+  font-size: 10px;
+  font-weight: 700;
+}
+:where(body.pk) .policy-intro p,
+:where(body.pk) .policy-panel p,
+:where(body.pk) .policy-panel li {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+:where(body.pk) .policy-lang {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--teal-pale);
+  border-radius: 999px;
+}
+:where(body.pk) .policy-lang button {
+  padding: 6px 13px;
+  color: var(--teal-dark);
+  background: none;
+  border: 0;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+:where(body.pk) .policy-lang button.active {
+  color: white;
+  background: var(--teal);
+}
+:where(body.pk) .policy-item {
+  overflow: hidden;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  scroll-margin-top: 100px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+:where(body.pk) .policy-item.open {
+  border-color: #bfe3e7;
+  box-shadow: 0 10px 28px rgba(0, 92, 101, 0.08);
+}
+:where(body.pk) .policy-item > h2 {
+  margin: 0;
+  font-size: inherit;
+}
+:where(body.pk) .policy-toggle {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  width: 100%;
+  padding: 16px 22px;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+:where(body.pk) .policy-toggle:hover .policy-title {
+  color: var(--teal-dark);
+}
+:where(body.pk) .policy-toggle:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: -2px;
+}
+:where(body.pk) .policy-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--teal);
+  background: var(--teal-pale);
+  border-radius: 12px;
+}
+:where(body.pk) .policy-title {
+  flex: 1;
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: 700;
+}
+:where(body.pk) .policy-chevron {
+  flex: none;
+  color: var(--muted);
+  transition: transform 0.2s ease;
+}
+:where(body.pk) .policy-item.open .policy-chevron {
+  color: var(--teal);
+  transform: rotate(90deg);
+}
+:where(body.pk) .policy-panel {
+  padding: 0 22px 18px 81px;
+}
+:where(body.pk) .policy-panel ul {
+  display: grid;
+  gap: 2px;
+  margin: 0 0 8px;
+  padding-left: 18px;
+}
+:where(body.pk) .policy-panel li::marker {
+  color: var(--teal);
+}
+:where(body.pk) .policy-panel strong {
+  color: var(--ink);
+}
+:where(body.pk) .policy-panel h3 {
+  margin: 14px 0 6px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(body.pk) .policy-chevron,
+  :where(body.pk) .policy-item {
+    transition: none;
+  }
+}
+@media (max-width: 760px) {
+  :where(body.pk) .policy-toggle {
+    gap: 12px;
+    padding: 14px 16px;
+  }
+  :where(body.pk) .policy-icon {
+    width: 38px;
+    height: 38px;
+  }
+  :where(body.pk) .policy-title {
+    font-size: 16px;
+  }
+  :where(body.pk) .policy-panel {
+    padding: 0 16px 16px;
+  }
+}
+
+/* Policy read in place on the register page (PkPolicyModal). */
+:where(body.pk) .policy-modal-backdrop {
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(14, 36, 39, 0.55);
+  backdrop-filter: blur(4px);
+}
+:where(body.pk) .policy-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(680px, 100%);
+  max-height: min(760px, calc(100dvh - 40px));
+  overflow: hidden;
+  background: white;
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(0, 40, 46, 0.3);
+  outline: none;
+}
+:where(body.pk) .policy-modal-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px 12px;
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid var(--line);
+}
+:where(body.pk) .policy-modal-head h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 22px;
+}
+:where(body.pk) .policy-modal-head small {
+  color: var(--teal-dark);
+  font-size: 10px;
+  font-weight: 700;
+}
+:where(body.pk) .policy-modal-head .policy-lang {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+:where(body.pk) .policy-modal-x {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: var(--muted);
+  background: var(--teal-pale);
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+:where(body.pk) .policy-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 22px 8px;
+  overscroll-behavior: contain;
+}
+:where(body.pk) .policy-modal-body .policy-modal-section {
+  margin: 16px 0 6px;
+  font-family: var(--display);
+  font-size: 16px;
+}
+:where(body.pk) .policy-modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--line);
+}
+:where(body.pk) .policy-modal-foot .btn {
+  min-height: 42px;
+  gap: 6px;
+}
+@media (max-width: 520px) {
+  :where(body.pk) .policy-modal-backdrop {
+    padding: 0;
+    place-items: end stretch;
+  }
+  :where(body.pk) .policy-modal {
+    width: 100%;
+    max-height: 92dvh;
+    border-radius: 18px 18px 0 0;
+  }
+  :where(body.pk) .policy-modal-foot .btn {
+    flex: 1;
+  }
 }

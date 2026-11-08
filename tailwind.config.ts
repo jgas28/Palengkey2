@@ -103,6 +103,8 @@ export default {
         "fade-in": "fade-in 200ms ease-out",
         "scale-in": "scale-in 200ms cubic-bezier(0.16, 1, 0.3, 1)",
         pop: "pop 300ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+        // Calmer than Tailwind's 1s turn; keep index.html's boot loader in step.
+        spin: "spin 1.6s linear infinite",
       },
     },
   },

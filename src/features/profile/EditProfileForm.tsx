@@ -6,6 +6,7 @@ import { updateProfile } from "@/services/api/profile";
 import { refreshCurrentUser } from "@/features/profile/refreshCurrentUser";
 import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
+import { ButtonSpinner } from "@/components/common/LoadingState";
 
 const PHONE_PATTERN = /^\+63\d{10}$/;
 
@@ -80,6 +81,7 @@ export default function EditProfileForm() {
       />
 
       <button type="submit" className="btn primary" disabled={updateMutation.isPending}>
+        {updateMutation.isPending && <ButtonSpinner />}
         {updateMutation.isPending ? "Saving…" : "Save changes"}
       </button>
     </form>

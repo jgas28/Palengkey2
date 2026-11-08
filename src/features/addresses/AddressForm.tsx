@@ -7,6 +7,7 @@ import { createAddress, updateAddress } from "@/services/api/addresses";
 import { getCurrentCoordinates } from "@/utils/geolocation";
 import { useToastStore } from "@/stores/toastStore";
 import type { Address } from "@/types/address";
+import { ButtonSpinner } from "@/components/common/LoadingState";
 
 export interface AddressFormProps {
   existingAddress?: Address;
@@ -177,6 +178,7 @@ export default function AddressForm({ existingAddress, onSaved }: AddressFormPro
         style={{ width: "100%" }}
         disabled={saveMutation.isPending}
       >
+        {saveMutation.isPending && <ButtonSpinner />}
         {saveMutation.isPending ? "Saving…" : "Save address"} <Icon name="check" />
       </button>
     </form>

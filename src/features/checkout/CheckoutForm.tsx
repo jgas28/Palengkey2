@@ -25,6 +25,7 @@ import { ORDER_LATER_SLOTS, type CheckoutPaymentMethod } from "@/types/checkout"
 import type { Address } from "@/types/address";
 import { isOrderable } from "@/types/cart";
 import type { VoucherValidation } from "@/types/voucher";
+import { ButtonSpinner } from "@/components/common/LoadingState";
 
 interface LocationState {
   itemIds?: number[];
@@ -565,9 +566,10 @@ export default function CheckoutForm() {
                   type="button"
                   className="btn confirm-button"
                   disabled={!canSubmit}
+                  data-submit-once
                   onClick={() => checkoutMutation.mutate()}
                 >
-                  <Icon name="check" />{" "}
+                  {checkoutMutation.isPending ? <ButtonSpinner /> : <Icon name="check" />}{" "}
                   {checkoutMutation.isPending ? "Placing order…" : "Confirm order"}
                 </button>
               </div>

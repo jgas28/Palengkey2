@@ -5,6 +5,7 @@ import AuthShell from "@/features/auth/AuthShell";
 import { forgotPassword } from "@/services/api/auth";
 import { useToastStore } from "@/stores/toastStore";
 import type { OtpChannel } from "@/types/auth";
+import { ButtonSpinner } from "@/components/common/LoadingState";
 
 export default function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
@@ -56,6 +57,7 @@ export default function ForgotPasswordForm() {
           disabled={submitting !== null}
           onClick={() => requestCode("email")}
         >
+          {submitting === "email" && <ButtonSpinner />}
           {submitting === "email" ? "Sending…" : "Send code via email"}
         </button>
         <button
@@ -64,6 +66,7 @@ export default function ForgotPasswordForm() {
           disabled={submitting !== null}
           onClick={() => requestCode("sms")}
         >
+          {submitting === "sms" && <ButtonSpinner />}
           {submitting === "sms" ? "Sending…" : "Send code via SMS"}
         </button>
       </form>

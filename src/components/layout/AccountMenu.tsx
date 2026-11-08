@@ -3,11 +3,10 @@ import { useNavigate } from "react-router-dom";
 import Icon from "@/components/pk/Icon";
 import { logout as logoutRequest } from "@/services/api/auth";
 import { useAuthStore } from "@/stores/authStore";
+import { AVATAR_BACKGROUND, userInitials } from "@/utils/initials";
 
-/** Logged-in customer's photo, or initials on the brand teal→green avatar when there's none. */
-function Avatar({ imageUrl, initials }: { imageUrl: string | null; initials: string }) {
-  const [failed, setFailed] = useState(false);
-
+/** Logged-in customer's initials on the brand teal→green avatar. */
+function Avatar({ initials }: { initials: string }) {
   return (
     <span
       style={{
@@ -17,7 +16,7 @@ function Avatar({ imageUrl, initials }: { imageUrl: string | null; initials: str
         height: 36,
         overflow: "hidden",
         color: "white",
-        background: "linear-gradient(135deg, #0097a7 0%, #00838f 55%, #0a9137 130%)",
+        background: AVATAR_BACKGROUND,
         border: "2px solid white",
         borderRadius: "50%",
         boxShadow: "0 0 0 1px var(--line)",
@@ -26,11 +25,7 @@ function Avatar({ imageUrl, initials }: { imageUrl: string | null; initials: str
         fontWeight: 700,
       }}
     >
-      {imageUrl && !failed ? (
-        <img src={imageUrl} alt="" onError={() => setFailed(true)} />
-      ) : (
-        initials
-      )}
+      {initials}
     </span>
   );
 }
@@ -78,9 +73,7 @@ export default function AccountMenu() {
     };
   }, [open]);
 
-  const initials = user
-    ? `${user.fname?.charAt(0) ?? ""}${user.lname?.charAt(0) ?? ""}`.toUpperCase() || "P"
-    : "P";
+  const initials = userInitials(user);
 
   function go(path: string) {
     setOpen(false);
@@ -111,7 +104,7 @@ export default function AccountMenu() {
         aria-label={user ? `Account menu — ${user.fname} ${user.lname}` : "Account menu"}
         onClick={() => setOpen((current) => !current)}
       >
-        <Avatar imageUrl={user?.profile_image ?? null} initials={initials} />
+        <Avatar initials={initials} />
       </button>
       {open && (
         <div

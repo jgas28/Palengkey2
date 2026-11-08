@@ -22,6 +22,8 @@ class MaintenanceController extends Controller
             'enabled' => 'required|boolean',
             // Expected back-online time shown to customers; optional.
             'until' => 'nullable|date|after:now',
+            // Show "Coming soon" instead of a back-online time.
+            'coming_soon' => 'sometimes|boolean',
         ]);
 
         $before = $this->state();
@@ -30,12 +32,14 @@ class MaintenanceController extends Controller
         Setting::set('maintenance_until', $data['enabled'] && ! empty($data['until'])
             ? Carbon::parse($data['until'])->utc()->toIso8601String()
             : null);
+        Setting::set('maintenance_coming_soon', $data['enabled'] && ! empty($data['coming_soon']) ? '1' : '0');
         Setting::set('maintenance_changed_by', $request->user()->name ?? $request->user()->email);
         Setting::set('maintenance_changed_at', now()->toIso8601String());
 
         AuditLogger::custom($data['enabled'] ? 'maintenance_enabled' : 'maintenance_disabled', [
             'before' => $before,
             'until' => $data['until'] ?? null,
+            'coming_soon' => (bool) ($data['coming_soon'] ?? false),
         ]);
 
         return response()->json([
@@ -51,6 +55,7 @@ class MaintenanceController extends Controller
         return [
             'enabled' => filter_var(Setting::get('maintenance_enabled', false), FILTER_VALIDATE_BOOLEAN),
             'until' => Setting::get('maintenance_until'),
+            'coming_soon' => filter_var(Setting::get('maintenance_coming_soon', false), FILTER_VALIDATE_BOOLEAN),
             'changed_by' => Setting::get('maintenance_changed_by'),
             'changed_at' => Setting::get('maintenance_changed_at'),
         ];

@@ -14,9 +14,22 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Playfair+Display:ital,wght@0,600;0,700;0,800;0,900;1,600&display=swap"
       rel="stylesheet"
     />
+    <style>
+      .boot-loader { position: fixed; inset: 0; display: grid; place-items: center; background: #fff; }
+      .boot-loader > * { grid-area: 1 / 1; }
+      .boot-ring { width: 88px; height: 88px; border-radius: 50%; border: 3px solid #d9f1f3; border-top-color: #0097a7; animation: boot-spin 1.6s linear infinite; }
+      .boot-loader img { width: 54px; height: 54px; border-radius: 12px; }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) { .boot-ring { animation-duration: 3.2s; } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot-loader" role="status" aria-label="Loading">
+        <span class="boot-ring"></span>
+        <img src="/palengkey-loader.png" alt="" />
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

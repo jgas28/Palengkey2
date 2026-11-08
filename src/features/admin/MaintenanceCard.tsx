@@ -9,12 +9,16 @@ import {
 } from "@/services/api/adminSettings";
 import { useToastStore } from "@/stores/toastStore";
 
+/** Select value for "Coming soon": no time, the customer page says "Coming soon". */
+const COMING_SOON = -1;
+
 const DURATIONS = [
   { label: "30 minutes", minutes: 30 },
   { label: "1 hour", minutes: 60 },
   { label: "2 hours", minutes: 120 },
   { label: "4 hours", minutes: 240 },
   { label: "Not sure yet", minutes: 0 },
+  { label: "Coming soon", minutes: COMING_SOON },
 ];
 
 function manilaTime(iso: string): string {
@@ -49,6 +53,7 @@ export default function MaintenanceCard() {
           enabled && minutes > 0
             ? new Date(Date.now() + minutes * 60_000).toISOString()
             : null,
+        coming_soon: enabled && minutes === COMING_SOON,
       }),
     onSuccess: (data) => {
       queryClient.setQueryData(maintenanceQueryKey, data);
@@ -104,9 +109,11 @@ export default function MaintenanceCard() {
         <p className="mt-0.5 text-xs text-slate-500">
           {enabled
             ? [
-                state?.until
-                  ? `Back online expected ${manilaTime(state.until)}`
-                  : "No end time set",
+                state?.coming_soon
+                  ? "Customers see “Coming soon”"
+                  : state?.until
+                    ? `Back online expected ${manilaTime(state.until)}`
+                    : "No end time set",
                 state?.changed_by && `turned on by ${state.changed_by}`,
               ]
                 .filter(Boolean)
@@ -114,7 +121,7 @@ export default function MaintenanceCard() {
             : "Closes the customer website and app only. The admin panel and rider app keep working."}
         </p>
         <a
-          href="/maintenance"
+          href={enabled ? "/maintenance" : `/maintenance?preview=${minutes}`}
           target="_blank"
           rel="noreferrer"
           className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-primary-700 hover:underline"

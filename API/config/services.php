@@ -45,6 +45,13 @@ return [
         ])),
     ],
 
+    // PH SMS gateway for OTP codes and admin SMS blasts.
+    'semaphore' => [
+        'api_key' => env('SEMAPHORE_API_KEY'),
+        // Approved sender name (max 11 chars); Semaphore's default when empty.
+        'sender_name' => env('SEMAPHORE_SENDERNAME'),
+    ],
+
     // Read through config() so the keys survive `php artisan config:cache`
     // (env() returns null outside config files once the config is cached).
     'paymongo' => [

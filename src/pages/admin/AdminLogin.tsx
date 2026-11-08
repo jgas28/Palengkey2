@@ -4,6 +4,7 @@ import AuthShell from "@/features/auth/AuthShell";
 import { adminLogin } from "@/services/api/adminAuth";
 import { useAdminAuthStore } from "@/stores/adminAuthStore";
 import { authErrorMessage } from "@/features/auth/authErrorMessage";
+import { ButtonSpinner } from "@/components/common/LoadingState";
 
 /** Admin / super admin login — same photo-and-card layout as the customer login. */
 export default function AdminLogin() {
@@ -136,6 +137,7 @@ export default function AdminLogin() {
           )}
         </label>
         <button type="submit" className="btn primary auth-submit" disabled={submitting}>
+          {submitting && <ButtonSpinner />}
           {submitting ? "Logging in…" : "Log in"}
         </button>
       </form>

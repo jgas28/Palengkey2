@@ -617,13 +617,13 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
 :where(body.pk) .delivery-address small, :where(body.pk) .delivery-address p { margin: 0; color: var(--muted); font-size: 8px; line-height: 1.4; }
 :where(body.pk) .delivery-address strong { font-size: 10px; }
 :where(body.pk) .support-order { width: 100%; margin-top: 14px; padding: 10px; color: var(--teal-dark); background: var(--teal-pale); border-radius: 9px; font-size: 9px; }
-:where(body.pk) .profile-hero { padding: 55px 0 85px; color: white; background: var(--dark); }
+:where(body.pk) .profile-hero { padding: 55px 0 85px; color: white; background: var(--hero-teal); }
 :where(body.pk) .profile-head { display: flex; align-items: center; gap: 20px; }
 :where(body.pk) .profile-head > span { display: grid; place-items: center; width: 84px; height: 84px; color: var(--teal-dark); background: var(--amber); border-radius: 50%; font-family: var(--display); font-size: 25px; }
 :where(body.pk) .profile-head h1 { margin: 2px 0; font-family: var(--display); font-size: 36px; }
-:where(body.pk) .profile-head small { color: #70d3db; font-size: 9px; text-transform: uppercase; letter-spacing: .1em; }
-:where(body.pk) .profile-head p { margin: 0; color: #a8babc; font-size: 10px; }
-:where(body.pk) .profile-head .outline { margin-left: auto; color: white; background: transparent; border-color: #64777a; }
+:where(body.pk) .profile-head small { color: #75dce4; font-size: 9px; text-transform: uppercase; letter-spacing: .1em; }
+:where(body.pk) .profile-head p { margin: 0; color: #cae4e6; font-size: 10px; }
+:where(body.pk) .profile-head .outline { margin-left: auto; color: white; background: transparent; border-color: rgba(255,255,255,.45); }
 :where(body.pk) .profile-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: -42px; }
 :where(body.pk) .profile-stats article { display: flex; align-items: center; justify-content: space-between; padding: 22px; background: white; border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
 :where(body.pk) .profile-stats small { color: var(--muted); }

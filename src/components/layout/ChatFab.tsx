@@ -7,6 +7,7 @@ import { FAQS } from "@/features/support/faqs";
 import { getSupportOverview, openSupportForOrder } from "@/services/api/support";
 import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
+import { ButtonSpinner } from "@/components/common/LoadingState";
 
 type View = { name: "home" } | { name: "thread"; threadId: number; title: string };
 
@@ -218,6 +219,7 @@ export default function ChatFab() {
                               className="btn primary"
                               disabled={!orderNumber || startMutation.isPending}
                             >
+                              {startMutation.isPending && <ButtonSpinner />}
                               Chat
                             </button>
                           </form>

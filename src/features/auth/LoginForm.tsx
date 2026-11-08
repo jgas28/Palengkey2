@@ -8,6 +8,7 @@ import { useGoogleSignIn } from "@/features/auth/useGoogleSignIn";
 import { useAuthStore } from "@/stores/authStore";
 import { getDeviceId } from "@/utils/deviceId";
 import { authErrorMessage } from "@/features/auth/authErrorMessage";
+import { ButtonSpinner } from "@/components/common/LoadingState";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -180,6 +181,7 @@ export default function LoginForm() {
           </Link>
         </p>
         <button type="submit" className="btn primary auth-submit" disabled={submitting}>
+          {submitting && <ButtonSpinner />}
           {submitting ? "Logging in…" : "Log in"}
         </button>
       </form>

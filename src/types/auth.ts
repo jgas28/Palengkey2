@@ -14,7 +14,6 @@ export interface AuthUser {
   email_verified_at: string | null;
   phone_verified_at: string | null;
   verification_status: VerificationStatus;
-  profile_image?: string | null;
   id_verification_status: IdVerificationStatus;
   requires_cod_verification: boolean;
   cod_verification_pending: boolean;

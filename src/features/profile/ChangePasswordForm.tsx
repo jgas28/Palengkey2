@@ -5,6 +5,7 @@ import PkField from "@/components/pk/PkField";
 import { changePassword } from "@/services/api/profile";
 import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
+import { ButtonSpinner } from "@/components/common/LoadingState";
 
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/;
 
@@ -84,7 +85,8 @@ export default function ChangePasswordForm() {
       />
 
       <button type="submit" className="btn primary" disabled={changeMutation.isPending}>
-        Change password
+        {changeMutation.isPending && <ButtonSpinner />}
+        {changeMutation.isPending ? "Changing…" : "Change password"}
       </button>
     </form>
   );

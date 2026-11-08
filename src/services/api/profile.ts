@@ -17,25 +17,6 @@ export async function updateProfile(
   return data;
 }
 
-export async function uploadProfileImage(
-  image: File,
-): Promise<{ message: string; profile_image: string }> {
-  const formData = new FormData();
-  formData.append("image", image);
-
-  const { data } = await apiClient.post<{ message: string; profile_image: string }>(
-    "/customer/profile/image",
-    formData,
-    { headers: { "Content-Type": "multipart/form-data" } },
-  );
-  return data;
-}
-
-export async function deleteProfileImage(): Promise<{ message: string }> {
-  const { data } = await apiClient.delete<{ message: string }>("/customer/profile/image");
-  return data;
-}
-
 export interface ChangePasswordPayload {
   current_password: string;
   password: string;

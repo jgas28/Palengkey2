@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent, type CSSProperties, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useGoogleSignIn } from "@/features/auth/useGoogleSignIn";
 import { GoogleGIcon } from "@/components/icons/BrandIcons";
 import AuthShell from "@/features/auth/AuthShell";
@@ -8,6 +8,13 @@ import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
 import { getDeviceId } from "@/utils/deviceId";
 import type { OtpChannel } from "@/types/auth";
+import { ButtonSpinner } from "@/components/common/LoadingState";
+import PkPolicyModal from "@/components/pk/PkPolicyModal";
+import {
+  privacyPolicyEnglish,
+  privacyPolicyTagalog,
+} from "@/content/policies/privacyPolicy";
+import { termsOfService } from "@/content/policies/termsOfService";
 
 const PHONE_PATTERN = /^\d{10}$/;
 
@@ -60,6 +67,8 @@ export default function RegisterForm() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
+  // Read in a modal so the half-filled form stays put.
+  const [openPolicy, setOpenPolicy] = useState<"privacy" | "terms" | null>(null);
   const [otpMethod, setOtpMethod] = useState<"phone" | "email" | "both">("phone");
   const [errors, setErrors] = useState<ReturnType<typeof validate>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -125,6 +134,17 @@ export default function RegisterForm() {
     gap: 8,
     fontWeight: 500,
     lineHeight: 1.5,
+  };
+  const policyLink: CSSProperties = {
+    padding: 0,
+    color: "var(--teal-dark)",
+    background: "none",
+    border: 0,
+    font: "inherit",
+    fontWeight: 700,
+    textDecoration: "underline",
+    textUnderlineOffset: 2,
+    cursor: "pointer",
   };
 
   return (
@@ -312,12 +332,16 @@ export default function RegisterForm() {
           />
           <span>
             I agree to the{" "}
-            <Link
-              to="/privacy-policy"
-              style={{ color: "var(--teal-dark)", fontWeight: 700 }}
+            <button
+              type="button"
+              style={policyLink}
+              onClick={(event) => {
+                event.preventDefault(); // don't tick the box via the <label>
+                setOpenPolicy("privacy");
+              }}
             >
               Privacy Policy
-            </Link>
+            </button>
             {errors.privacy && (
               <small style={{ display: "block", color: "#dc2626" }}>Required</small>
             )}
@@ -332,12 +356,16 @@ export default function RegisterForm() {
           />
           <span>
             I agree to the{" "}
-            <Link
-              to="/terms-of-service"
-              style={{ color: "var(--teal-dark)", fontWeight: 700 }}
+            <button
+              type="button"
+              style={policyLink}
+              onClick={(event) => {
+                event.preventDefault(); // don't tick the box via the <label>
+                setOpenPolicy("terms");
+              }}
             >
               Terms of Service
-            </Link>
+            </button>
             {errors.terms && (
               <small style={{ display: "block", color: "#dc2626" }}>Required</small>
             )}
@@ -345,6 +373,7 @@ export default function RegisterForm() {
         </label>
 
         <button type="submit" className="btn primary auth-submit" disabled={submitting}>
+          {submitting && <ButtonSpinner />}
           {submitting ? "Creating account…" : "Create account"}
         </button>
       </form>
@@ -357,6 +386,18 @@ export default function RegisterForm() {
       <button type="button" className="guest" onClick={() => navigate("/shop")}>
         ← Continue as guest
       </button>
+      <PkPolicyModal
+        isOpen={openPolicy === "privacy"}
+        versions={[privacyPolicyEnglish, privacyPolicyTagalog]}
+        onClose={() => setOpenPolicy(null)}
+        onAccept={() => setAgreedPrivacy(true)}
+      />
+      <PkPolicyModal
+        isOpen={openPolicy === "terms"}
+        versions={[termsOfService]}
+        onClose={() => setOpenPolicy(null)}
+        onAccept={() => setAgreedTerms(true)}
+      />
     </AuthShell>
   );
 }

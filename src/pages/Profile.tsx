@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import Icon, { type IconName } from "@/components/pk/Icon";
-import AvatarUpload from "@/features/profile/AvatarUpload";
+import { AVATAR_BACKGROUND, userInitials } from "@/utils/initials";
 import { logout as logoutRequest, logoutAll as logoutAllRequest } from "@/services/api/auth";
 import { getOrderStats, listOrders } from "@/services/api/orders";
 import { listAddresses } from "@/services/api/addresses";
@@ -59,8 +59,17 @@ export default function Profile() {
     <main className="inner-page account-bg">
       <section className="profile-hero">
         <div className="shell profile-head">
-          <span style={{ overflow: "hidden" }}>
-            <AvatarUpload imageUrl={user.profile_image} />
+          {/* Initials only — no photo uploads (S3 cost). Sized by .profile-head > span. */}
+          <span
+            aria-hidden="true"
+            style={{
+              color: "white",
+              background: AVATAR_BACKGROUND,
+              // Keeps the teal avatar distinct on the teal banner.
+              boxShadow: "0 0 0 3px rgba(255,255,255,.85), 0 8px 22px rgba(0,40,46,.35)",
+            }}
+          >
+            {userInitials(user)}
           </span>
           <div>
             <small>{verified ? "Verified suki" : "Palengkey suki"}</small>

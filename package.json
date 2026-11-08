@@ -14,11 +14,11 @@
     "test:watch": "vitest",
     "cap:sync": "cap sync",
     "build:android": "tsc --noEmit && vite build --mode android",
-    "android:sync": "npm run build:android && cap sync android"
+    "android:sync": "npm run build:android && cap sync android",
+    "capacitor:copy:after": "node scripts/copy-ios-splash.cjs"
   },
   "dependencies": {
     "@capacitor/browser": "^8.0.0",
-    "@capacitor/camera": "^8.0.0",
     "@capacitor/core": "^8.0.0",
     "@capacitor/geolocation": "^8.0.0",
     "@capacitor/push-notifications": "^8.0.0",

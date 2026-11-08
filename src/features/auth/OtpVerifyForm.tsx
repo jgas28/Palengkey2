@@ -13,6 +13,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
 import { getDeviceId } from "@/utils/deviceId";
 import type { OtpChannel } from "@/types/auth";
+import { ButtonSpinner } from "@/components/common/LoadingState";
 
 interface LocationState {
   email?: string;
@@ -21,6 +22,18 @@ interface LocationState {
 }
 
 const OTP_LENGTH = 6;
+/** The API allows one new code per minute (email and SMS share it). */
+const RESEND_SECONDS = 60;
+
+/** "Please wait 42 seconds before requesting a new code." -> 42 */
+function waitSecondsFrom(message: string): number | null {
+  const match = /wait (\d+) seconds?/i.exec(message);
+  return match ? Number(match[1]) : null;
+}
+
+function formatCountdown(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
 
 export default function OtpVerifyForm() {
   const location = useLocation();
@@ -40,6 +53,28 @@ export default function OtpVerifyForm() {
   const refs = useRef<(HTMLInputElement | null)[]>([]);
   const autoSent = useRef(false);
   const submittedCodeRef = useRef<string | null>(null);
+  const [resendAt, setResendAt] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const secondsLeft = resendAt ? Math.max(0, Math.ceil((resendAt - now) / 1000)) : 0;
+
+  // Tick once a second while a resend is on cooldown.
+  useEffect(() => {
+    if (!resendAt) return;
+    const timer = window.setInterval(() => {
+      const current = Date.now();
+      setNow(current);
+      if (current >= resendAt) {
+        setResendAt(null);
+      }
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [resendAt]);
+
+  function startCooldown(seconds: number) {
+    const current = Date.now();
+    setNow(current);
+    setResendAt(current + seconds * 1000);
+  }
 
   useEffect(() => {
     if (!email) {
@@ -78,18 +113,17 @@ export default function OtpVerifyForm() {
   async function sendCodes(channels: OtpChannel[]) {
     setSending(true);
     try {
-      for (const channel of channels) {
-        await resendOtp(email!, channel);
-      }
-      showToast(
-        channels.length > 1
-          ? "Codes sent to your email and phone."
-          : "A 6-digit code has been sent.",
-        "success",
-      );
+      // One request for all channels; the API says where the code actually went.
+      const { message } = await resendOtp(email!, channels);
+      showToast(message || "A 6-digit code has been sent.", "success");
       setReady(true);
+      startCooldown(RESEND_SECONDS);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Could not send code.", "error");
+      const message = error instanceof Error ? error.message : "Could not send code.";
+      // A code went out recently (e.g. at login): count down what's left.
+      const wait = waitSecondsFrom(message);
+      if (wait) startCooldown(wait);
+      showToast(message, "error");
     } finally {
       setSending(false);
     }
@@ -192,20 +226,26 @@ export default function OtpVerifyForm() {
           <button
             type="button"
             className="btn primary auth-submit"
-            disabled={sending}
+            disabled={sending || secondsLeft > 0}
             onClick={() => void sendCodes(["email"])}
           >
+            {sending && <ButtonSpinner />}
             Send code via email
           </button>
           <button
             type="button"
             className="btn social-login"
             style={{ marginTop: 0 }}
-            disabled={sending}
+            disabled={sending || secondsLeft > 0}
             onClick={() => void sendCodes(["sms"])}
           >
             Send code via SMS
           </button>
+          {secondsLeft > 0 && (
+            <p className="auth-switch" aria-live="polite" style={{ marginTop: 4 }}>
+              You can request a new code in {formatCountdown(secondsLeft)}
+            </p>
+          )}
         </div>
       ) : (
         <>
@@ -251,8 +291,10 @@ export default function OtpVerifyForm() {
             type="button"
             className="btn primary auth-submit"
             disabled={verifying || digits.some((d) => !d)}
+            data-submit-once
             onClick={() => void handleVerify(digits.join(""))}
           >
+            {verifying && <ButtonSpinner />}
             {verifying ? "Verifying…" : "Verify & continue"}
           </button>
 
@@ -260,10 +302,15 @@ export default function OtpVerifyForm() {
             Didn&apos;t receive it?{" "}
             <button
               type="button"
-              disabled={sending}
+              disabled={sending || secondsLeft > 0}
               onClick={() => void sendCodes(presetChannels ?? ["email"])}
+              aria-live="polite"
             >
-              Resend code
+              {sending
+                ? "Sending…"
+                : secondsLeft > 0
+                  ? `Resend code in ${formatCountdown(secondsLeft)}`
+                  : "Resend code"}
             </button>
           </p>
         </>

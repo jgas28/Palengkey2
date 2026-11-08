@@ -5,6 +5,7 @@ import { confirmAccountDeletion, requestAccountDeletion } from "@/services/api/p
 import { useAuthStore } from "@/stores/authStore";
 import { useToastStore } from "@/stores/toastStore";
 import type { OtpChannel } from "@/types/auth";
+import { ButtonSpinner } from "@/components/common/LoadingState";
 
 export default function DeleteAccountForm() {
   const navigate = useNavigate();
@@ -79,6 +80,7 @@ export default function DeleteAccountForm() {
           style={{ background: "#b82f2f" }}
           disabled={deleting}
         >
+          {deleting && <ButtonSpinner />}
           {deleting ? "Deleting…" : "Permanently delete my account"}
         </button>
         <button

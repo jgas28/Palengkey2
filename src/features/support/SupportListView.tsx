@@ -9,6 +9,7 @@ import {
   sendSupportMessage,
 } from "@/services/api/support";
 import { useToastStore } from "@/stores/toastStore";
+import { ButtonSpinner } from "@/components/common/LoadingState";
 
 /** The design's Help & Support page — FAQs, your conversations, and "create a ticket" for an order. */
 export default function SupportListView() {
@@ -190,6 +191,7 @@ export default function SupportListView() {
                 className="btn primary"
                 disabled={ticketMutation.isPending}
               >
+                {ticketMutation.isPending && <ButtonSpinner />}
                 {ticketMutation.isPending ? "Sending…" : "Send message"}{" "}
                 <Icon name="arrow" />
               </button>

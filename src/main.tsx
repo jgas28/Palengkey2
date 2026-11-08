@@ -3,11 +3,14 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
+import { installDoubleSubmitGuard } from "./utils/doubleSubmitGuard";
 import "./index.css";
 // After Tailwind so the Figma design wins ties — scoped to body.pk (customer app only).
 import "./styles/palengkey.css";
 import "./styles/palengkey-system.css";
 import "./styles/palengkey-app.css";
+
+installDoubleSubmitGuard();
 
 const queryClient = new QueryClient({
   defaultOptions: {

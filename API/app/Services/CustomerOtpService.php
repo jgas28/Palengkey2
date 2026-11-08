@@ -9,13 +9,36 @@ use App\Models\Customer;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
-/**
- * Phase 1 only wires up email delivery. SMS (Semaphore) is a documented Phase 2
- * gap — callers must not silently pretend an sms-channel request succeeded.
- */
+/** Customer one-time codes by email, or by SMS through Semaphore. */
 class CustomerOtpService
 {
-    public const UNSUPPORTED_SMS_MESSAGE = 'SMS delivery is not available yet. Please use email.';
+    public function __construct(private SemaphoreSmsService $sms) {}
+
+    /**
+     * @return array{delivered: bool, error?: string}
+     */
+    private function sendSms(Customer $customer, string $otp, string $purpose, int $expiresInMinutes): array
+    {
+        $number = PhoneNumber::normalizePhilippineMobile($customer->phone);
+        if (! $number || ! preg_match(PhoneNumber::PHILIPPINE_E164_REGEX, $number)) {
+            return ['delivered' => false, 'error' => 'No valid mobile number on file to text the code to.'];
+        }
+
+        // Semaphore puts the code where {otp} is.
+        $result = $this->sms->sendOtp(
+            $number,
+            "Your Palengkey {$purpose} code is {otp}. It expires in {$expiresInMinutes} minutes. Don't share it with anyone.",
+            $otp,
+        );
+
+        if (! $result['successful']) {
+            Log::error('Failed to send customer OTP SMS.', ['customer_id' => $customer->id, 'purpose' => $purpose]);
+
+            return ['delivered' => false, 'error' => $result['message']];
+        }
+
+        return ['delivered' => true];
+    }
 
     /**
      * @return array{delivered: bool, error?: string}
@@ -23,7 +46,7 @@ class CustomerOtpService
     public function sendVerificationCode(Customer $customer, string $otp, int $expiresInMinutes, ?string $channel): array
     {
         if ($channel === 'sms') {
-            return ['delivered' => false, 'error' => self::UNSUPPORTED_SMS_MESSAGE];
+            return $this->sendSms($customer, $otp, 'verification', $expiresInMinutes);
         }
 
         if (blank($customer->email)) {
@@ -50,7 +73,7 @@ class CustomerOtpService
     public function sendPasswordResetCode(Customer $customer, string $otp, int $expiresInMinutes, ?string $channel): array
     {
         if ($channel === 'sms') {
-            return ['delivered' => false, 'error' => self::UNSUPPORTED_SMS_MESSAGE];
+            return $this->sendSms($customer, $otp, 'password reset', $expiresInMinutes);
         }
 
         if (blank($customer->email)) {
@@ -77,7 +100,7 @@ class CustomerOtpService
     public function sendAccountDeletionCode(Customer $customer, string $otp, int $expiresInMinutes, ?string $channel): array
     {
         if ($channel === 'sms') {
-            return ['delivered' => false, 'error' => self::UNSUPPORTED_SMS_MESSAGE];
+            return $this->sendSms($customer, $otp, 'account deletion', $expiresInMinutes);
         }
 
         if (blank($customer->email)) {

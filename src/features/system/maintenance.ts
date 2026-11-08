@@ -10,6 +10,8 @@ interface MaintenanceInfo {
   returnTo: string;
   /** Epoch ms the API said to retry at, if it told us. */
   retryAt: number | null;
+  /** Admin picked "Coming soon" instead of a back-online time. */
+  comingSoon?: boolean;
 }
 
 /** Retry-After is either seconds or an HTTP date. */
@@ -25,11 +27,13 @@ export function rememberMaintenance(
   retryAfter?: string | null,
   backAt?: string | null,
   returnTo = window.location.pathname + window.location.search,
+  comingSoon = false,
 ): void {
   const fromBody = backAt ? Date.parse(backAt) : NaN;
   const info: MaintenanceInfo = {
     returnTo,
     retryAt: Number.isNaN(fromBody) ? parseRetryAfter(retryAfter) : fromBody,
+    comingSoon,
   };
   try {
     sessionStorage.setItem(KEY, JSON.stringify(info));
@@ -60,10 +64,11 @@ export function clearMaintenance(): void {
 export function goToMaintenance(
   retryAfter?: string | null,
   backAt?: string | null,
+  comingSoon?: boolean,
 ): void {
   const path = window.location.pathname;
   if (path.startsWith("/maintenance") || path.startsWith("/admin")) return;
-  rememberMaintenance(retryAfter, backAt);
+  rememberMaintenance(retryAfter, backAt, undefined, Boolean(comingSoon));
   window.location.assign("/maintenance");
 }
 

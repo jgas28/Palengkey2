@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Services\PhoneNumber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class CustomerProfileController extends Controller
 {
@@ -30,26 +29,16 @@ class CustomerProfileController extends Controller
         return response()->json(['message' => 'Profile updated successfully']);
     }
 
-    public function updateImage(Request $request)
+    /**
+     * Profile photos were dropped (S3 storage cost); avatars are the customer's
+     * initials. Kept as a route so older app versions get a clear answer.
+     */
+    public function updateImage()
     {
-        $request->validate(['image' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048']);
-
-        $customer = $request->user();
-        $disk = $this->disk();
-        $folder = 'customers/'.$customer->id.'/profile_image';
-
-        if (Storage::disk($disk)->exists($folder)) {
-            Storage::disk($disk)->deleteDirectory($folder);
-        }
-
-        $filename = Str::uuid().'.'.$request->file('image')->extension();
-        $path = $request->file('image')->storeAs($folder, $filename, $disk);
-
-        return response()->json([
-            'message' => 'Profile image updated successfully',
-            'profile_image' => Storage::disk($disk)->url($path),
-        ]);
+        return response()->json(['message' => 'Profile photos are no longer supported.'], 410);
     }
+
+    /** Still lets customers clear a photo uploaded before photos were dropped. */
 
     public function deleteImage(Request $request)
     {

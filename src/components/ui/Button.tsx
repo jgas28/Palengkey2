@@ -1,4 +1,5 @@
 import { forwardRef, type ButtonHTMLAttributes } from "react";
+import { ButtonSpinner } from "@/components/common/LoadingState";
 
 type Variant = "primary" | "solid" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
@@ -49,12 +50,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         className={`inline-flex items-center justify-center gap-2 rounded-pill font-semibold transition-all duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 ${variantClasses[variant]} ${sizeClasses[size]} ${fullWidth ? "w-full" : ""} ${className}`}
         {...props}
       >
-        {loading && (
-          <span
-            aria-hidden="true"
-            className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
-          />
-        )}
+        {loading && <ButtonSpinner />}
         {children}
       </button>
     );
