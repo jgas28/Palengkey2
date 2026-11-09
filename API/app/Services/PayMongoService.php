@@ -243,6 +243,22 @@ class PayMongoService
             return $cashless;
         }
 
+        if ($sessionId = $this->checkoutSessionId($cashless)) {
+            $session = $this->getCheckoutSession($sessionId);
+
+            if (! $session) {
+                return null;
+            }
+
+            // A declined attempt isn't final: the customer can retry on the same
+            // page, so anything short of a paid payment stays as it is.
+            if ($this->hasPaidPayment($session)) {
+                $this->recordCheckoutSessionPaid($cashless, $this->paidPaymentIntentId($session), ['latest_session' => $session]);
+            }
+
+            return $cashless;
+        }
+
         $intent = $this->getPaymentIntent($cashless->reference);
 
         if (! $intent) {
@@ -383,9 +399,10 @@ class PayMongoService
 
     /**
      * Card, GCash, Maya and UnionBank go through a PayMongo-hosted checkout page:
-     * card details and wallet/bank logins never touch our servers. The session's
-     * payment intent id is stored as the reference, so the webhook and the
-     * return-page sync handle these exactly like BPI/QR Ph.
+     * card details and wallet/bank logins never touch our servers. A retry after
+     * a failed attempt gets a new payment intent under the same session, so the
+     * session (kept in raw_response) decides whether these are paid, not the
+     * reference, which starts as the first attempt's payment intent id.
      */
     public function createCheckoutSessionPayment(
         Order $order,
@@ -476,6 +493,90 @@ class PayMongoService
         ])->save();
 
         return $cashless;
+    }
+
+    public function getCheckoutSession(string $sessionId): ?array
+    {
+        try {
+            $response = Http::withBasicAuth($this->secretKey, '')
+                ->get($this->apiUrl."/checkout_sessions/{$sessionId}");
+
+            if ($response->failed()) {
+                Log::error('PayMongo get checkout session error:', (array) $response->json());
+
+                return null;
+            }
+
+            return $response->json()['data'] ?? null;
+        } catch (\Exception $e) {
+            Log::error('PayMongo get checkout session exception:', ['message' => $e->getMessage()]);
+
+            return null;
+        }
+    }
+
+    /** The hosted checkout session behind this payment; null for BPI and QR Ph. */
+    public function checkoutSessionId(CashlessPayment $cashless): ?string
+    {
+        return $cashless->raw_response['checkout_session']['id'] ?? null;
+    }
+
+    /** The payment row for a session a webhook reported as paid. */
+    public function findByCheckoutSession(array $session): ?CashlessPayment
+    {
+        $orderId = $session['attributes']['metadata']['order_id'] ?? null;
+
+        if (! $orderId || empty($session['id'])) {
+            return null;
+        }
+
+        return CashlessPayment::where('order_id', $orderId)
+            ->where('provider', 'paymongo')
+            ->get()
+            ->first(fn (CashlessPayment $cashless) => $this->checkoutSessionId($cashless) === $session['id']);
+    }
+
+    public function hasPaidPayment(array $session): bool
+    {
+        return $this->paidPayment($session) !== null;
+    }
+
+    /** The successful attempt's intent, which may not be the session's first. */
+    public function paidPaymentIntentId(array $session): ?string
+    {
+        return $this->paidPayment($session)['attributes']['payment_intent_id']
+            ?? $session['attributes']['payment_intent']['id']
+            ?? null;
+    }
+
+    private function paidPayment(array $session): ?array
+    {
+        foreach ($session['attributes']['payments'] ?? [] as $payment) {
+            if (($payment['attributes']['status'] ?? null) === 'paid') {
+                return $payment;
+            }
+        }
+
+        return null;
+    }
+
+    /** Safe to repeat: the webhook and the status check can both report a payment. */
+    public function recordCheckoutSessionPaid(CashlessPayment $cashless, ?string $paymentIntentId, array $rawResponse): void
+    {
+        $reference = $paymentIntentId ?? $cashless->reference;
+
+        $cashless->update([
+            'status' => 'paid',
+            'reference' => $reference,
+            'raw_response' => array_merge((array) ($cashless->raw_response ?? []), $rawResponse),
+        ]);
+
+        $order = $cashless->order;
+
+        if ($order && $order->status !== 'cancelled') {
+            $order->forceFill(['payment_status' => 'paid', 'payment_reference' => $reference])->save();
+            $this->markOrderReceivedIfPaid($order);
+        }
     }
 
     public function getPaymentIntent($paymentIntentId)

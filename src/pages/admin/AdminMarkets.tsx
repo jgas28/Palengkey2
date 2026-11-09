@@ -6,6 +6,7 @@ import {
   keepPreviousData,
 } from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
+import MarketClosureCard from "@/features/admin/MarketClosureCard";
 import Modal from "@/components/ui/Modal";
 import { Store } from "lucide-react";
 import ErrorState from "@/components/common/ErrorState";
@@ -380,6 +381,8 @@ export default function AdminMarkets() {
           >
             {editingMarket ? "Save changes" : "Add market"}
           </Button>
+
+          {editingMarket && <MarketClosureCard marketId={editingMarket.id} />}
         </div>
       </Modal>
     </div>

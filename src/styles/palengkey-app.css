@@ -680,3 +680,25 @@
     flex: 1;
   }
 }
+
+/* Market closed by an admin: Order Later only (MarketClosedNotice). */
+:where(body.pk) .market-closed-notice {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  color: #7a4d00;
+  background: #fff7e6;
+  border: 1px solid #f5d48f;
+  border-radius: 12px;
+}
+:where(body.pk) .market-closed-notice svg {
+  flex: none;
+}
+:where(body.pk) .market-closed-notice strong {
+  font-size: 12px;
+}
+:where(body.pk) .market-closed-notice p {
+  margin: 2px 0 0;
+  font-size: 11px;
+}

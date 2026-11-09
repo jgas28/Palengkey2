@@ -26,6 +26,8 @@ import type { Address } from "@/types/address";
 import { isOrderable } from "@/types/cart";
 import type { VoucherValidation } from "@/types/voucher";
 import { ButtonSpinner } from "@/components/common/LoadingState";
+import MarketClosedNotice from "@/features/home/MarketClosedNotice";
+import { formatReopenDate, useMarketClosure } from "@/features/home/useMarketClosure";
 
 interface LocationState {
   itemIds?: number[];
@@ -189,6 +191,11 @@ export default function CheckoutForm() {
     enabled: Boolean(selectedAddress && marketId),
   });
 
+  const closedMarket = useMarketClosure(marketId);
+  const orderLaterDate = closedMarket
+    ? formatReopenDate(closedMarket.closed_until!)
+    : "Next available day";
+
   const hasCutoffItems =
     selectedItems.some((item) => item.is_cutoff) ||
     selectedBundles.some((bundle) =>
@@ -295,8 +302,13 @@ export default function CheckoutForm() {
     (s) => s.value === orderLaterSlot,
   )?.label;
   const selectedPaymentMethod = PAYMENT_METHODS.find((m) => m.value === paymentMethod)!;
+  const palutoBlocked =
+    closedMarket !== null && selectedBundles.some((bundle) => bundle.paluto_stall_id);
   const canSubmit =
-    !checkoutMutation.isPending && serviceFee !== null && !deliveryFeeLoading;
+    !checkoutMutation.isPending &&
+    serviceFee !== null &&
+    !deliveryFeeLoading &&
+    !palutoBlocked;
 
   return (
     <main className="inner-page account-bg">
@@ -391,7 +403,9 @@ export default function CheckoutForm() {
                   />
                 )}
 
-              {hasCutoffItems && (
+              <MarketClosedNotice marketId={marketId} paluto={palutoBlocked} />
+
+              {hasCutoffItems && !closedMarket && (
                 <div className="checkout-cutoff">
                   <Icon name="clock" />
                   <div>
@@ -433,7 +447,7 @@ export default function CheckoutForm() {
                   <label>
                     Delivery date
                     <select disabled value="next">
-                      <option value="next">Next available day</option>
+                      <option value="next">{orderLaterDate}</option>
                     </select>
                   </label>
                   <div>
@@ -543,7 +557,7 @@ export default function CheckoutForm() {
                 <div>
                   <span>Delivery</span>
                   <strong>
-                    {hasCutoffItems ? `Next available day, ${orderLaterLabel}` : "Today"}
+                    {hasCutoffItems ? `${orderLaterDate}, ${orderLaterLabel}` : "Today"}
                   </strong>
                   {hasCutoffItems && <p>Scheduled Order Later delivery</p>}
                 </div>

@@ -145,6 +145,11 @@ class Item extends Model
 
     public function isPastCutoffForMarketData($marketItemPivot, ?Market $market, $now = null): bool
     {
+        // Closed by an admin: every item is Order Later only until it reopens.
+        if ($market?->isClosedForOrders($now)) {
+            return true;
+        }
+
         $timezone = $marketItemPivot?->cutoff_timezone
             ?? $market?->cutoff_timezone
             ?? 'Asia/Manila';

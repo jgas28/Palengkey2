@@ -15,9 +15,13 @@ import { formatPeso } from "@/utils/currency";
 import { calculateServiceFee } from "@/utils/serviceFee";
 import CartBulkBanner from "@/features/bulk/CartBulkBanner";
 import { isOrderable } from "@/types/cart";
+import { useMarketClosure } from "@/features/home/useMarketClosure";
 
 export default function Cart() {
   const { data: cart, isLoading, isError, refetch } = useCart();
+  const closedMarket = useMarketClosure(cart?.market_id);
+  const isPalutoBlocked = (bundle: { paluto_stall_id: number | null }) =>
+    closedMarket !== null && bundle.paluto_stall_id !== null;
   const { data: settings } = useQuery({
     queryKey: ["settings"],
     queryFn: getSettings,
@@ -49,6 +53,17 @@ export default function Cart() {
     });
     seenIds.current = validIds;
   }, [cart]);
+
+  // Paluto can't be ordered while the market is closed; the rest of the basket can.
+  useEffect(() => {
+    if (!cart || !closedMarket) return;
+    const blocked = (cart.recipe_bundles ?? []).filter((b) => b.paluto_stall_id !== null);
+    setSelectedBundleIds((prev) =>
+      blocked.some((b) => prev.has(b.id))
+        ? new Set([...prev].filter((id) => !blocked.some((b) => b.id === id)))
+        : prev,
+    );
+  }, [cart, closedMarket, selectedBundleIds]);
 
   useEffect(() => {
     if (!cart) return;
@@ -96,7 +111,7 @@ export default function Cart() {
 
   function toggleSelectAll() {
     if (!cart) return;
-    const bundles = cart.recipe_bundles ?? [];
+    const bundles = (cart.recipe_bundles ?? []).filter((b) => !isPalutoBlocked(b));
     const fullySelected =
       selectedIds.size === cart.items.filter(isOrderable).length &&
       selectedBundleIds.size === bundles.length;
@@ -338,6 +353,7 @@ export default function Cart() {
                   bundle={bundle}
                   selected={selectedBundleIds.has(bundle.id)}
                   onToggleSelect={() => toggleSelectBundle(bundle.id)}
+                  blocked={isPalutoBlocked(bundle)}
                 />
               ))}
             </>

@@ -10,6 +10,8 @@ export interface CartRecipeBundleRowProps {
   bundle: CartRecipeBundle;
   selected: boolean;
   onToggleSelect: () => void;
+  /** Paluto while the market is closed: stays in the basket but can't be ordered. */
+  blocked?: boolean;
 }
 
 /** A Paluto dish or Buy Raw recipe in the basket, as a design .cart-line. */
@@ -17,6 +19,7 @@ export default function CartRecipeBundleRow({
   bundle,
   selected,
   onToggleSelect,
+  blocked = false,
 }: CartRecipeBundleRowProps) {
   const queryClient = useQueryClient();
   const showToast = useToastStore((state) => state.showToast);
@@ -41,6 +44,7 @@ export default function CartRecipeBundleRow({
         <input
           type="checkbox"
           checked={selected}
+          disabled={blocked}
           onChange={onToggleSelect}
           aria-label={`Include ${bundle.recipe_name} in this order`}
           style={{
@@ -58,6 +62,11 @@ export default function CartRecipeBundleRow({
           {bundle.stall_name ? `Paluto · ${bundle.stall_name}` : "Recipe ingredients"}
         </p>
         <h3>{bundle.recipe_name}</h3>
+        {blocked && (
+          <small style={{ color: "#b45309", fontWeight: 700 }}>
+            Paluto isn&apos;t available while the market is closed
+          </small>
+        )}
         <small>
           {quantityLabel}
           {cookingFee > 0 ? ` · includes ${formatPeso(cookingFee)} cooking fee` : ""}

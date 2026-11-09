@@ -5,6 +5,7 @@ import Icon from "@/components/pk/Icon";
 import { listMarkets } from "@/services/api/markets";
 import { getCurrentCoordinates } from "@/utils/geolocation";
 import { useMarketStore } from "@/stores/marketStore";
+import { formatReopenDate } from "@/features/home/useMarketClosure";
 import type { Market } from "@/types/market";
 
 export interface MarketPickerDrawerProps {
@@ -111,7 +112,11 @@ export default function MarketPickerDrawer({ isOpen, onClose }: MarketPickerDraw
                   <p>{market.address}</p>
                   <small>
                     {market.distance !== null ? `${market.distance} km away · ` : ""}
-                    {market.has_items ? "Open today" : "No items today"}
+                    {market.is_closed && market.closed_until
+                      ? `Closed until ${formatReopenDate(market.closed_until)} · Order Later only`
+                      : market.has_items
+                        ? "Open today"
+                        : "No items today"}
                   </small>
                 </div>
                 {market.has_items ? (

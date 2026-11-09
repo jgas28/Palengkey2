@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\Admin\InventoryController;
 use App\Http\Controllers\Api\Admin\ItemController;
 use App\Http\Controllers\Api\Admin\ItemImageController;
 use App\Http\Controllers\Api\Admin\LookupController;
+use App\Http\Controllers\Api\Admin\MarketClosureController;
 use App\Http\Controllers\Api\Admin\MarketController;
 use App\Http\Controllers\Api\Admin\MaintenanceController;
 use App\Http\Controllers\Api\Admin\MarketItemController;
@@ -43,6 +44,13 @@ Route::prefix('admin')->group(function () {
     Route::middleware(['auth:sanctum', 'token.type:admin'])->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
+
+        // Close market: market admins act on their own market, super admins pass market_id.
+        Route::middleware('admin.role:admin')->group(function () {
+            Route::get('/market-closure', [MarketClosureController::class, 'show']);
+            Route::post('/market-closure/close', [MarketClosureController::class, 'close']);
+            Route::post('/market-closure/reopen', [MarketClosureController::class, 'reopen']);
+        });
 
         Route::middleware('admin.role:admin,marketing,finance')->group(function () {
             Route::get('/categories', [LookupController::class, 'categories']);

@@ -34,7 +34,8 @@ class PayMongoController extends Controller
             if ($paymentIntentId) {
                 $cashless = CashlessPayment::where('reference', $paymentIntentId)->first();
 
-                if ($cashless) {
+                // On hosted checkout a decline isn't final: the customer can retry there.
+                if ($cashless && ! ($status === 'failed' && $this->payMongo->checkoutSessionId($cashless))) {
                     $cashless->update([
                         'status' => $status,
                         'raw_response' => array_merge((array) ($cashless->raw_response ?? []), ['webhook' => $data]),
@@ -70,14 +71,20 @@ class PayMongoController extends Controller
                     $cashless->order?->forceFill(['payment_status' => 'expired'])->save();
                 }
             }
-        } elseif (in_array($eventType, ['payment_intent.succeeded', 'checkout_session.payment.paid'], true)) {
-            // Hosted checkout (card, GCash, Maya, UnionBank) reports on the session;
-            // its payment intent id is what we stored as the reference.
-            $paymentIntentId = $eventType === 'checkout_session.payment.paid'
-                ? ($eventAttributes['payment_intent']['id'] ?? null)
-                : ($eventResource['id'] ?? null);
+        } elseif ($eventType === 'checkout_session.payment.paid') {
+            // Hosted checkout (card, GCash, Maya, UnionBank) reports on the session,
+            // which stays the same across retries; its payment intent may not.
+            $cashless = $this->payMongo->findByCheckoutSession($eventResource);
 
-            if ($paymentIntentId) {
+            if ($cashless) {
+                $this->payMongo->recordCheckoutSessionPaid(
+                    $cashless,
+                    $this->payMongo->paidPaymentIntentId($eventResource),
+                    ['webhook' => $data],
+                );
+            }
+        } elseif ($eventType === 'payment_intent.succeeded') {
+            if ($paymentIntentId = $eventResource['id'] ?? null) {
                 $this->markPaid($paymentIntentId, $data);
             }
         } else {

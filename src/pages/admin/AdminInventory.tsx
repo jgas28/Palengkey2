@@ -11,6 +11,7 @@ import {
   type InventoryRowUpdate,
 } from "@/services/api/adminInventory";
 import { listAdminMarkets } from "@/services/api/adminLookups";
+import MarketClosureCard from "@/features/admin/MarketClosureCard";
 import { useAdminAuthStore } from "@/stores/adminAuthStore";
 import { useToastStore } from "@/stores/toastStore";
 import type { AdminInventoryRow } from "@/types/adminInventory";
@@ -175,6 +176,10 @@ export default function AdminInventory() {
           </Button>
         </div>
       </div>
+
+      {(!isSuperAdmin || marketId !== undefined) && (
+        <MarketClosureCard key={marketId} marketId={marketId} />
+      )}
 
       <div className="flex flex-wrap items-end gap-3">
         {isSuperAdmin && (

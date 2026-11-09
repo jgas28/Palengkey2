@@ -17,7 +17,7 @@ class MarketApiController extends Controller
 
         $cacheKey = "markets:list:{$lat}:{$lng}";
 
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($lat, $lng) {
+        $markets = Cache::remember($cacheKey, now()->addMinutes(5), function () use ($lat, $lng) {
             $query = Market::query()
                 ->where('status', 1)
                 ->select('id', 'name', 'address', 'latitude', 'longitude');
@@ -51,5 +51,14 @@ class MarketApiController extends Controller
                 'distance' => isset($m->distance) ? round($m->distance, 2) : null,
             ]);
         });
+
+        // Outside the 5-minute cache so closing or reopening shows right away.
+        $closed = Market::supportsClosure()
+            ? Market::whereNotNull('closed_until')->where('closed_until', '>', now())->get()->keyBy('id')
+            : collect();
+
+        return collect($markets)
+            ->map(fn (array $m) => [...$m, ...($closed[$m['id']] ?? new Market)->closurePayload()])
+            ->values();
     }
 }

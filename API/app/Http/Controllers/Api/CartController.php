@@ -315,6 +315,11 @@ class CartController extends Controller
                 ], 422);
             }
 
+            $market = Market::find($stall->market_id);
+            if ($market?->isClosedForOrders()) {
+                return response()->json(['success' => false, 'message' => $market->palutoClosedMessage()], 422);
+            }
+
             $quantity = round((float) $data['quantity'], 3);
 
             return $this->addIngredientBundle(

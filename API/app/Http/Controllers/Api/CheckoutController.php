@@ -72,6 +72,12 @@ class CheckoutController extends Controller
         $slot = $this->normalizeOrderLaterSlot($slot);
         $base = $item?->getNextAvailableDeliverySlot($market) ?? now('Asia/Manila')->addDay()->startOfDay();
 
+        // Closed market: no deliveries before the day it reopens.
+        $reopenDay = $market?->reopenDay();
+        if ($reopenDay && $reopenDay->gt($base)) {
+            $base = $reopenDay;
+        }
+
         // Built in the market's timezone (Manila); convert to the app timezone (UTC)
         // before saving, or 8:00 AM Manila is stored as 8:00 UTC (= 4:00 PM).
         return $base->copy()->setTimeFromTimeString($slot)->timezone(config('app.timezone'));
@@ -153,6 +159,11 @@ class CheckoutController extends Controller
 
             $market = $selectedItems->first()->market ?? Market::find($allMarketIds->first());
 
+            // Dishes added to the basket before the market closed end up here.
+            if ($bundleStallIds->isNotEmpty() && $market?->isClosedForOrders()) {
+                abort(422, $market->palutoClosedMessage());
+            }
+
             if (! $market) {
                 abort(422, 'Market not found for the selected cart contents.');
             }
@@ -201,7 +212,8 @@ class CheckoutController extends Controller
 
             $subtotal = 0;
             $validatedItems = [];
-            $isReservation = false;
+            // A closed market takes Order Later only, including recipe-only orders.
+            $isReservation = $market->isClosedForOrders();
 
             // Bulk tier: decided on exactly the lines being checked out.
             $bulk = BulkPricing::evaluate($selectedItems->map(function (CartItem $cartItem) {

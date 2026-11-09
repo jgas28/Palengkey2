@@ -12,6 +12,7 @@ import { listItems } from "@/services/api/items";
 import { getCurrentCoordinates } from "@/utils/geolocation";
 import { useMarketStore } from "@/stores/marketStore";
 import MarketPill from "@/features/home/MarketPill";
+import MarketClosedNotice from "@/features/home/MarketClosedNotice";
 
 const SORT_OPTIONS = [
   { value: "recommended", label: "Featured" },
@@ -262,6 +263,8 @@ export default function Home() {
               Explore Paluto <Icon name="arrow" size={17} />
             </button>
           </article>
+
+          <MarketClosedNotice marketId={marketId} />
 
           <div className="catalog-meta">
             <p>

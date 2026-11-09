@@ -4,6 +4,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import Icon from "@/components/pk/Icon";
 import { photos } from "@/components/pk/photos";
 import PalutoDishDrawer from "@/features/paluto/PalutoDishDrawer";
+import MarketClosedNotice from "@/features/home/MarketClosedNotice";
+import { useMarketClosure } from "@/features/home/useMarketClosure";
 import {
   computeCookingFee,
   estimateIngredientsCost,
@@ -20,12 +22,18 @@ export default function PalutoStallMenu() {
   const id = Number(stallId);
   const [selectedDishId, setSelectedDishId] = useState<number | null>(null);
 
-  const { data: stall, isLoading, isError, refetch } = useQuery({
+  const {
+    data: stall,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["palutoStall", id],
     queryFn: () => getPalutoStall(id),
     enabled: Number.isFinite(id),
   });
 
+  const marketClosed = useMarketClosure(stall?.market_id) !== null;
   const selectedDish = stall?.dishes.find((dish) => dish.id === selectedDishId) ?? null;
 
   return (
@@ -36,7 +44,11 @@ export default function PalutoStallMenu() {
             <p className="kicker">Paluto · Cooked to order</p>
             <h2>{stall?.name ?? "Stall menu"}</h2>
           </div>
-          <button type="button" className="btn outline" onClick={() => navigate("/paluto")}>
+          <button
+            type="button"
+            className="btn outline"
+            onClick={() => navigate("/paluto")}
+          >
             All stalls
           </button>
         </div>
@@ -59,6 +71,8 @@ export default function PalutoStallMenu() {
 
         {stall && (
           <>
+            <MarketClosedNotice marketId={stall.market_id} paluto />
+
             <div className="stall-summary">
               <img src={stall.image ?? photos.palengke} alt="" />
               <div>
@@ -82,23 +96,30 @@ export default function PalutoStallMenu() {
                 {stall.dishes.map((dish) => {
                   const base = Number(dish.base_quantity);
                   const unavailable = hasUnavailableIngredient(dish);
-                  const estimate = estimateIngredientsCost(dish, base) + computeCookingFee(dish, base);
+                  const estimate =
+                    estimateIngredientsCost(dish, base) + computeCookingFee(dish, base);
                   return (
                     <article className="dish-card" key={dish.id}>
                       <div className="dish-icon">
                         <Icon name="sparkle" />
                       </div>
                       <p className="eyebrow">
-                        {dish.recipe_type ?? "Cooked to order"} · {formatBatch(dish.pricing_unit, dish.base_quantity)}
+                        {dish.recipe_type ?? "Cooked to order"} ·{" "}
+                        {formatBatch(dish.pricing_unit, dish.base_quantity)}
                       </p>
                       <h3>{dish.name}</h3>
-                      <p>{dish.description ?? "Cooked fresh by the stall from ingredients we buy for you."}</p>
+                      <p>
+                        {dish.description ??
+                          "Cooked fresh by the stall from ingredients we buy for you."}
+                      </p>
                       <div>
                         <strong>{unavailable ? "—" : `~${formatPeso(estimate)}`}</strong>
                         <button
                           type="button"
                           className="btn add-dish"
-                          disabled={unavailable || !stall.is_accepting_orders}
+                          disabled={
+                            unavailable || !stall.is_accepting_orders || marketClosed
+                          }
                           onClick={() => setSelectedDishId(dish.id)}
                         >
                           {unavailable ? (
@@ -121,14 +142,19 @@ export default function PalutoStallMenu() {
               <div>
                 <strong>How your Paluto order works</strong>
                 <p>
-                  The price is the stall&apos;s ingredients at today&apos;s market prices plus its
-                  cooking fee. We buy only what the stall needs, hand it over, and they cook it fresh
-                  for you. Final ingredient prices are confirmed at checkout.
+                  The price is the stall&apos;s ingredients at today&apos;s market prices
+                  plus its cooking fee. We buy only what the stall needs, hand it over,
+                  and they cook it fresh for you. Final ingredient prices are confirmed at
+                  checkout.
                 </p>
               </div>
             </div>
 
-            <PalutoDishDrawer stall={stall} dish={selectedDish} onClose={() => setSelectedDishId(null)} />
+            <PalutoDishDrawer
+              stall={stall}
+              dish={selectedDish}
+              onClose={() => setSelectedDishId(null)}
+            />
           </>
         )}
       </section>
