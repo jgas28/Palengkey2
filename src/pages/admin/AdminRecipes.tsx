@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { BookOpen } from "lucide-react";
 import ErrorState from "@/components/common/ErrorState";
 import { Card, EmptyPanel, SkeletonRows } from "@/components/admin/AdminUi";
-import { listAdminRecipes } from "@/services/api/adminRecipes";
+import { copyAdminRecipe, listAdminRecipes } from "@/services/api/adminRecipes";
+import CopyDialog from "@/features/admin/CopyDialog";
+import { useToastStore } from "@/stores/toastStore";
+import type { AdminRecipeListItem } from "@/types/adminRecipe";
 import { listAdminRecipeTypes } from "@/services/api/adminLookups";
 import {
   ManageHeader,
@@ -23,6 +26,22 @@ export default function AdminRecipes() {
   const [recipeTypeId, setRecipeTypeId] = useState<number | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState<"" | "0" | "1">("");
   const [page, setPage] = useState(1);
+  const [copying, setCopying] = useState<AdminRecipeListItem | null>(null);
+  const queryClient = useQueryClient();
+  const showToast = useToastStore((state) => state.showToast);
+
+  const copyMutation = useMutation({
+    mutationFn: ({ recipeId, name }: { recipeId: number; name: string }) =>
+      copyAdminRecipe(recipeId, name),
+    onSuccess: (copy) => {
+      void queryClient.invalidateQueries({ queryKey: ["adminRecipes"] });
+      setCopying(null);
+      showToast(`Copied as “${copy.name}”. It's deactivated until you turn it on.`, "success");
+      navigate(`/admin/recipes/${copy.id}/edit`);
+    },
+    onError: (error) =>
+      showToast(error instanceof Error ? error.message : "Could not copy the recipe.", "error"),
+  });
 
   const { data: recipeTypes = [] } = useQuery({
     queryKey: ["adminRecipeTypesLookup"],
@@ -137,6 +156,15 @@ export default function AdminRecipes() {
                 <ManageIcon icon={<BookOpen size={18} />} image={recipe.image_url} />
               }
               title={recipe.name}
+              actions={
+                <button
+                  type="button"
+                  onClick={() => setCopying(recipe)}
+                  className="text-primary-700 hover:underline"
+                >
+                  Copy
+                </button>
+              }
               subtitle={`${recipe.recipe_type ?? "Untagged"} · priced per ${
                 recipe.pricing_unit === "kg" ? "kg" : "serving"
               } · base ${Number(recipe.base_quantity)}`}
@@ -148,6 +176,18 @@ export default function AdminRecipes() {
             />
           ))}
         </ManageList>
+      )}
+
+      {copying && (
+        <CopyDialog
+          isOpen
+          key={copying.id}
+          title={`Copy “${copying.name}”`}
+          initialName={`${copying.name} (copy)`}
+          isSaving={copyMutation.isPending}
+          onClose={() => setCopying(null)}
+          onCopy={(name) => copyMutation.mutate({ recipeId: copying.id, name })}
+        />
       )}
     </div>
   );

@@ -122,3 +122,11 @@ export async function updateAdminRecipeIngredients(
   );
   return data;
 }
+
+/** Duplicates a recipe (steps and ingredients) under a new name; the copy starts deactivated. */
+export async function copyAdminRecipe(recipeId: number, name: string): Promise<AdminRecipe> {
+  const { data } = await adminApiClient.post<AdminRecipe>(`/admin/recipes/${recipeId}/copy`, {
+    name,
+  });
+  return data;
+}

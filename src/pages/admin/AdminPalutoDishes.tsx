@@ -1,19 +1,61 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/common/LoadingState";
 import ErrorState from "@/components/common/ErrorState";
 import EmptyState from "@/components/common/EmptyState";
-import { listAdminPalutoDishes } from "@/services/api/adminPalutoDishes";
+import { copyAdminPalutoDish, listAdminPalutoDishes } from "@/services/api/adminPalutoDishes";
+import { listAdminPalutoStalls } from "@/services/api/adminPalutoStalls";
+import CopyDialog from "@/features/admin/CopyDialog";
+import { useToastStore } from "@/stores/toastStore";
 import { formatPeso } from "@/utils/currency";
-import {} from "@/components/admin/AdminManageList";
+import type { AdminPalutoDishSummary } from "@/types/adminPalutoDish";
+import type { AdminPalutoStall } from "@/types/adminPalutoStall";
+
+/** Every stall (the list endpoint pages by 20), for the "copy to" picker. */
+async function listAllStalls(): Promise<AdminPalutoStall[]> {
+  const stalls: AdminPalutoStall[] = [];
+  for (let page = 1; page <= 50; page++) {
+    const result = await listAdminPalutoStalls({ page });
+    stalls.push(...result.data);
+    if (result.current_page >= result.last_page) break;
+  }
+  return stalls;
+}
 
 /** One stall's own menu — every dish here has its own ingredient list and cooking fee. */
 export default function AdminPalutoDishes() {
   const { stallId } = useParams<{ stallId: string }>();
   const id = Number(stallId);
   const [statusFilter, setStatusFilter] = useState<"" | "0" | "1">("");
+  const [copying, setCopying] = useState<AdminPalutoDishSummary | null>(null);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const showToast = useToastStore((state) => state.showToast);
+
+  const { data: stalls = [] } = useQuery({
+    queryKey: ["adminPalutoStallsAll"],
+    queryFn: listAllStalls,
+    enabled: copying !== null,
+    staleTime: 60_000,
+  });
+
+  const copyMutation = useMutation({
+    mutationFn: (vars: { dishId: number; targetStallId: number; name: string }) =>
+      copyAdminPalutoDish(vars.dishId, { target_stall_id: vars.targetStallId, name: vars.name }),
+    onSuccess: (copy) => {
+      void queryClient.invalidateQueries({ queryKey: ["adminPalutoDishes"] });
+      setCopying(null);
+      showToast(
+        `Copied to ${copy.stall_name} as “${copy.name}”. It's deactivated until you turn it on.`,
+        "success",
+      );
+      navigate(`/admin/paluto-stalls/${copy.paluto_stall_id}/dishes/${copy.id}/edit`);
+    },
+    onError: (error) =>
+      showToast(error instanceof Error ? error.message : "Could not copy the dish.", "error"),
+  });
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["adminPalutoDishes", id],
@@ -142,17 +184,45 @@ export default function AdminPalutoDishes() {
                     </span>
                   </td>
                   <td className="px-4 py-2 text-right">
-                    <Link to={`/admin/paluto-stalls/${id}/dishes/${dish.id}/edit`}>
-                      <Button variant="secondary" size="sm">
-                        Edit
+                    <div className="flex justify-end gap-2">
+                      <Button variant="secondary" size="sm" onClick={() => setCopying(dish)}>
+                        Copy
                       </Button>
-                    </Link>
+                      <Link to={`/admin/paluto-stalls/${id}/dishes/${dish.id}/edit`}>
+                        <Button variant="secondary" size="sm">
+                          Edit
+                        </Button>
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {copying && (
+        <CopyDialog
+          isOpen
+          key={copying.id}
+          title={`Copy “${copying.name}”`}
+          initialName={copying.name}
+          targets={stalls.map((stall) => ({
+            id: stall.id,
+            label: `${stall.name}${stall.market_name ? ` — ${stall.market_name}` : ""}${
+              stall.id === id ? " (this stall)" : ""
+            }${stall.status ? "" : " (deactivated)"}`,
+          }))}
+          initialTargetId={undefined}
+          targetLabel="Copy to stall"
+          isSaving={copyMutation.isPending}
+          onClose={() => setCopying(null)}
+          onCopy={(name, targetStallId) =>
+            targetStallId !== undefined &&
+            copyMutation.mutate({ dishId: copying.id, targetStallId, name })
+          }
+        />
       )}
     </div>
   );

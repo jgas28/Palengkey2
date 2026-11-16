@@ -12,6 +12,7 @@ use App\Models\PalutoStall;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use App\Services\AuditLogger;
+use App\Support\StoredImage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -64,9 +65,9 @@ class PalutoDishController extends Controller
 
     /**
      * Creates a dish on this stall's menu, optionally with its ingredient list in
-     * the same request. `from_recipe_id` only borrows the recipe's cover image when
-     * none is uploaded — the admin form copies the recipe's ingredients client-side,
-     * so the dish is independent of the recipe from the start.
+     * the same request. `from_recipe_id` gives the dish its own copy of the recipe's
+     * cover image when none is uploaded — the admin form copies the recipe's
+     * ingredients client-side, so the dish is independent of the recipe from the start.
      */
     public function store(Request $request, PalutoStall $stall)
     {
@@ -86,19 +87,24 @@ class PalutoDishController extends Controller
 
         if ($request->hasFile('image')) {
             $path = $this->storeImage($request, $data['name']);
+        } elseif (! empty($data['from_recipe_id'])) {
+            // The dish gets its own copy of the recipe's picture, so replacing
+            // either image never deletes the other's file.
+            $path = StoredImage::duplicate(
+                Recipe::whereKey($data['from_recipe_id'])->value('image'),
+                'paluto-dishes',
+                $data['name'],
+                $disk,
+            );
         }
 
         try {
             $dish = DB::transaction(function () use ($stall, $data, $path, $ingredients) {
-                $recipeImage = ! empty($data['from_recipe_id'])
-                    ? Recipe::whereKey($data['from_recipe_id'])->value('image')
-                    : null;
-
                 $dish = PalutoDish::create([
                     'paluto_stall_id' => $stall->id,
                     'name' => trim($data['name']),
                     'description' => $data['description'] ?? null,
-                    'image' => $path ?? $recipeImage,
+                    'image' => $path,
                     'recipe_type_id' => $data['recipe_type_id'] ?? null,
                     'pricing_unit' => $data['pricing_unit'],
                     'base_quantity' => $data['base_quantity'],
@@ -148,8 +154,8 @@ class PalutoDishController extends Controller
             throw $e;
         }
 
-        // A dish seeded from a recipe starts out sharing the recipe's image file —
-        // only ever delete images this controller uploaded itself.
+        // Dishes made from a recipe before they got their own copy still point at
+        // the recipe's file — only ever delete images in this controller's folder.
         if ($newPath && $old['image'] && str_starts_with($old['image'], 'paluto-dishes/')) {
             Storage::disk($disk)->delete($old['image']);
         }
@@ -210,6 +216,74 @@ class PalutoDishController extends Controller
             'in_market' => $carriedItemIds->contains($itemId),
             'market_price' => $snapshots->get($itemId)?->price,
         ])->values());
+    }
+
+    /**
+     * Copies a dish, with its whole ingredient list, onto a stall's menu (another
+     * stall's, or this one's for a variant such as "Sinigang na Hipon 1/2"). The copy
+     * is independent of the original and starts deactivated, so customers don't
+     * see it until an admin has checked the quantities and fee and turned it on.
+     */
+    public function copy(Request $request, PalutoDish $dish)
+    {
+        $data = $request->validate([
+            'target_stall_id' => 'required|exists:paluto_stalls,id',
+            'name' => 'required|string|max:255',
+        ]);
+
+        $target = PalutoStall::findOrFail($data['target_stall_id']);
+        $lines = $dish->ingredients()->get();
+
+        // Another market may not sell every item the original stall's market does.
+        if ($error = $this->marketCheckError($lines->map(fn (PalutoDishIngredient $line) => [
+            'item_id' => $line->item_id,
+            'is_optional' => $line->is_optional,
+            'is_provided' => $line->is_provided,
+        ])->all(), $target->market_id)) {
+            return $error;
+        }
+
+        $disk = $this->disk();
+        $imagePath = StoredImage::copy($dish->image, 'paluto-dishes', $data['name'], $disk);
+
+        try {
+            $copy = DB::transaction(function () use ($dish, $target, $data, $lines, $imagePath) {
+                $copy = PalutoDish::create([
+                    'paluto_stall_id' => $target->id,
+                    'name' => trim($data['name']),
+                    'description' => $dish->description,
+                    'image' => $imagePath,
+                    'recipe_type_id' => $dish->recipe_type_id,
+                    'pricing_unit' => $dish->pricing_unit,
+                    'base_quantity' => $dish->base_quantity,
+                    'rate' => $dish->rate,
+                    'minimum_fee' => $dish->minimum_fee,
+                    'status' => false,
+                    'sort_order' => $dish->sort_order,
+                ]);
+
+                foreach ($lines as $line) {
+                    PalutoDishIngredient::create([
+                        'paluto_dish_id' => $copy->id,
+                        ...$line->only(['item_id', 'kind', 'quantity', 'unit_id', 'is_optional', 'is_provided', 'note', 'sort_order']),
+                    ]);
+                }
+
+                AuditLogger::log('paluto_dish_copied', $copy, $copy->id, null, $copy->toArray() + [
+                    'copied_from_dish_id' => $dish->id,
+                    'ingredients' => $copy->ingredients()->get()->toArray(),
+                ]);
+
+                return $copy;
+            });
+        } catch (\Throwable $e) {
+            if ($imagePath !== $dish->image && $imagePath) {
+                Storage::disk($disk)->delete($imagePath);
+            }
+            throw $e;
+        }
+
+        return response()->json($this->formatDish($copy), 201);
     }
 
     /** Deactivates rather than hard-deletes — dishes are referenced by order history. */

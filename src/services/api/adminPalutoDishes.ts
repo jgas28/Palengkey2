@@ -150,3 +150,18 @@ export async function getAdminStallMarketPrices(
   );
   return data;
 }
+
+/**
+ * Copies a dish and its ingredient list onto a stall's menu (another stall, or the
+ * same one for a variant). The copy starts deactivated.
+ */
+export async function copyAdminPalutoDish(
+  dishId: number,
+  payload: { target_stall_id: number; name: string },
+): Promise<AdminPalutoDish> {
+  const { data } = await adminApiClient.post<AdminPalutoDish>(
+    `/admin/paluto-dishes/${dishId}/copy`,
+    payload,
+  );
+  return data;
+}

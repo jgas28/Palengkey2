@@ -116,6 +116,7 @@ Route::prefix('admin')->group(function () {
             Route::put('/recipes/{recipe}/ingredients', [RecipeController::class, 'updateIngredients']);
             Route::delete('/recipes/{recipe}', [RecipeController::class, 'destroy']);
             Route::post('/recipes/{recipe}/restore', [RecipeController::class, 'restore']);
+            Route::post('/recipes/{recipe}/copy', [RecipeController::class, 'copy']);
 
             Route::get('/manage-recipe-types', [RecipeTypeController::class, 'index']);
             Route::post('/manage-recipe-types', [RecipeTypeController::class, 'store']);
@@ -138,6 +139,7 @@ Route::prefix('admin')->group(function () {
             Route::put('/paluto-dishes/{dish}/ingredients', [PalutoDishController::class, 'updateIngredients']);
             Route::delete('/paluto-dishes/{dish}', [PalutoDishController::class, 'destroy']);
             Route::post('/paluto-dishes/{dish}/restore', [PalutoDishController::class, 'restore']);
+            Route::post('/paluto-dishes/{dish}/copy', [PalutoDishController::class, 'copy']);
         });
 
         Route::middleware('admin.role:super_admin')->group(function () {

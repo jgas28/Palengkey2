@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Item;
+use App\Models\PalutoDish;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use App\Services\AuditLogger;
+use App\Support\StoredImage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -161,7 +163,9 @@ class RecipeController extends Controller
             throw $e;
         }
 
-        if ($newPath && $old['image']) {
+        // Paluto dishes made with "Start from a recipe" before dishes got their own
+        // copy of the picture still point at this file: keep it while any does.
+        if ($newPath && $old['image'] && ! $this->imageStillUsed($old['image'], $recipe->id)) {
             Storage::disk($disk)->delete($old['image']);
         }
 
@@ -169,6 +173,54 @@ class RecipeController extends Controller
 
         return response()->json(
             $this->formatRecipe($recipe->fresh(['recipeType', 'ingredients.item', 'ingredients.unit'])),
+        );
+    }
+
+    /**
+     * Duplicates a recipe with its steps and ingredients under a new name, e.g.
+     * "Sinigang na Hipon" -> "Sinigang na Hipon 1/2". The copy is independent and
+     * starts deactivated, so customers don't see it until an admin has adjusted
+     * it (quantities for a half batch) and turned it on.
+     */
+    public function copy(Request $request, Recipe $recipe)
+    {
+        $data = $request->validate(['name' => 'required|string|max:255']);
+
+        $disk = $this->disk();
+        $imagePath = StoredImage::copy($recipe->image, 'recipes', $data['name'], $disk);
+
+        try {
+            $copy = DB::transaction(function () use ($recipe, $data, $imagePath) {
+                $copy = Recipe::create([
+                    ...$recipe->only(['description', 'steps', 'tips', 'category_id', 'recipe_type_id', 'pricing_unit', 'base_quantity']),
+                    'name' => trim($data['name']),
+                    'image' => $imagePath,
+                    'status' => false,
+                ]);
+
+                foreach ($recipe->ingredients()->get() as $line) {
+                    RecipeIngredient::create([
+                        'recipe_id' => $copy->id,
+                        ...$line->only(['item_id', 'kind', 'quantity', 'unit_id', 'is_optional', 'note', 'sort_order']),
+                    ]);
+                }
+
+                AuditLogger::log('recipe_copied', $copy, $copy->id, null, $copy->toArray() + [
+                    'copied_from_recipe_id' => $recipe->id,
+                ]);
+
+                return $copy;
+            });
+        } catch (\Throwable $e) {
+            if ($imagePath && $imagePath !== $recipe->image) {
+                Storage::disk($disk)->delete($imagePath);
+            }
+            throw $e;
+        }
+
+        return response()->json(
+            $this->formatRecipe($copy->fresh(['recipeType', 'ingredients.item', 'ingredients.unit'])),
+            201,
         );
     }
 
@@ -283,6 +335,12 @@ class RecipeController extends Controller
             ]),
             'created_at' => $recipe->created_at,
         ];
+    }
+
+    private function imageStillUsed(string $path, int $exceptRecipeId): bool
+    {
+        return PalutoDish::where('image', $path)->exists()
+            || Recipe::where('image', $path)->whereKeyNot($exceptRecipeId)->exists();
     }
 
     private function disk(): string
