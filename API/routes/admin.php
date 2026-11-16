@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\Admin\MarketItemController;
 use App\Http\Controllers\Api\Admin\OrderController;
 use App\Http\Controllers\Api\Admin\PalutoDishController;
 use App\Http\Controllers\Api\Admin\PalutoStallController;
+use App\Http\Controllers\Api\Admin\PaymentMethodController;
 use App\Http\Controllers\Api\Admin\PopupAdController;
 use App\Http\Controllers\Api\Admin\PushBlastController;
 use App\Http\Controllers\Api\Admin\RecipeController;
@@ -50,6 +51,10 @@ Route::prefix('admin')->group(function () {
             Route::get('/market-closure', [MarketClosureController::class, 'show']);
             Route::post('/market-closure/close', [MarketClosureController::class, 'close']);
             Route::post('/market-closure/reopen', [MarketClosureController::class, 'reopen']);
+
+            // Payment methods on/off (e.g. GCash during PayMongo maintenance). All markets.
+            Route::get('/payment-methods', [PaymentMethodController::class, 'index']);
+            Route::put('/payment-methods/{method}', [PaymentMethodController::class, 'update'])->middleware('throttle:30,1');
         });
 
         Route::middleware('admin.role:admin,marketing,finance')->group(function () {

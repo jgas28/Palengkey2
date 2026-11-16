@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Rider;
+use App\Services\FirebaseRiderTokenService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -35,6 +36,27 @@ class RiderAuthController extends Controller
             'token' => $token,
             'user' => $rider,
         ]);
+    }
+
+    /**
+     * Firebase sign-in for live location writes. Needs the rider's own token —
+     * never the email-only fallback, or anyone could write as any rider.
+     */
+    public function firebaseToken(FirebaseRiderTokenService $tokens)
+    {
+        $rider = auth('sanctum')->user();
+
+        if (! $rider instanceof Rider) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated. Please log in again.'], 401);
+        }
+
+        $issued = $tokens->issue($rider);
+
+        if ($issued === null) {
+            return response()->json(['success' => false, 'message' => 'Live tracking is not available right now.'], 503);
+        }
+
+        return response()->json(['success' => true] + $issued);
     }
 
     public function logout(Request $request)

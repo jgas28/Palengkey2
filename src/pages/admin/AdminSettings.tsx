@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronRight, SlidersHorizontal } from "lucide-react";
 import { Card } from "@/components/admin/AdminUi";
 import MaintenanceCard from "@/features/admin/MaintenanceCard";
+import PaymentMethodsCard from "@/features/admin/PaymentMethodsCard";
 import Input from "@/components/ui/Input";
 import { Spinner } from "@/components/common/LoadingState";
 import ErrorState from "@/components/common/ErrorState";
@@ -83,6 +84,8 @@ export default function AdminSettings() {
       />
 
       <MaintenanceCard />
+
+      <PaymentMethodsCard />
 
       <Card className="overflow-hidden">
         <ul className="divide-y divide-slate-100">

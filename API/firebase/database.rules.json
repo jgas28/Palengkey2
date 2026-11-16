@@ -1,0 +1,24 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "riders_location": {
+      ".read": true,
+      "$riderId": {
+        ".write": "auth != null && auth.token.role === 'rider' && auth.token.rider_id === $riderId && auth.token.valid_until > now",
+        ".validate": "newData.child('lat').isNumber() && newData.child('lat').val() >= -90 && newData.child('lat').val() <= 90 && newData.child('lng').isNumber() && newData.child('lng').val() >= -180 && newData.child('lng').val() <= 180"
+      }
+    },
+
+    "orders": {
+      "$orderId": {
+        "driver_location": {
+          ".read": true,
+          ".write": "auth != null && auth.token.role === 'rider' && auth.token.orders.contains(',' + $orderId + ',') && auth.token.valid_until > now",
+          ".validate": "newData.child('lat').isNumber() && newData.child('lat').val() >= -90 && newData.child('lat').val() <= 90 && newData.child('lng').isNumber() && newData.child('lng').val() >= -180 && newData.child('lng').val() <= 180"
+        }
+      }
+    }
+  }
+}

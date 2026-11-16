@@ -1099,6 +1099,9 @@ body.pk { margin: 0; background: var(--white); color: var(--ink); font-family: v
 :where(body.pk) .payment-list .pay-badge.is-text { font-size: 11px; font-weight: 800; letter-spacing: .02em; }
 /* UnionBank has no logo file yet: its brand orange as a text mark. */
 :where(body.pk) .payment-list .pay-badge.pay-ubp { color: white; background: #f47920; border-color: #f47920; }
+/* Switched off by an admin (e.g. GCash maintenance): greyed out, reason always shown. */
+:where(body.pk) .payment-list label.is-off { cursor: not-allowed; opacity: .55; filter: grayscale(1); }
+:where(body.pk) .payment-list label.is-off small { display: block; grid-column: 3 / -1; color: #b45309; font-weight: 600; }
 @media (max-width: 640px) {
   :where(body.pk) .payment-list label { grid-template-columns: auto 60px 1fr; }
   :where(body.pk) .payment-list label > .pay-badge { width: 56px; height: 32px; }

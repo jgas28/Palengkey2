@@ -9,4 +9,6 @@ export interface CustomerSettings {
   delivery_increment_distance: number;
   minimum_order_amount: number;
   paymongo_public_key: string;
+  /** Every checkout method; `enabled: false` while an admin has it switched off. */
+  payment_methods?: { method: string; enabled: boolean; reason: string | null }[];
 }

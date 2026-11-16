@@ -194,7 +194,7 @@ class PayMongoService
             // A declined attempt isn't final: the customer can retry on the same
             // page, so anything short of a paid payment stays as it is.
             if ($this->hasPaidPayment($session)) {
-                $this->recordCheckoutSessionPaid($cashless, $this->paidPaymentIntentId($session), ['latest_session' => $session]);
+                $this->recordCheckoutSessionPaid($cashless, $this->paidPaymentIntentId($session), ['latest_session' => $session], $session);
             }
 
             return $cashless;
@@ -502,9 +502,13 @@ class PayMongoService
     }
 
     /** Safe to repeat: the webhook and the status check can both report a payment. */
-    public function recordCheckoutSessionPaid(CashlessPayment $cashless, ?string $paymentIntentId, array $rawResponse): void
+    public function recordCheckoutSessionPaid(CashlessPayment $cashless, ?string $paymentIntentId, array $rawResponse, ?array $session = null): void
     {
         $reference = $paymentIntentId ?? $cashless->reference;
+
+        if ($session !== null && $cashless->method === 'card') {
+            $rawResponse['card'] = $this->checkPaidCard($cashless, $session);
+        }
 
         $cashless->update([
             'status' => 'paid',
@@ -518,6 +522,37 @@ class PayMongoService
             $order->forceFill(['payment_status' => 'paid', 'payment_reference' => $reference])->save();
             $this->markOrderReceivedIfPaid($order);
         }
+    }
+
+    /** Card networks Palengkey accepts (PayMongo's hosted checkout takes only these). */
+    public const ACCEPTED_CARD_BRANDS = ['visa', 'mastercard'];
+
+    /**
+     * The card number is typed on PayMongo's page, never ours: PayMongo checks
+     * it (number, expiry, CVC, 3-D Secure). What we get back is the brand and
+     * last 4 digits, kept for support and refunds. A brand other than Visa or
+     * Mastercard is flagged for finance — the money is already captured, so it
+     * is reviewed (and refunded if needed) rather than silently rejected.
+     *
+     * @return array{brand: ?string, last4: ?string, accepted_brand: bool}
+     */
+    private function checkPaidCard(CashlessPayment $cashless, array $session): array
+    {
+        $source = $this->paidPayment($session)['attributes']['source'] ?? [];
+        $brand = isset($source['brand']) ? strtolower((string) $source['brand']) : null;
+        $last4 = isset($source['last4']) ? substr(preg_replace('/\D/', '', (string) $source['last4']), -4) : null;
+        $accepted = in_array($brand, self::ACCEPTED_CARD_BRANDS, true);
+
+        if (! $accepted) {
+            Log::critical('Card payment with a brand other than Visa/Mastercard — review and refund if needed.', [
+                'cashless_payment_id' => $cashless->id,
+                'order_id' => $cashless->order_id,
+                'brand' => $brand,
+                'source_type' => $source['type'] ?? null,
+            ]);
+        }
+
+        return ['brand' => $brand, 'last4' => $last4, 'accepted_brand' => $accepted];
     }
 
     public function getPaymentIntent($paymentIntentId)

@@ -12,8 +12,8 @@ use Illuminate\Support\Facades\Log;
  * contract). When a rider Sanctum token is sent its owner must match that email
  * (403 otherwise), and a missing email is filled in from the token.
  *
- * Token-less requests are rejected, because an email alone proves nothing. Setting
- * RIDER_API_AUTH_ENFORCED=false lets them through (logged) for an old APK rollout.
+ * Token-less requests are let through and logged until RIDER_API_AUTH_ENFORCED=true,
+ * which must be set once every rider runs the updated APK: an email alone proves nothing.
  */
 class RiderOwnsRequest
 {

@@ -81,6 +81,7 @@ class PayMongoController extends Controller
                     $cashless,
                     $this->payMongo->paidPaymentIntentId($eventResource),
                     ['webhook' => $data],
+                    $eventResource,
                 );
             }
         } elseif ($eventType === 'payment_intent.succeeded') {

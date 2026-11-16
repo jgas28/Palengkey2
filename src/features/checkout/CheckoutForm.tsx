@@ -120,7 +120,8 @@ export default function CheckoutForm() {
   const { data: settings } = useQuery({
     queryKey: ["settings"],
     queryFn: getSettings,
-    staleTime: 60 * 60 * 1000,
+    // Short: an admin may switch a payment method off during an outage.
+    staleTime: 60 * 1000,
   });
 
   const [step, setStep] = useState<Step>("details");
@@ -133,6 +134,23 @@ export default function CheckoutForm() {
     ORDER_LATER_SLOTS[0].value,
   );
   const [paymentMethod, setPaymentMethod] = useState<CheckoutPaymentMethod>("cod");
+  // Methods an admin switched off (e.g. GCash during PayMongo maintenance).
+  const unavailableMethods = useMemo(
+    () =>
+      new Map(
+        (settings?.payment_methods ?? [])
+          .filter((m) => !m.enabled)
+          .map((m) => [m.method, m.reason]),
+      ),
+    [settings],
+  );
+  const paymentMethodOff = unavailableMethods.has(paymentMethod);
+
+  useEffect(() => {
+    if (!unavailableMethods.has(paymentMethod)) return;
+    const firstOn = PAYMENT_METHODS.find((m) => !unavailableMethods.has(m.value));
+    if (firstOn) setPaymentMethod(firstOn.value);
+  }, [unavailableMethods, paymentMethod]);
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
@@ -290,6 +308,8 @@ export default function CheckoutForm() {
       });
     },
     onError: (error) => {
+      // A method may have just been switched off: show the current list.
+      void queryClient.invalidateQueries({ queryKey: ["settings"] });
       showToast(error instanceof Error ? error.message : "Checkout failed.", "error");
     },
   });
@@ -308,7 +328,8 @@ export default function CheckoutForm() {
     !checkoutMutation.isPending &&
     serviceFee !== null &&
     !deliveryFeeLoading &&
-    !palutoBlocked;
+    !palutoBlocked &&
+    !paymentMethodOff;
 
   return (
     <main className="inner-page account-bg">
@@ -493,14 +514,22 @@ export default function CheckoutForm() {
               <p className="kicker">Payment</p>
               <h2>Choose a payment method</h2>
               <div className="payment-list">
-                {PAYMENT_METHODS.map((method) => (
+                {PAYMENT_METHODS.map((method) => {
+                  const off = unavailableMethods.has(method.value);
+                  const offReason = unavailableMethods.get(method.value);
+                  return (
                   <label
-                    className={paymentMethod === method.value ? "selected" : ""}
+                    className={[
+                      paymentMethod === method.value ? "selected" : "",
+                      off ? "is-off" : "",
+                    ].join(" ").trim()}
                     key={method.value}
+                    aria-disabled={off || undefined}
                   >
                     <input
                       type="radio"
                       name="payment"
+                      disabled={off}
                       checked={paymentMethod === method.value}
                       onChange={() => setPaymentMethod(method.value)}
                     />
@@ -517,9 +546,14 @@ export default function CheckoutForm() {
                       )}
                     </span>
                     <strong>{method.label}</strong>
-                    <small>{method.hint}</small>
+                    <small>
+                      {off
+                        ? `Temporarily unavailable${offReason ? ` — ${offReason}` : ""}`
+                        : method.hint}
+                    </small>
                   </label>
-                ))}
+                  );
+                })}
               </div>
               <div className="step-actions">
                 <button
@@ -532,6 +566,7 @@ export default function CheckoutForm() {
                 <button
                   type="button"
                   className="btn primary"
+                  disabled={paymentMethodOff}
                   onClick={() => setStep("confirm")}
                 >
                   Review order <Icon name="arrow" />

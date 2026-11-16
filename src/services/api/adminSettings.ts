@@ -42,3 +42,34 @@ export async function setMaintenance(payload: {
   );
   return data;
 }
+
+export interface PaymentMethodStatus {
+  method: string;
+  label: string;
+  enabled: boolean;
+  /** Shown to customers at checkout while the method is off. */
+  reason: string | null;
+  changed_by: string | null;
+  changed_at: string | null;
+}
+
+export const paymentMethodsQueryKey = ["adminPaymentMethods"];
+
+/** Admin / super admin: which payment methods customers can choose (all markets). */
+export async function getPaymentMethods(): Promise<PaymentMethodStatus[]> {
+  const { data } = await adminApiClient.get<{ data: PaymentMethodStatus[] }>(
+    "/admin/payment-methods",
+  );
+  return data.data;
+}
+
+export async function setPaymentMethod(
+  method: string,
+  payload: { enabled: boolean; reason?: string | null },
+): Promise<{ message: string; data: PaymentMethodStatus[] }> {
+  const { data } = await adminApiClient.put<{ message: string; data: PaymentMethodStatus[] }>(
+    `/admin/payment-methods/${encodeURIComponent(method)}`,
+    payload,
+  );
+  return data;
+}

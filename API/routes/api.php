@@ -148,6 +148,7 @@ Route::prefix('rider')->group(function () {
 
     Route::middleware('rider.owns')->group(function () {
         Route::post('/logout', [RiderAuthController::class, 'logout']);
+        Route::post('/firebase-token', [RiderAuthController::class, 'firebaseToken'])->middleware('throttle:30,1');
         Route::get('/profile', [RiderAppController::class, 'getProfile']);
         Route::post('/profile/update', [RiderAppController::class, 'updateProfile']);
         Route::post('/location/update', [RiderAppController::class, 'updateLocation']);

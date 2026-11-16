@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Support\PaymentMethods;
 
 class SettingsController extends Controller
 {
@@ -24,6 +25,13 @@ class SettingsController extends Controller
                 'minimum_order_amount' => (float) Setting::get('minimum_order_amount', 500),
 
                 'paymongo_public_key' => config('services.paymongo.public_key') ?? '',
+
+                // Methods an admin turned off (PayMongo / wallet / bank outage).
+                'payment_methods' => array_map(fn (array $m) => [
+                    'method' => $m['method'],
+                    'enabled' => $m['enabled'],
+                    'reason' => $m['reason'],
+                ], PaymentMethods::status()),
             ],
         ]);
     }

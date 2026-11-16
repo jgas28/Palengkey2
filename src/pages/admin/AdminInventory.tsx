@@ -12,6 +12,7 @@ import {
 } from "@/services/api/adminInventory";
 import { listAdminMarkets } from "@/services/api/adminLookups";
 import MarketClosureCard from "@/features/admin/MarketClosureCard";
+import PaymentMethodsCard from "@/features/admin/PaymentMethodsCard";
 import { useAdminAuthStore } from "@/stores/adminAuthStore";
 import { useToastStore } from "@/stores/toastStore";
 import type { AdminInventoryRow } from "@/types/adminInventory";
@@ -180,6 +181,9 @@ export default function AdminInventory() {
       {(!isSuperAdmin || marketId !== undefined) && (
         <MarketClosureCard key={marketId} marketId={marketId} />
       )}
+
+      {/* Market admins have no Settings page; super admins also see it there. */}
+      {!isSuperAdmin && <PaymentMethodsCard />}
 
       <div className="flex flex-wrap items-end gap-3">
         {isSuperAdmin && (

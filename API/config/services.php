@@ -69,9 +69,10 @@ return [
         'web_url' => env('FRONTEND_URL', 'https://palengkey.com'),
     ],
 
-    // Rider app: reject token-less /rider requests once every rider has the updated APK.
+    // Rider app: reject token-less /rider requests. Off until every rider has
+    // the updated APK; then set RIDER_API_AUTH_ENFORCED=true and config:cache.
     'rider_api' => [
-        'enforce' => env('RIDER_API_AUTH_ENFORCED', true),
+        'enforce' => env('RIDER_API_AUTH_ENFORCED', false),
     ],
 
 ];

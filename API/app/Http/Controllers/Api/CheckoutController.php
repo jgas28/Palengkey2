@@ -20,6 +20,7 @@ use App\Services\InvoiceSeriesService;
 use App\Services\PayMongoService;
 use App\Support\BulkPricing;
 use App\Support\MarketAvailability;
+use App\Support\PaymentMethods;
 use App\Support\PriceDisplay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -86,6 +87,17 @@ class CheckoutController extends Controller
 
     public function checkout(Request $request)
     {
+        // Turned off by an admin during a PayMongo / wallet / bank outage.
+        // Checked first so nothing else (cart, PayMongo) is touched.
+        $requestedMethod = $request->input('payment_method');
+        if (is_string($requestedMethod)
+            && in_array($requestedMethod, PaymentMethods::all(), true)
+            && ! PaymentMethods::isEnabled($requestedMethod)) {
+            $message = PaymentMethods::unavailableMessage($requestedMethod);
+
+            return response()->json(['message' => $message, 'errors' => ['payment_method' => [$message]]], 422);
+        }
+
         $data = $request->validate([
             'address_id' => 'required|exists:customer_addresses,id',
             'payment_method' => 'required|in:cod,'.implode(',', Order::CASHLESS_METHODS),

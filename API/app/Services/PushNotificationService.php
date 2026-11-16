@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CustomerDevice;
+use App\Support\FirebaseServiceAccount;
 use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
@@ -137,17 +138,7 @@ class PushNotificationService
 
     private function credentials(): ?array
     {
-        $path = config('services.firebase.credentials');
-
-        if (! $path || ! is_readable($path)) {
-            return null;
-        }
-
-        $credentials = json_decode((string) file_get_contents($path), true);
-
-        return is_array($credentials) && ! empty($credentials['client_email']) && ! empty($credentials['private_key'])
-            ? $credentials
-            : null;
+        return FirebaseServiceAccount::credentials();
     }
 
     private function accessToken(array $credentials): ?string
@@ -184,23 +175,14 @@ class PushNotificationService
     /** The signed request Google exchanges for an access token (RS256 JWT). */
     private function signedAssertion(array $credentials): ?string
     {
-        $encode = fn (string $value) => rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
         $now = time();
 
-        $unsigned = $encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT'])).'.'.$encode(json_encode([
+        return FirebaseServiceAccount::sign($credentials, [
             'iss' => $credentials['client_email'],
             'scope' => self::SCOPE,
             'aud' => self::TOKEN_URL,
             'iat' => $now,
             'exp' => $now + 3600,
-        ]));
-
-        if (! openssl_sign($unsigned, $signature, $credentials['private_key'], OPENSSL_ALGO_SHA256)) {
-            Log::error('Firebase service account key could not be used to sign.');
-
-            return null;
-        }
-
-        return $unsigned.'.'.$encode($signature);
+        ]);
     }
 }
