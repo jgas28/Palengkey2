@@ -15,19 +15,6 @@ firebase.initializeApp({
   appId: "1:1006959670311:web:069948d8a7ad9d63754a02",
 });
 
-const messaging = firebase.messaging();
-
-messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title ?? "Palengkey";
-  const options = {
-    body: payload.notification?.body,
-    data: payload.data,
-  };
-  self.registration.showNotification(title, options);
-});
-
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-  const url = event.notification.data?.url ?? "/";
-  event.waitUntil(self.clients.openWindow(url));
-});
+// The SDK shows each notification and opens its link when clicked. Showing it
+// here as well would make every notification appear twice.
+firebase.messaging();

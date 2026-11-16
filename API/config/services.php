@@ -61,9 +61,17 @@ return [
         'webhook_secret' => env('PAYMONGO_WEBHOOK_SECRET'),
     ],
 
+    // Push notifications. CREDENTIALS is the path to the service account JSON,
+    // kept outside the project. WEB_URL is where browser notifications link to.
+    'firebase' => [
+        'project_id' => env('FIREBASE_PROJECT_ID'),
+        'credentials' => env('FIREBASE_CREDENTIALS'),
+        'web_url' => env('FRONTEND_URL', 'https://palengkey.com'),
+    ],
+
     // Rider app: reject token-less /rider requests once every rider has the updated APK.
     'rider_api' => [
-        'enforce' => env('RIDER_API_AUTH_ENFORCED', false),
+        'enforce' => env('RIDER_API_AUTH_ENFORCED', true),
     ],
 
 ];

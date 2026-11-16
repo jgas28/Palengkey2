@@ -24,6 +24,7 @@ use App\Support\PriceDisplay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -87,7 +88,7 @@ class CheckoutController extends Controller
     {
         $data = $request->validate([
             'address_id' => 'required|exists:customer_addresses,id',
-            'payment_method' => 'required|in:cod,paymongo,'.implode(',', Order::CASHLESS_METHODS),
+            'payment_method' => 'required|in:cod,'.implode(',', Order::CASHLESS_METHODS),
             'item_ids' => 'required_without:recipe_bundle_ids|array',
             'item_ids.*' => 'exists:cart_items,id',
             'recipe_bundle_ids' => 'nullable|array',
@@ -554,7 +555,7 @@ class CheckoutController extends Controller
         $bpi = null;
         if ($isBpiPayment) {
             try {
-                $cashless = app(PayMongoService::class)->createBpiPayment($order, route('api.bpi.return', $order));
+                $cashless = app(PayMongoService::class)->createBpiPayment($order, URL::signedRoute('api.bpi.return', $order));
             } catch (\Throwable $e) {
                 \Log::error('Failed to create BPI payment for order '.$order->order_number, ['message' => $e->getMessage()]);
                 $this->removeUnpaidCashlessOrder($order);
@@ -583,8 +584,8 @@ class CheckoutController extends Controller
                 $cashless = app(PayMongoService::class)->createCheckoutSessionPayment(
                     $order,
                     $data['payment_method'],
-                    route('api.payment.return', $order),
-                    route('api.payment.return', ['order' => $order, 'cancelled' => 1]),
+                    URL::signedRoute('api.payment.return', $order),
+                    URL::signedRoute('api.payment.return', ['order' => $order, 'cancelled' => 1]),
                 );
             } catch (\Throwable $e) {
                 \Log::error("Failed to create {$label} payment for order ".$order->order_number, ['message' => $e->getMessage()]);

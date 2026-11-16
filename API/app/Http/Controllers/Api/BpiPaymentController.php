@@ -19,6 +19,12 @@ class BpiPaymentController extends Controller
      */
     public function appReturn(Request $request, Order $order, PayMongoService $payMongo)
     {
+        // Order ids are sequential: without our signature, say nothing about the
+        // order and don't call PayMongo. The app still confirms payment itself.
+        if (! $request->hasValidSignature()) {
+            return response()->view('customer.bpi-app-return', ['status' => 'pending', 'orderNumber' => '']);
+        }
+
         $cashless = $order->cashlessPayment;
 
         if ($cashless && $cashless->reference) {

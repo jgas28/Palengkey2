@@ -7,6 +7,7 @@ use App\Models\Order;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 
 class PayMongoService
 {
@@ -104,66 +105,6 @@ class PayMongoService
             return $response->json()['data'] ?? null;
         } catch (\Exception $e) {
             Log::error('PayMongo QR Ph attach payment method exception:', ['message' => $e->getMessage()]);
-
-            return null;
-        }
-    }
-
-    public function createPaymentMethod($cardNumber, $month, $year, $cvc, $cardName)
-    {
-        try {
-            $response = Http::withBasicAuth($this->secretKey, '')
-                ->post($this->apiUrl.'/payment_methods', [
-                    'data' => [
-                        'attributes' => [
-                            'type' => 'card',
-                            'details' => [
-                                'card_number' => $cardNumber,
-                                'exp_month' => (int) $month,
-                                'exp_year' => (int) $year,
-                                'cvc' => $cvc,
-                            ],
-                            'billing' => ['name' => $cardName],
-                        ],
-                    ],
-                ]);
-
-            if ($response->failed()) {
-                Log::error('PayMongo create payment method error:', (array) $response->json());
-
-                return null;
-            }
-
-            return $response->json()['data'] ?? null;
-        } catch (\Exception $e) {
-            Log::error('PayMongo create payment method exception:', ['message' => $e->getMessage()]);
-
-            return null;
-        }
-    }
-
-    public function attachPaymentMethod($paymentIntentId, $paymentMethodId, ?string $returnUrl = null)
-    {
-        try {
-            $response = Http::withBasicAuth($this->secretKey, '')
-                ->post($this->apiUrl."/payment_intents/{$paymentIntentId}/attach", [
-                    'data' => [
-                        'attributes' => [
-                            'payment_method' => $paymentMethodId,
-                            'return_url' => $returnUrl ?? url('/'), // callers should pass their own return URL
-                        ],
-                    ],
-                ]);
-
-            if ($response->failed()) {
-                Log::error('PayMongo attach payment method error:', (array) $response->json());
-
-                return null;
-            }
-
-            return $response->json()['data'] ?? null;
-        } catch (\Exception $e) {
-            Log::error('PayMongo attach payment method exception:', ['message' => $e->getMessage()]);
 
             return null;
         }
@@ -359,7 +300,7 @@ class PayMongoService
 
         // Callers without an active web session (e.g. the mobile app, which
         // only carries a Bearer token) must pass their own return URL.
-        $returnUrl = $returnUrl ?? route('api.bpi.return', $order);
+        $returnUrl = $returnUrl ?? URL::signedRoute('api.bpi.return', $order);
 
         $attachedIntent = $this->attachBpiPaymentMethod($intent['id'], $paymentMethod['id'], $returnUrl);
 

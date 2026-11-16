@@ -67,19 +67,21 @@ Route::prefix('customer')->middleware('customer.maintenance')->group(function ()
     });
 
     // Public (OTP verify/resend aren't behind auth — they're how a token gets issued).
-    Route::post('/verify/otp', [CustomerAuthController::class, 'verifyOtp']);
-    Route::post('/resend/otp', [CustomerAuthController::class, 'resendOtp']);
+    Route::post('/verify/otp', [CustomerAuthController::class, 'verifyOtp'])->middleware('throttle:10,1');
+    Route::post('/resend/otp', [CustomerAuthController::class, 'resendOtp'])->middleware('throttle:5,1');
 
     // Cart — open to both guests (identified by the X-Device-Id header) and
     // authenticated customers; CartController::resolveCart() branches on which.
     Route::get('/cart', [CartController::class, 'show']);
-    Route::post('/cart/add', [CartController::class, 'add']);
-    Route::patch('/cart/item/{cartItem}', [CartController::class, 'update']);
-    Route::delete('/cart/item/{cartItem}', [CartController::class, 'remove']);
-    Route::delete('/cart/clear', [CartController::class, 'clear']);
-    Route::post('/cart/add-recipe', [CartController::class, 'addRecipe']);
-    Route::post('/cart/add-paluto-dish', [CartController::class, 'addPalutoDish']);
-    Route::delete('/cart/recipe-bundle/{bundle}', [CartController::class, 'removeRecipeBundle']);
+    Route::middleware('throttle:120,1')->group(function () {
+        Route::post('/cart/add', [CartController::class, 'add']);
+        Route::patch('/cart/item/{cartItem}', [CartController::class, 'update']);
+        Route::delete('/cart/item/{cartItem}', [CartController::class, 'remove']);
+        Route::delete('/cart/clear', [CartController::class, 'clear']);
+        Route::post('/cart/add-recipe', [CartController::class, 'addRecipe']);
+        Route::post('/cart/add-paluto-dish', [CartController::class, 'addPalutoDish']);
+        Route::delete('/cart/recipe-bundle/{bundle}', [CartController::class, 'removeRecipeBundle']);
+    });
 
     // Authenticated (Sanctum bearer token) — customer tokens only.
     Route::middleware(['auth:sanctum', 'token.type:customer'])->group(function () {

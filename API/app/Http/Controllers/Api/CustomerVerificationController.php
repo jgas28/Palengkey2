@@ -153,7 +153,8 @@ class CustomerVerificationController extends Controller
     private function uploadFile(UploadedFile $file, string $path, int $customerId): string
     {
         $disk = config('filesystems.disks.s3.key') ? 's3' : 'public';
-        $filename = Str::uuid().'.'.$file->getClientOriginalExtension();
+        // From the file's contents; a client-supplied name could end in .php.
+        $filename = Str::uuid().'.'.$file->extension();
 
         return $file->storeAs($path.'/'.$customerId, $filename, $disk);
     }

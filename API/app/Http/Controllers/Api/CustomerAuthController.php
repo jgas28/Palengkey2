@@ -17,6 +17,9 @@ use Illuminate\Support\Facades\Http;
 
 class CustomerAuthController extends Controller
 {
+    /** Six digits are guessable, so each code gets this many tries. */
+    private const MAX_OTP_ATTEMPTS = 5;
+
     /*
     |--------------------------------------------------------------------------
     | REGISTER
@@ -260,8 +263,9 @@ class CustomerAuthController extends Controller
 
         $customer = Customer::whereRaw('LOWER(email) = ?', [strtolower($request->email)])->first();
 
+        // Same answer as a wrong code: don't reveal which emails have accounts.
         if (! $customer) {
-            return response()->json(['message' => 'Customer not found'], 404);
+            return response()->json(['message' => 'Invalid OTP.'], 422);
         }
 
         if (! $customer->otp_code || ! $customer->otp_expires_at) {
@@ -272,10 +276,15 @@ class CustomerAuthController extends Controller
             return response()->json(['message' => 'OTP has expired.'], 422);
         }
 
-        if ($request->otp !== $customer->otp_code) {
+        // Checked before the code: once used up, even the right code is refused.
+        if ($customer->otp_attempts >= self::MAX_OTP_ATTEMPTS) {
+            return response()->json(['message' => 'Too many attempts. Please resend a new code.'], 429);
+        }
+
+        if (! hash_equals((string) $customer->otp_code, (string) $request->otp)) {
             $customer->increment('otp_attempts');
 
-            if ($customer->otp_attempts >= 5) {
+            if ($customer->otp_attempts >= self::MAX_OTP_ATTEMPTS) {
                 return response()->json(['message' => 'Too many attempts. Please resend a new code.'], 429);
             }
 
@@ -344,7 +353,7 @@ class CustomerAuthController extends Controller
         $customer = Customer::whereRaw('LOWER(email) = ?', [strtolower($request->email)])->first();
 
         if (! $customer) {
-            return response()->json(['message' => 'Customer not found'], 404);
+            return response()->json(['message' => 'A new 6-digit code has been sent.', 'sent' => []]);
         }
 
         if ($customer->otp_last_sent_at) {
@@ -426,8 +435,12 @@ class CustomerAuthController extends Controller
 
         $customer = Customer::whereRaw('LOWER(email) = ?', [strtolower($request->email)])->first();
 
-        if (! $customer) {
-            return response()->json(['message' => 'Customer not found'], 404);
+        $sentMessage = 'If that account exists, a password reset code is on its way.';
+
+        // One code a minute per account, so this can't be used to spam a number
+        // or burn SMS credits; the earlier code is still valid.
+        if (! $customer || ($customer->otp_last_sent_at && $customer->otp_last_sent_at->diffInSeconds(now(), absolute: true) < 60)) {
+            return response()->json(['message' => $sentMessage]);
         }
 
         $otp = (string) random_int(100000, 999999);
@@ -436,15 +449,19 @@ class CustomerAuthController extends Controller
         $customer->update([
             'otp_code' => $otp,
             'otp_expires_at' => now()->addMinutes(15),
+            'otp_last_sent_at' => now(),
+            'otp_attempts' => 0,
         ]);
 
         $result = $otpService->sendPasswordResetCode($customer, $otp, 15, $channel);
 
         if (! $result['delivered']) {
+            $customer->update(['otp_last_sent_at' => null]);
+
             return response()->json(['message' => $result['error']], 502);
         }
 
-        return response()->json(['message' => 'Password reset code sent to your email.']);
+        return response()->json(['message' => $sentMessage]);
     }
 
     public function resetPassword(Request $request)
@@ -452,24 +469,38 @@ class CustomerAuthController extends Controller
         $request->validate([
             'email' => 'required|email',
             'otp' => 'required|string|size:6',
-            'password' => 'required|min:6|confirmed',
+            'password' => 'required|min:8|max:50|confirmed',
         ]);
 
         $customer = Customer::whereRaw('LOWER(email) = ?', [strtolower($request->email)])->first();
 
-        if (! $customer) {
-            return response()->json(['message' => 'Customer not found'], 404);
-        }
-
-        if ($request->otp !== $customer->otp_code || ! $customer->otp_expires_at || now()->gt($customer->otp_expires_at)) {
+        if (! $customer || ! $customer->otp_code || ! $customer->otp_expires_at || now()->gt($customer->otp_expires_at)) {
             return response()->json(['message' => 'Invalid or expired reset code.'], 422);
         }
 
-        $customer->update([
-            'password' => Hash::make($request->password),
-            'otp_code' => null,
-            'otp_expires_at' => null,
-        ]);
+        if ($customer->otp_attempts >= self::MAX_OTP_ATTEMPTS) {
+            return response()->json(['message' => 'Too many attempts. Please request a new code.'], 429);
+        }
+
+        if (! hash_equals((string) $customer->otp_code, (string) $request->otp)) {
+            $customer->increment('otp_attempts');
+
+            return response()->json(['message' => 'Invalid or expired reset code.'], 422);
+        }
+
+        // Signs out every device, including anyone who got in with the old password.
+        DB::transaction(function () use ($customer, $request) {
+            $customer->update([
+                'password' => Hash::make($request->password),
+                'otp_code' => null,
+                'otp_expires_at' => null,
+                'otp_attempts' => 0,
+                'token_version' => $customer->token_version + 1,
+            ]);
+
+            $customer->tokens()->delete();
+            $customer->devices()->delete();
+        });
 
         return response()->json(['message' => 'Password has been reset successfully.']);
     }
@@ -735,10 +766,14 @@ class CustomerAuthController extends Controller
             return response()->json(['message' => 'Confirmation code has expired.'], 422);
         }
 
-        if ($request->otp !== $customer->otp_code) {
+        if ($customer->otp_attempts >= self::MAX_OTP_ATTEMPTS) {
+            return response()->json(['message' => 'Too many attempts. Please request a new code.'], 429);
+        }
+
+        if (! hash_equals((string) $customer->otp_code, (string) $request->otp)) {
             $customer->increment('otp_attempts');
 
-            if ($customer->otp_attempts >= 5) {
+            if ($customer->otp_attempts >= self::MAX_OTP_ATTEMPTS) {
                 return response()->json(['message' => 'Too many attempts. Please request a new code.'], 429);
             }
 

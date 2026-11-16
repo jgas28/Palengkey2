@@ -19,6 +19,9 @@ class CashlessPayment extends Model
         'raw_response',
     ];
 
+    /** PayMongo's full responses (client key, billing details) stay server-side. */
+    protected $hidden = ['raw_response'];
+
     protected function casts(): array
     {
         return [
