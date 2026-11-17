@@ -30,8 +30,9 @@ import {
 } from "@/services/api/adminVouchers";
 import { listAdminMarkets } from "@/services/api/adminLookups";
 import AdminStepper from "@/components/admin/AdminStepper";
+import VoucherCustomerPicker from "@/features/admin/VoucherCustomerPicker";
 import { useToastStore } from "@/stores/toastStore";
-import type { AdminVoucher, VoucherTarget } from "@/types/adminVoucher";
+import type { AdminVoucher, VoucherCustomer, VoucherTarget } from "@/types/adminVoucher";
 
 const TARGET_LABELS: Record<VoucherTarget, string> = {
   subtotal: "Items subtotal",
@@ -51,6 +52,8 @@ interface FormState {
   per_customer_limit: string;
   is_active: boolean;
   is_public: boolean;
+  for_specific_customers: boolean;
+  customers: VoucherCustomer[];
   market_id: number | "";
   starts_at: string;
   expires_at: string;
@@ -68,6 +71,8 @@ const emptyForm: FormState = {
   per_customer_limit: "1",
   is_active: true,
   is_public: true,
+  for_specific_customers: false,
+  customers: [],
   market_id: "",
   starts_at: "",
   expires_at: "",
@@ -77,6 +82,7 @@ const VOUCHER_STEPS = [
   { id: 1, title: "Discount", hint: "" },
   { id: 2, title: "Limits", hint: "" },
   { id: 3, title: "Schedule", hint: "" },
+  { id: 4, title: "Customers", hint: "" },
 ] as const;
 
 export default function AdminVouchers() {
@@ -125,6 +131,8 @@ export default function AdminVouchers() {
         : undefined,
       is_active: form.is_active,
       is_public: form.is_public,
+      for_specific_customers: form.for_specific_customers,
+      customer_ids: form.for_specific_customers ? form.customers.map((c) => c.id) : [],
       market_id: form.market_id ? Number(form.market_id) : undefined,
       starts_at: form.starts_at || undefined,
       expires_at: form.expires_at || undefined,
@@ -196,6 +204,8 @@ export default function AdminVouchers() {
       per_customer_limit: String(voucher.per_customer_limit),
       is_active: voucher.is_active,
       is_public: voucher.is_public,
+      for_specific_customers: voucher.for_specific_customers ?? false,
+      customers: voucher.customers ?? [],
       market_id: voucher.market_id ?? "",
       starts_at: voucher.starts_at?.slice(0, 16) ?? "",
       expires_at: voucher.expires_at?.slice(0, 16) ?? "",
@@ -231,6 +241,10 @@ export default function AdminVouchers() {
     }
     if (form.applies_to.length === 0) {
       showToast("Choose at least one target.", "error");
+      return;
+    }
+    if (form.for_specific_customers && form.customers.length === 0) {
+      showToast("Add at least one customer, or choose Everyone.", "error");
       return;
     }
     if (editing) {
@@ -306,6 +320,9 @@ export default function AdminVouchers() {
                   : null,
                 voucher.applies_to.map((t) => TARGET_LABELS[t]).join(", "),
                 voucher.market?.name ?? "All markets",
+                voucher.for_specific_customers
+                  ? `For ${voucher.customers?.length ?? 0} customer${voucher.customers?.length === 1 ? "" : "s"}`
+                  : null,
                 voucher.is_public ? "Public" : "Exclusive",
               ]
                 .filter(Boolean)
@@ -348,7 +365,7 @@ export default function AdminVouchers() {
             label="Voucher steps"
             steps={VOUCHER_STEPS}
             current={formStep}
-            done={{ 1: discountValid, 2: formStep > 2 }}
+            done={{ 1: discountValid, 2: formStep > 2, 3: formStep > 3 }}
             isLocked={(stepId) => stepId > 1 && !discountValid}
             onSelect={setFormStep}
           />
@@ -543,6 +560,47 @@ export default function AdminVouchers() {
                 {form.max_discount_amount && `, up to ₱${form.max_discount_amount}`}
                 {form.per_customer_limit && `, ${form.per_customer_limit}× per customer`}.
               </p>
+            </>
+          )}
+
+          {formStep === 4 && (
+            <>
+              <div className="flex flex-col gap-2 text-sm font-medium text-text">
+                Who can use it
+                <label className="flex items-center gap-2 font-normal">
+                  <input
+                    type="radio"
+                    name="voucher-customers"
+                    checked={!form.for_specific_customers}
+                    onChange={() => setForm({ ...form, for_specific_customers: false })}
+                  />
+                  Everyone
+                </label>
+                <label className="flex items-center gap-2 font-normal">
+                  <input
+                    type="radio"
+                    name="voucher-customers"
+                    checked={form.for_specific_customers}
+                    onChange={() => setForm({ ...form, for_specific_customers: true })}
+                  />
+                  Only specific customers
+                </label>
+              </div>
+
+              {form.for_specific_customers && (
+                <>
+                  <VoucherCustomerPicker
+                    selected={form.customers}
+                    onChange={(customers) => setForm({ ...form, customers })}
+                  />
+                  <p className="text-xs text-text-muted">
+                    Other customers can&apos;t use the code even if they know it.
+                    {form.is_public
+                      ? " It shows in the voucher list of the chosen customers only."
+                      : " It's exclusive, so the chosen customers must type the code."}
+                  </p>
+                </>
+              )}
             </>
           )}
 

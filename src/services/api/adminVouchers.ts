@@ -1,5 +1,10 @@
 import { adminApiClient } from "@/services/api/adminClient";
-import type { AdminVoucher, AdminVoucherPage, VoucherTarget } from "@/types/adminVoucher";
+import type {
+  AdminVoucher,
+  AdminVoucherPage,
+  VoucherCustomer,
+  VoucherTarget,
+} from "@/types/adminVoucher";
 
 export async function listAdminVouchers(
   search = "",
@@ -23,6 +28,8 @@ export interface VoucherPayload {
   per_customer_limit?: number;
   is_active: boolean;
   is_public: boolean;
+  for_specific_customers: boolean;
+  customer_ids: number[];
   market_id?: number;
   starts_at?: string;
   expires_at?: string;
@@ -42,6 +49,15 @@ export async function updateAdminVoucher(
     payload,
   );
   return data;
+}
+
+/** Customers whose email contains `email` (at least 3 characters), up to 10. */
+export async function searchVoucherCustomers(email: string): Promise<VoucherCustomer[]> {
+  const { data } = await adminApiClient.get<{ customers: VoucherCustomer[] }>(
+    "/admin/vouchers/customer-search",
+    { params: { email } },
+  );
+  return data.customers;
 }
 
 export async function deleteAdminVoucher(voucherId: number): Promise<void> {

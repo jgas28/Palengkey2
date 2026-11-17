@@ -21,6 +21,7 @@ class Voucher extends Model
         'used_count',
         'is_active',
         'is_public',
+        'for_specific_customers',
         'market_id',
         'starts_at',
         'expires_at',
@@ -36,6 +37,7 @@ class Voucher extends Model
         'used_count' => 'integer',
         'is_active' => 'boolean',
         'is_public' => 'boolean',
+        'for_specific_customers' => 'boolean',
         'starts_at' => 'datetime',
         'expires_at' => 'datetime',
         'applies_to' => 'array',
@@ -50,6 +52,21 @@ class Voucher extends Model
     public function usages()
     {
         return $this->hasMany(VoucherUsage::class);
+    }
+
+    /** The only customers who can use it, when for_specific_customers is on. */
+    public function customers()
+    {
+        return $this->belongsToMany(Customer::class, 'voucher_customers')->withTimestamps();
+    }
+
+    public function isForCustomer(?int $customerId): bool
+    {
+        if (! $this->for_specific_customers) {
+            return true;
+        }
+
+        return $customerId !== null && $this->customers()->whereKey($customerId)->exists();
     }
 
     public function market()
@@ -113,6 +130,10 @@ class Voucher extends Model
     {
         if (! $this->is_active) {
             return 'This voucher is no longer active.';
+        }
+
+        if (! $this->isForCustomer($customerId)) {
+            return 'This voucher is not available for your account.';
         }
 
         if ($marketId !== null && ! $this->appliesToMarket($marketId)) {
@@ -203,6 +224,11 @@ class Voucher extends Model
 
         return $query->currentlyRedeemable()
             ->where('is_public', true)
+            ->where(fn (Builder $q) => $q->where('for_specific_customers', false)->orWhereExists(
+                fn ($sub) => $sub->from('voucher_customers')
+                    ->whereColumn('voucher_customers.voucher_id', 'vouchers.id')
+                    ->where('voucher_customers.customer_id', $customerId)
+            ))
             ->when($marketId !== null, fn (Builder $q) => $q->where(
                 fn (Builder $q) => $q->whereNull('market_id')->orWhere('market_id', $marketId)
             ))

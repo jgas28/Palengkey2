@@ -1,5 +1,12 @@
 export type VoucherTarget = "subtotal" | "service_fee" | "delivery_fee";
 
+export interface VoucherCustomer {
+  id: number;
+  fname: string | null;
+  lname: string | null;
+  email: string;
+}
+
 export interface AdminVoucher {
   id: number;
   code: string;
@@ -14,6 +21,9 @@ export interface AdminVoucher {
   used_count: number;
   is_active: boolean;
   is_public: boolean;
+  /** Only the listed customers can see or use it. */
+  for_specific_customers: boolean;
+  customers: VoucherCustomer[];
   market_id: number | null;
   market: { id: number; name: string } | null;
   starts_at: string | null;

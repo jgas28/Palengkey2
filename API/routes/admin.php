@@ -202,6 +202,7 @@ Route::prefix('admin')->group(function () {
 
         Route::middleware('admin.role:marketing')->group(function () {
             Route::get('/vouchers', [VoucherController::class, 'index']);
+            Route::get('/vouchers/customer-search', [VoucherController::class, 'searchCustomers'])->middleware('throttle:60,1');
             Route::post('/vouchers', [VoucherController::class, 'store']);
             Route::patch('/vouchers/{voucher}', [VoucherController::class, 'update']);
             Route::delete('/vouchers/{voucher}', [VoucherController::class, 'destroy']);
