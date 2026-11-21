@@ -5,6 +5,14 @@ import { StoreBadge } from "@/components/icons/BrandIcons";
 import { Logo } from "@/components/layout/Header";
 import { useToastStore } from "@/stores/toastStore";
 
+const LINKS = {
+  facebook: "https://www.facebook.com/profile.php?id=61593131815809",
+  instagram: "https://www.instagram.com/palengkeypdmc/",
+  tiktok: "https://www.tiktok.com/@palengkey",
+  appStore: "https://apps.apple.com/ph/app/palengkey/id6796321789",
+  googlePlay: "https://play.google.com/store/apps/details?id=com.palengkey.palengkey",
+};
+
 export default function Footer() {
   const showToast = useToastStore((state) => state.showToast);
 
@@ -35,7 +43,7 @@ export default function Footer() {
           </address>
           <div className="socials" aria-label="Social media">
             <a
-              href="https://facebook.com"
+              href={LINKS.facebook}
               target="_blank"
               rel="noreferrer"
               aria-label="Palengkey on Facebook"
@@ -43,7 +51,7 @@ export default function Footer() {
               <Icon name="facebook" />
             </a>
             <a
-              href="https://instagram.com"
+              href={LINKS.instagram}
               target="_blank"
               rel="noreferrer"
               aria-label="Palengkey on Instagram"
@@ -51,15 +59,7 @@ export default function Footer() {
               <Icon name="instagram" />
             </a>
             <a
-              href="https://x.com"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Palengkey on X"
-            >
-              <Icon name="twitter-x" />
-            </a>
-            <a
-              href="https://tiktok.com"
+              href={LINKS.tiktok}
               target="_blank"
               rel="noreferrer"
               aria-label="Palengkey on TikTok"
@@ -68,8 +68,8 @@ export default function Footer() {
             </a>
           </div>
           <div className="store-badges">
-            <StoreBadge store="apple" />
-            <StoreBadge store="google" />
+            <StoreBadge store="apple" href={LINKS.appStore} />
+            <StoreBadge store="google" href={LINKS.googlePlay} />
           </div>
         </div>
         <div>

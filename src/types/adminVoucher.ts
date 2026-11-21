@@ -5,6 +5,15 @@ export interface VoucherCustomer {
   fname: string | null;
   lname: string | null;
   email: string;
+  /** Set once the customer has been emailed about the voucher. */
+  pivot?: { notified_at: string | null };
+}
+
+/** Emails started when a personal voucher is saved. */
+export interface VoucherEmailResult {
+  sending: number;
+  /** Turned off promotional emails, or no valid email address. */
+  skipped: number;
 }
 
 export interface AdminVoucher {

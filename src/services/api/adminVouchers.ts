@@ -3,8 +3,11 @@ import type {
   AdminVoucher,
   AdminVoucherPage,
   VoucherCustomer,
+  VoucherEmailResult,
   VoucherTarget,
 } from "@/types/adminVoucher";
+
+export type SavedVoucher = AdminVoucher & { emails?: VoucherEmailResult };
 
 export async function listAdminVouchers(
   search = "",
@@ -35,16 +38,16 @@ export interface VoucherPayload {
   expires_at?: string;
 }
 
-export async function createAdminVoucher(payload: VoucherPayload): Promise<AdminVoucher> {
-  const { data } = await adminApiClient.post<AdminVoucher>("/admin/vouchers", payload);
+export async function createAdminVoucher(payload: VoucherPayload): Promise<SavedVoucher> {
+  const { data } = await adminApiClient.post<SavedVoucher>("/admin/vouchers", payload);
   return data;
 }
 
 export async function updateAdminVoucher(
   voucherId: number,
   payload: VoucherPayload,
-): Promise<AdminVoucher> {
-  const { data } = await adminApiClient.patch<AdminVoucher>(
+): Promise<SavedVoucher> {
+  const { data } = await adminApiClient.patch<SavedVoucher>(
     `/admin/vouchers/${voucherId}`,
     payload,
   );

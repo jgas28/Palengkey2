@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Voucher;
+use App\Services\VoucherCustomerNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -51,7 +52,7 @@ class VoucherController extends Controller
         return response()->json($query->paginate(20));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, VoucherCustomerNotifier $notifier)
     {
         $data = $this->validated($request);
         $data['code'] = strtoupper($data['code']);
@@ -68,10 +69,12 @@ class VoucherController extends Controller
             return $voucher;
         });
 
-        return response()->json($voucher->load(self::relations()), 201);
+        $emails = $notifier->notifyNew($voucher);
+
+        return response()->json([...$voucher->load(self::relations())->toArray(), 'emails' => $emails], 201);
     }
 
-    public function update(Request $request, Voucher $voucher)
+    public function update(Request $request, Voucher $voucher, VoucherCustomerNotifier $notifier)
     {
         $data = $this->validated($request, $voucher->id);
         $data['code'] = strtoupper($data['code']);
@@ -85,7 +88,10 @@ class VoucherController extends Controller
             $voucher->customers()->sync($customerIds);
         });
 
-        return response()->json($voucher->fresh()->load(self::relations()));
+        $voucher = $voucher->fresh();
+        $emails = $notifier->notifyNew($voucher);
+
+        return response()->json([...$voucher->load(self::relations())->toArray(), 'emails' => $emails]);
     }
 
     public function destroy(Voucher $voucher)

@@ -31,6 +31,7 @@ import {
 import { listAdminMarkets } from "@/services/api/adminLookups";
 import AdminStepper from "@/components/admin/AdminStepper";
 import VoucherCustomerPicker from "@/features/admin/VoucherCustomerPicker";
+import { savedMessage } from "@/features/admin/voucherSavedMessage";
 import { useToastStore } from "@/stores/toastStore";
 import type { AdminVoucher, VoucherCustomer, VoucherTarget } from "@/types/adminVoucher";
 
@@ -141,9 +142,9 @@ export default function AdminVouchers() {
 
   const createMutation = useMutation({
     mutationFn: () => createAdminVoucher(buildPayload()),
-    onSuccess: () => {
+    onSuccess: (saved) => {
       void queryClient.invalidateQueries({ queryKey: ["adminVouchers"] });
-      showToast("Voucher created.", "success");
+      showToast(savedMessage("created", saved), "success");
       closeForm();
     },
     onError: (error) => {
@@ -156,9 +157,9 @@ export default function AdminVouchers() {
 
   const updateMutation = useMutation({
     mutationFn: () => updateAdminVoucher(editing!.id, buildPayload()),
-    onSuccess: () => {
+    onSuccess: (saved) => {
       void queryClient.invalidateQueries({ queryKey: ["adminVouchers"] });
-      showToast("Voucher updated.", "success");
+      showToast(savedMessage("updated", saved), "success");
       closeForm();
     },
     onError: (error) => {
@@ -594,7 +595,9 @@ export default function AdminVouchers() {
                     onChange={(customers) => setForm({ ...form, customers })}
                   />
                   <p className="text-xs text-text-muted">
-                    Other customers can&apos;t use the code even if they know it.
+                    Other customers can&apos;t use the code even if they know it. When
+                    you save, newly added customers get an email with the code (only
+                    while the voucher is active and not expired).
                     {form.is_public
                       ? " It shows in the voucher list of the chosen customers only."
                       : " It's exclusive, so the chosen customers must type the code."}

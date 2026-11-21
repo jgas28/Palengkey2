@@ -105,6 +105,9 @@ export default function VoucherCustomerPicker({
                 className="flex items-center gap-1 rounded-full bg-primary-50 py-1 pl-3 pr-1 text-xs text-primary-800"
               >
                 {customer.email}
+                {customer.pivot?.notified_at && (
+                  <span className="text-[10px] text-primary-600">· emailed</span>
+                )}
                 <button
                   type="button"
                   onClick={() => onChange(selected.filter((c) => c.id !== customer.id))}

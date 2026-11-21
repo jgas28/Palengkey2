@@ -58,21 +58,37 @@ export function AppleLogo({ size = 20 }: { size?: number }) {
 /** Official-style black store badge ("Download on the App Store" / "Get it on Google Play"). */
 export function StoreBadge({
   store,
-  comingSoon = true,
+  href,
 }: {
   store: "apple" | "google";
-  comingSoon?: boolean;
+  /** The app's store page. Without it the badge says "Coming soon". */
+  href?: string;
 }) {
   const apple = store === "apple";
-  return (
-    <span className="store-badge" aria-label={apple ? "App Store" : "Google Play"}>
+  const name = apple ? "App Store" : "Google Play";
+  const content = (
+    <>
       {apple ? <AppleLogo size={20} /> : <GooglePlayLogo size={20} />}
       <span>
-        <small>
-          {comingSoon ? "COMING SOON ON" : apple ? "Download on the" : "GET IT ON"}
-        </small>
-        <strong>{apple ? "App Store" : "Google Play"}</strong>
+        <small>{!href ? "COMING SOON ON" : apple ? "Download on the" : "GET IT ON"}</small>
+        <strong>{name}</strong>
       </span>
+    </>
+  );
+
+  return href ? (
+    <a
+      className="store-badge"
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={`Get Palengkey on ${name}`}
+    >
+      {content}
+    </a>
+  ) : (
+    <span className="store-badge" aria-label={name}>
+      {content}
     </span>
   );
 }

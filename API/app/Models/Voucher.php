@@ -57,7 +57,7 @@ class Voucher extends Model
     /** The only customers who can use it, when for_specific_customers is on. */
     public function customers()
     {
-        return $this->belongsToMany(Customer::class, 'voucher_customers')->withTimestamps();
+        return $this->belongsToMany(Customer::class, 'voucher_customers')->withPivot('notified_at')->withTimestamps();
     }
 
     public function isForCustomer(?int $customerId): bool
