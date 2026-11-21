@@ -37,9 +37,9 @@ export default function Footer() {
               <Icon name="pin" size={15} />
               Block 3 Lot 106 Lawang Pari, San Jose Del Monte, Bulacan 3023
             </span>
-            <a href="mailto:contact@palengkey.ph">
+            <a href="mailto:admin@palengkey.ph">
               <Icon name="message" size={15} />
-              contact@palengkey.ph
+              admin@palengkey.ph
             </a>
           </address>
           <div className="socials" aria-label="Social media">

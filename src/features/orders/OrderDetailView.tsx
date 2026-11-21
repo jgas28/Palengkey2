@@ -7,6 +7,7 @@ import Icon from "@/components/pk/Icon";
 import { getRiderLocation } from "@/services/api/riderTracking";
 import { calculateDistanceKm } from "@/utils/distance";
 import { formatPeso } from "@/utils/currency";
+import { pwdSeniorDiscount } from "@/utils/pwdSeniorDiscount";
 import FeedbackModal from "@/features/orders/FeedbackModal";
 import { cancelOrder, downloadInvoice, getOrder } from "@/services/api/orders";
 import { openSupportForOrder } from "@/services/api/support";
@@ -482,6 +483,25 @@ export default function OrderDetailView() {
                 <p>
                   <span>Bulk delivery subsidy (BULK-FREESHIP-49)</span>
                   <strong>-{formatPeso(Number(order.bulk_delivery_subsidy))}</strong>
+                </p>
+              )}
+              {Number(order.pwd_senior_discount ?? 0) > 0 && (
+                <p>
+                  <span>
+                    {order.pwd_senior_type === "senior" ? "Senior Citizen" : "PWD"} discount
+                    <small style={{ display: "block", fontWeight: 500 }}>
+                      20% of the delivery fee without VAT (
+                      {formatPeso(
+                        pwdSeniorDiscount(
+                          Number(order.delivery_fee) +
+                            Number(order.vat ?? 0) -
+                            Number(order.bulk_delivery_subsidy ?? 0),
+                        ).vatExclusive,
+                      )}
+                      ). Show your ID to the rider.
+                    </small>
+                  </span>
+                  <strong>-{formatPeso(Number(order.pwd_senior_discount))}</strong>
                 </p>
               )}
               {Number(order.voucher_discount) > 0 && (

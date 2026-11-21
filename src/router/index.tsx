@@ -23,6 +23,8 @@ const Profile = lazy(() => import("@/pages/Profile"));
 const EditProfile = lazy(() => import("@/pages/profile/EditProfile"));
 const ChangePassword = lazy(() => import("@/pages/profile/ChangePassword"));
 const DeleteAccount = lazy(() => import("@/pages/profile/DeleteAccount"));
+// PWD / Senior discount (switched off for now):
+// const DiscountIdPage = lazy(() => import("@/pages/profile/DiscountIdPage"));
 const Addresses = lazy(() => import("@/pages/Addresses"));
 const Notifications = lazy(() => import("@/pages/notifications/Notifications"));
 const Support = lazy(() => import("@/pages/support/Support"));
@@ -71,6 +73,8 @@ const AdminCategories = lazy(() => import("@/pages/admin/AdminCategories"));
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
 const AdminReports = lazy(() => import("@/pages/admin/AdminReports"));
 const AdminVerifications = lazy(() => import("@/pages/admin/AdminVerifications"));
+// PWD / Senior IDs (switched off for now):
+// const AdminDiscountIds = lazy(() => import("@/pages/admin/AdminDiscountIds"));
 const AdminCodSubmissions = lazy(() => import("@/pages/admin/AdminCodSubmissions"));
 const AdminOrders = lazy(() => import("@/pages/admin/AdminOrders"));
 const AdminOrderDetail = lazy(() => import("@/pages/admin/AdminOrderDetail"));
@@ -123,6 +127,8 @@ export default function AppRouter() {
             <Route path="profile/edit" element={<EditProfile />} />
             <Route path="profile/password" element={<ChangePassword />} />
             <Route path="profile/delete-account" element={<DeleteAccount />} />
+            {/* PWD / Senior discount (switched off for now):
+            <Route path="profile/discount-id" element={<DiscountIdPage />} /> */}
             <Route path="addresses" element={<Addresses />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="support" element={<Support />} />
@@ -200,6 +206,8 @@ export default function AppRouter() {
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="reports" element={<AdminReports />} />
             <Route path="verifications" element={<AdminVerifications />} />
+            {/* PWD / Senior IDs (switched off for now):
+            <Route path="pwd-senior-ids" element={<AdminDiscountIds />} /> */}
             <Route path="cod-submissions" element={<AdminCodSubmissions />} />
           </Route>
         </Route>

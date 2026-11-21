@@ -418,6 +418,12 @@
                     <td>Discount{{ $order->voucher_code ? " ({$order->voucher_code})" : '' }}</td>
                     <td class="value">{{ $voucherDiscount > 0 ? '-' . number_format($voucherDiscount, 2) : number_format(0, 2) }}</td>
                 </tr>
+                @if ((float) ($order->pwd_senior_discount ?? 0) > 0)
+                <tr>
+                    <td>{{ $order->pwd_senior_type === 'senior' ? 'Senior Citizen' : 'PWD' }} Discount (20% of delivery fee, VAT-exclusive){!! $order->discountId ? '<br><small>ID No. '.e($order->discountId->id_number).' &middot; '.e($order->discountId->full_name).'</small>' : '' !!}</td>
+                    <td class="value">-{{ number_format((float) $order->pwd_senior_discount, 2) }}</td>
+                </tr>
+                @endif
                 <tr>
                     <td>VAT (12% on delivery)</td>
                     <td class="value">{{ number_format($vat, 2) }}</td>

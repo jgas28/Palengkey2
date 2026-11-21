@@ -21,6 +21,8 @@ export interface CheckoutPayload {
   /** Selected `cart_recipe_bundles` ids to check out alongside plain items. */
   recipe_bundle_ids?: number[];
   voucher_code?: string;
+  /** PWD / Senior Citizen discount; needs an approved ID. */
+  pwd_senior_discount?: boolean;
   order_later_slot?: string;
   notes?: string;
 }

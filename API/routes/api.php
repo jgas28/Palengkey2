@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\CustomerFeedbackController;
 use App\Http\Controllers\Api\CustomerProfileController;
 use App\Http\Controllers\Api\CustomerSupportController;
 use App\Http\Controllers\Api\CuratedProductController;
+// use App\Http\Controllers\Api\CustomerDiscountIdController;
 use App\Http\Controllers\Api\CustomerVerificationController;
 use App\Http\Controllers\Api\ItemApiController;
 use App\Http\Controllers\Api\MarketApiController;
@@ -103,6 +104,9 @@ Route::prefix('customer')->middleware('customer.maintenance')->group(function ()
         Route::post('/verification/submit', [CustomerVerificationController::class, 'submit']);
         Route::post('/verification/skip', [CustomerVerificationController::class, 'skip']);
         Route::get('/verification/status', [CustomerVerificationController::class, 'status']);
+
+        // Route::get('/discount-id', [CustomerDiscountIdController::class, 'show']);
+        // Route::post('/discount-id', [CustomerDiscountIdController::class, 'store'])->middleware('throttle:10,1');
 
         Route::get('/settings', [SettingsController::class, 'index']);
 

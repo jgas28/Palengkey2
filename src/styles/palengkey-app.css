@@ -702,3 +702,78 @@
   margin: 2px 0 0;
   font-size: 11px;
 }
+
+/* ---------------------------------------------------------------------------
+   Phone status bar and navigation bar (Android 15+ and iOS draw the app under
+   them). Capacitor sets --safe-area-inset-* on Android; env() covers iOS and
+   browsers. Both are 0 where the bars don't overlap the page.
+   ------------------------------------------------------------------------- */
+:root {
+  --safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+}
+
+/* The fixed header grows by the status bar, so what starts under it moves down too. */
+:where(body.pk) .hero { padding-top: calc(76px + var(--safe-top)); }
+:where(body.pk) .inner-page { padding-top: calc(76px + var(--safe-top)); }
+:where(body.pk) .inner-page:has(> .paluto-hero:first-child, > .recipe-hero:first-child, > .careers-hero:first-child, > .about-hero:first-child) { padding-top: 0; }
+:where(body.pk) .inner-page > .paluto-hero:first-child,
+:where(body.pk) .inner-page > .recipe-hero:first-child,
+:where(body.pk) .inner-page > .about-hero:first-child { padding-top: calc(var(--header-h, 76px) + var(--safe-top)); }
+:where(body.pk) .inner-page > .careers-hero:first-child { padding-top: calc(var(--header-h, 76px) + 110px + var(--safe-top)); }
+
+/* Nothing pinned to the bottom sits under the navigation bar. */
+:where(body.pk) footer { padding-bottom: calc(92px + var(--safe-bottom)); }
+:where(body.pk) .chat { bottom: calc(24px + var(--safe-bottom)); }
+:where(body.pk) .toast { bottom: calc(27px + var(--safe-bottom)); }
+
+@media (max-width: 700px) {
+  :where(body.pk) .hero { padding-top: calc(66px + var(--safe-top)); }
+  :where(body.pk) .inner-page { padding-top: calc(66px + var(--safe-top)); }
+  :where(body.pk) .inner-page > .careers-hero:first-child { padding-top: calc(66px + 75px + var(--safe-top)); }
+  :where(body.pk) .chat { bottom: calc(16px + var(--safe-bottom)); }
+  :where(body.pk) .toast { bottom: calc(18px + var(--safe-bottom)); }
+}
+
+@media (max-width: 520px) {
+  /* Full-screen chat on phones: keep its header and message box clear of both bars. */
+  :where(body.pk) .chat-widget {
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
+  }
+}
+
+/* Checkout: PWD / Senior Citizen discount switch above the voucher box. */
+:where(body.pk) .pwd-senior-box {
+  display: block !important;
+  margin: 6px 0 4px;
+  padding: 10px 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  font-size: 11px;
+}
+:where(body.pk) .pwd-senior-box label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+}
+:where(body.pk) .pwd-senior-box input[type="checkbox"] {
+  margin-top: 2px;
+  accent-color: #16a34a;
+}
+:where(body.pk) .pwd-senior-box strong,
+:where(body.pk) .pwd-senior-box small {
+  display: block;
+  font-size: 11px;
+}
+:where(body.pk) .pwd-senior-box small {
+  margin-top: 2px;
+  color: #4b5563;
+  font-weight: 500;
+}
+:where(body.pk) .pwd-senior-box a {
+  color: var(--teal-dark);
+  font-weight: 700;
+}

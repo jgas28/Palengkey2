@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\CareerController;
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\CuratedProductController;
 use App\Http\Controllers\Api\Admin\CustomerVerificationController;
+// use App\Http\Controllers\Api\Admin\DiscountIdController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\EmailBlastController;
 use App\Http\Controllers\Api\Admin\FeedbackController;
@@ -71,6 +72,14 @@ Route::prefix('admin')->group(function () {
         });
 
         Route::middleware('admin.role:admin')->group(function () {
+            // PWD / Senior IDs (switched off for now)
+            // Route::get('/discount-ids', [DiscountIdController::class, 'index']);
+            // Route::get('/discount-ids/{discountId}', [DiscountIdController::class, 'show'])->whereNumber('discountId');
+            // Route::get('/discount-ids/{discountId}/file/{side}', [DiscountIdController::class, 'file'])
+                // ->whereNumber('discountId')->whereIn('side', ['front', 'back', 'selfie'])->middleware('throttle:120,1');
+            // Route::post('/discount-ids/{discountId}/approve', [DiscountIdController::class, 'approve'])->whereNumber('discountId');
+            // Route::post('/discount-ids/{discountId}/reject', [DiscountIdController::class, 'reject'])->whereNumber('discountId');
+
             Route::get('/items', [ItemController::class, 'index']);
             Route::get('/items/import-template', [ItemController::class, 'importTemplate']);
             Route::post('/items/import', [ItemController::class, 'import']);

@@ -208,7 +208,7 @@ class OrderController extends Controller
         return $this->itemChangeResponse($order, $before, 'Item removed and totals recalculated.');
     }
 
-    /** Same formula as checkout: items + delivery (net + VAT) + service + cooking − voucher − bulk subsidy. */
+    /** Same formula as checkout: items + delivery (net + VAT) + service + cooking − voucher − bulk subsidy − PWD/Senior. */
     private function recalculateOrderTotals(Order $order): void
     {
         $order->loadMissing('voucher');
@@ -218,6 +218,8 @@ class OrderController extends Controller
         $deliveryGross = round((float) $order->delivery_fee + (float) $order->vat, 2);
         $bulkSubsidy = min((float) ($order->bulk_delivery_subsidy ?? 0), $deliveryGross);
         $cookingFee = (float) ($order->paluto_cooking_fee ?? 0);
+        // Only on the delivery fee, which item edits don't change.
+        $pwdSeniorDiscount = (float) ($order->pwd_senior_discount ?? 0);
         $voucherDiscount = 0.0;
 
         if ($order->voucher && ! $order->voucher->redemptionBlockReason((int) $order->customer_id, $subtotal, (int) $order->market_id)) {
@@ -228,7 +230,7 @@ class OrderController extends Controller
             'subtotal' => $subtotal,
             'service_fee' => $serviceFee,
             'voucher_discount' => $voucherDiscount,
-            'total_amount' => max(0, round($subtotal + $deliveryGross + $serviceFee + $cookingFee - $voucherDiscount - $bulkSubsidy, 2)),
+            'total_amount' => max(0, round($subtotal + $deliveryGross + $serviceFee + $cookingFee - $voucherDiscount - $bulkSubsidy - $pwdSeniorDiscount, 2)),
         ])->save();
 
         if ($order->voucher_id) {

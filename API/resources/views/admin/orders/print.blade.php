@@ -410,6 +410,12 @@ $rawPrice = fn ($item) => $item->vendor_list_price !== null
                 <td class="value">-&#8369;{{ number_format($invoiceVoucherDiscount, 2) }}</td>
             </tr>
         @endif
+        @if((float) ($order->pwd_senior_discount ?? 0) > 0)
+            <tr>
+                <td>{{ $order->pwd_senior_type === 'senior' ? 'Senior Citizen' : 'PWD' }} Discount (20% of delivery fee, VAT-exclusive){!! $order->discountId ? '<br><small>ID No. '.e($order->discountId->id_number).' &middot; '.e($order->discountId->full_name).'</small>' : '' !!}</td>
+                <td class="value">-&#8369;{{ number_format((float) $order->pwd_senior_discount, 2) }}</td>
+            </tr>
+        @endif
         <tr class="grand-total">
             <td>TOTAL</td>
             <td class="value">&#8369;{{ number_format($total_amount, 2, '.', ',') }}</td>

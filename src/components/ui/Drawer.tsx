@@ -44,6 +44,11 @@ export default function Drawer({
         aria-label={title}
         tabIndex={-1}
         className={`absolute overflow-y-auto bg-surface p-6 shadow-lifted focus:outline-none ${sideClasses[side]}`}
+        // Keep the panel clear of the phone's status and navigation bars.
+        style={{
+          paddingTop: side === "bottom" ? undefined : "calc(1.5rem + var(--safe-top, 0px))",
+          paddingBottom: "calc(1.5rem + var(--safe-bottom, 0px))",
+        }}
       >
         {side === "bottom" && (
           <div className="sticky -top-6 -mx-6 -mt-6 mb-2 flex justify-center bg-surface pb-2 pt-3">

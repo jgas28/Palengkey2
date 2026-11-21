@@ -18,6 +18,8 @@ import { listAddresses } from "@/services/api/addresses";
 import { getDeliveryFee, checkout } from "@/services/api/checkout";
 import { validateVoucher } from "@/services/api/vouchers";
 import { getSettings } from "@/services/api/settings";
+// import { discountIdQueryKey, getDiscountId } from "@/services/api/discountId";
+// import { pwdSeniorDiscount } from "@/utils/pwdSeniorDiscount";
 import { useToastStore } from "@/stores/toastStore";
 import { calculateDeliveryVat, calculateServiceFee } from "@/utils/serviceFee";
 import { formatPeso } from "@/utils/currency";
@@ -130,6 +132,15 @@ export default function CheckoutForm() {
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [voucherCode, setVoucherCode] = useState(readPendingVoucher);
   const [appliedVoucher, setAppliedVoucher] = useState<VoucherValidation | null>(null);
+  // PWD / Senior discount: switched off for now. Uncomment the PWD parts in this file to turn it back on.
+  // const [wantsPwdSenior, setWantsPwdSenior] = useState(false);
+  // const { data: discountIdInfo } = useQuery({
+    // queryKey: discountIdQueryKey,
+    // queryFn: getDiscountId,
+    // staleTime: 60 * 1000,
+  // });
+  // const pwdSeniorApproved = discountIdInfo?.status === "approved";
+  // const pwdSeniorOn = wantsPwdSenior && pwdSeniorApproved;
   const [orderLaterSlot, setOrderLaterSlot] = useState<string>(
     ORDER_LATER_SLOTS[0].value,
   );
@@ -241,6 +252,10 @@ export default function CheckoutForm() {
       })
     : null;
   const discountAmount = voucherCalc?.total ?? 0;
+  // // PWD / Senior: 20% of the delivery fee after VAT is split off (never with a voucher).
+  // const pwdSeniorCalc = pwdSeniorOn
+    // ? pwdSeniorDiscount(deliveryFeeGross - bulkDeliverySubsidy)
+    // : null;
   const voucherBelowMinimum = Boolean(
     appliedVoucher?.min_order_amount && subtotal < appliedVoucher.min_order_amount,
   );
@@ -250,6 +265,7 @@ export default function CheckoutForm() {
     (serviceFee ?? 0) -
     discountAmount -
     bulkDeliverySubsidy;
+  // - (pwdSeniorCalc?.discount ?? 0) // PWD / Senior discount (switched off)
 
   const voucherMutation = useMutation({
     mutationFn: (code: string) =>
@@ -263,6 +279,15 @@ export default function CheckoutForm() {
       showToast(error instanceof Error ? error.message : "Invalid voucher.", "error");
     },
   });
+
+  // function togglePwdSenior(on: boolean) {
+    // setWantsPwdSenior(on);
+    // if (on && appliedVoucher) {
+      // setAppliedVoucher(null);
+      // setVoucherCode("");
+      // showToast("Voucher removed: it can't be combined with the PWD/Senior discount.", "info");
+    // }
+  // }
 
   function handleSelectVoucher(code: string) {
     setVoucherCode(code);
@@ -278,6 +303,8 @@ export default function CheckoutForm() {
         item_ids: selectedItems.map((item) => item.id),
         recipe_bundle_ids: recipeBundleIds,
         voucher_code: appliedVoucher?.code,
+        // voucher_code: pwdSeniorOn ? undefined : appliedVoucher?.code,
+        // pwd_senior_discount: pwdSeniorOn || undefined,
         order_later_slot: hasCutoffItems ? orderLaterSlot : undefined,
         notes: notes.trim() || undefined,
       }),
@@ -649,6 +676,35 @@ export default function CheckoutForm() {
             </div>
           ))}
 
+          {/* PWD / Senior discount switch (switched off for now)
+          <div className="pwd-senior-box">
+            {pwdSeniorApproved ? (
+              <label>
+                <input
+                  type="checkbox"
+                  checked={wantsPwdSenior}
+                  onChange={(event) => togglePwdSenior(event.target.checked)}
+                />
+                <span>
+                  <strong>Apply {discountIdInfo?.type_label ?? "PWD / Senior"} discount</strong>
+                  <small>
+                    20% off the delivery fee (VAT-exclusive). Show your original ID to the
+                    rider on delivery. Can&apos;t be combined with vouchers.
+                  </small>
+                </span>
+              </label>
+            ) : discountIdInfo?.status === "pending" ? (
+              <small>Your PWD / Senior ID is being reviewed. The discount will be available once it&apos;s approved.</small>
+            ) : (
+              <small>
+                PWD or Senior Citizen?{" "}
+                <Link to="/profile/discount-id">Upload your ID</Link> for 20% off the delivery fee.
+              </small>
+            )}
+          </div>
+          */}
+
+          {/* <div style={{ display: pwdSeniorOn ? "none" : "block" }}> (PWD / Senior) */}
           <div style={{ display: "block" }}>
             <div
               className="voucher-input"
@@ -722,6 +778,29 @@ export default function CheckoutForm() {
               <strong>-{formatPeso(bulkDeliverySubsidy)}</strong>
             </div>
           )}
+          {/* PWD / Senior discount line (switched off for now)
+          {pwdSeniorCalc && (
+            <>
+              <div style={{ color: "#16a34a" }}>
+                <span>{discountIdInfo?.type_label ?? "PWD / Senior"} discount</span>
+                <strong>-{formatPeso(pwdSeniorCalc.discount)}</strong>
+              </div>
+              <ul className="voucher-breakdown">
+                <li>
+                  <span>
+                    Delivery fee {formatPeso(pwdSeniorCalc.deliveryFee)} − VAT{" "}
+                    {formatPeso(pwdSeniorCalc.vat)} = {formatPeso(pwdSeniorCalc.vatExclusive)}{" "}
+                    VAT-exclusive
+                  </span>
+                </li>
+                <li>
+                  <span>20% of {formatPeso(pwdSeniorCalc.vatExclusive)}</span>
+                  <strong>-{formatPeso(pwdSeniorCalc.discount)}</strong>
+                </li>
+              </ul>
+            </>
+          )}
+          */}
           {appliedVoucher && voucherCalc && (
             <>
               <div style={{ color: "#16a34a" }}>

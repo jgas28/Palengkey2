@@ -20,6 +20,8 @@ const MENU: { label: string; description: string; to: string; icon: IconName }[]
   { label: "My orders", description: "Track active and past deliveries", to: "/orders", icon: "bag" },
   { label: "Saved addresses", description: "Manage your delivery locations", to: "/addresses", icon: "truck" },
   { label: "Vouchers", description: "Available promos and rewards", to: "/vouchers", icon: "sparkle" },
+  // PWD / Senior discount (switched off for now):
+  // { label: "PWD / Senior discount", description: "Upload your ID for 20% off delivery", to: "/profile/discount-id", icon: "shield" },
   { label: "Notifications", description: "Order and offer updates", to: "/notifications", icon: "bell" },
   { label: "Change password", description: "Update your login password", to: "/profile/password", icon: "shield" },
   { label: "Help & support", description: "FAQs and chat with our team", to: "/support", icon: "message" },

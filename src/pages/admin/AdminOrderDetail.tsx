@@ -710,6 +710,17 @@ export default function AdminOrderDetail() {
                     <span>₱{order.bulk_discount}</span>
                   </div>
                 )}
+                {Number(order.pwd_senior_discount ?? 0) > 0 && (
+                  <div className="flex justify-between gap-3 text-status-delivered">
+                    <span>
+                      {order.pwd_senior_type === "senior" ? "Senior Citizen" : "PWD"} discount
+                      <span className="block text-xs text-slate-500">
+                        20% of VAT-exclusive delivery · check the original ID on handover
+                      </span>
+                    </span>
+                    <span>-₱{order.pwd_senior_discount}</span>
+                  </div>
+                )}
                 {Number(order.voucher_discount) > 0 && (
                   <div className="flex justify-between text-status-delivered">
                     <span>Voucher {order.voucher_code && `(${order.voucher_code})`}</span>

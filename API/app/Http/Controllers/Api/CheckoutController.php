@@ -14,11 +14,13 @@ use App\Models\OrderItem;
 use App\Models\PalutoDish;
 use App\Models\PalutoStall;
 use App\Models\Setting;
+// use App\Models\DiscountId;
 use App\Models\Voucher;
 use App\Models\VoucherUsage;
 use App\Services\InvoiceSeriesService;
 use App\Services\PayMongoService;
 use App\Support\BulkPricing;
+// use App\Support\PwdSeniorDiscount;
 use App\Support\MarketAvailability;
 use App\Support\PaymentMethods;
 use App\Support\PriceDisplay;
@@ -106,6 +108,7 @@ class CheckoutController extends Controller
             'recipe_bundle_ids' => 'nullable|array',
             'recipe_bundle_ids.*' => 'exists:cart_recipe_bundles,id',
             'voucher_code' => 'nullable|string|max:50',
+            // 'pwd_senior_discount' => 'sometimes|boolean',
             'order_later_slot' => 'nullable|in:'.implode(',', $this->orderLaterSlotValues()),
             'notes' => 'nullable|string|max:500',
         ]);
@@ -413,6 +416,32 @@ class CheckoutController extends Controller
 
             $serviceFee = Setting::calculateServiceFee($subtotal);
 
+            // PWD / Senior Citizen: 20% of the VAT-exclusive delivery fee, for a
+            // customer whose ID an admin approved. Not combined with vouchers.
+            // SWITCHED OFF FOR NOW. To turn it back on, uncomment: this block, the
+            // 'pwd_senior_discount' rule, the DiscountId/PwdSeniorDiscount imports,
+            // the three order fields below, and the discount-id routes in
+            // routes/api.php and routes/admin.php (and run the migration).
+            $pwdSeniorDiscount = 0;
+            $discountId = null;
+
+            // if ($request->boolean('pwd_senior_discount')) {
+                // if (! empty($data['voucher_code'])) {
+                    // throw ValidationException::withMessages([
+                        // 'pwd_senior_discount' => 'The PWD/Senior discount cannot be combined with a voucher. Remove the voucher or turn off the discount.',
+                    // ]);
+                // }
+
+                // $discountId = DiscountId::approvedFor($customer->id);
+                // if (! $discountId) {
+                    // throw ValidationException::withMessages([
+                        // 'pwd_senior_discount' => 'Your PWD/Senior ID needs to be approved before you can use the discount.',
+                    // ]);
+                // }
+
+                // $pwdSeniorDiscount = PwdSeniorDiscount::forDeliveryFee($deliveryFeeTotal - $bulkDeliverySubsidy)['discount'];
+            // }
+
             $voucherDiscount = 0;
             $appliedVoucher = null;
 
@@ -435,7 +464,7 @@ class CheckoutController extends Controller
                 $appliedVoucher = $voucher;
             }
 
-            $grandTotal = max(0, round($subtotal + $deliveryFeeTotal + $serviceFee + $palutoCookingFee - $voucherDiscount - $bulkDeliverySubsidy, 2));
+            $grandTotal = max(0, round($subtotal + $deliveryFeeTotal + $serviceFee + $palutoCookingFee - $voucherDiscount - $bulkDeliverySubsidy - $pwdSeniorDiscount, 2));
 
             $scheduledDeliveryTime = null;
             $deliverySlot = null;
@@ -478,6 +507,9 @@ class CheckoutController extends Controller
                 'voucher_discount' => $voucherDiscount,
                 'voucher_code' => $appliedVoucher?->code,
                 'voucher_id' => $appliedVoucher?->id,
+                // 'pwd_senior_discount' => $pwdSeniorDiscount,
+                // 'pwd_senior_type' => $discountId?->type,
+                // 'discount_id_id' => $discountId?->id,
                 'bulk_discount' => round($bulkDiscount, 2),
                 'bulk_delivery_subsidy' => $bulkDeliverySubsidy,
                 'total_amount' => $grandTotal,

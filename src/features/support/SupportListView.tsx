@@ -130,10 +130,10 @@ export default function SupportListView() {
           ) : (
             <a
               className="btn chat-now"
-              href="mailto:contact@palengkey.ph"
+              href="mailto:admin@palengkey.ph"
               style={{ display: "flex" }}
             >
-              <Icon name="message" /> Email contact@palengkey.ph <Icon name="arrow" />
+              <Icon name="message" /> Email admin@palengkey.ph <Icon name="arrow" />
             </a>
           )}
           <div className="support-divider">

@@ -42,6 +42,9 @@ class Order extends Model
         'delivery_fee',
         'vat',
         'voucher_discount',
+        'pwd_senior_discount',
+        'pwd_senior_type',
+        'discount_id_id',
         'voucher_code',
         'voucher_id',
         'bulk_discount',
@@ -132,6 +135,12 @@ class Order extends Model
     public function shopper()
     {
         return $this->belongsTo(User::class, 'shopper_id');
+    }
+
+    /** The PWD / Senior Citizen ID used for this order's discount. */
+    public function discountId()
+    {
+        return $this->belongsTo(DiscountId::class, 'discount_id_id');
     }
 
     public function voucher()

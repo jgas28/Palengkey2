@@ -85,8 +85,8 @@ export default function Faq() {
           <div className="support-divider">
             <span>or email</span>
           </div>
-          <a className="btn outline" href="mailto:contact@palengkey.ph" style={{ display: "flex", width: "100%" }}>
-            contact@palengkey.ph
+          <a className="btn outline" href="mailto:admin@palengkey.ph" style={{ display: "flex", width: "100%" }}>
+            admin@palengkey.ph
           </a>
         </aside>
       </div>

@@ -99,6 +99,8 @@ export interface AdminOrderDetail extends AdminOrderSummary {
   service_fee: string;
   delivery_fee: string;
   vat: string;
+  pwd_senior_discount?: string;
+  pwd_senior_type?: "pwd" | "senior" | null;
   voucher_discount: string;
   bulk_discount?: string;
   bulk_delivery_subsidy?: string;

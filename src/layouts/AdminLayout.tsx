@@ -95,6 +95,8 @@ const navGroups: NavGroup[] = [
     label: "Customers",
     items: [
       { to: "/admin/support", label: "Support", roles: ADMIN },
+      // PWD / Senior IDs (switched off for now):
+      // { to: "/admin/pwd-senior-ids", label: "PWD / Senior IDs", roles: ADMIN },
       { to: "/admin/feedback", label: "Suki Trust Level", roles: ADMIN },
     ],
   },

@@ -54,7 +54,7 @@ export default function Header() {
   }, [location.pathname]);
 
   return (
-    <header className="header" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+    <header className="header" style={{ paddingTop: "var(--safe-top, env(safe-area-inset-top))" }}>
       <div className="shell nav">
         <Link to="/" aria-label="Palengkey home">
           <Logo />

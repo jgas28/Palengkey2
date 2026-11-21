@@ -76,6 +76,9 @@ export interface Order {
   subtotal: number | string;
   delivery_fee: number | string;
   vat: number | string;
+  /** PWD / Senior Citizen discount (20% of the VAT-exclusive delivery fee). */
+  pwd_senior_discount?: number | string;
+  pwd_senior_type?: "pwd" | "senior" | null;
   service_fee: number | string;
   voucher_discount: number | string;
   /** Saved by wholesale bulk pricing (already reflected in item prices). */
