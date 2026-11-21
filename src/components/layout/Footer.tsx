@@ -9,6 +9,7 @@ const LINKS = {
   facebook: "https://www.facebook.com/profile.php?id=61593131815809",
   instagram: "https://www.instagram.com/palengkeypdmc/",
   tiktok: "https://www.tiktok.com/@palengkey",
+  x: "https://x.com/PalengkeyPDMC",
   appStore: "https://apps.apple.com/ph/app/palengkey/id6796321789",
   googlePlay: "https://play.google.com/store/apps/details?id=com.palengkey.palengkey",
 };
@@ -57,6 +58,14 @@ export default function Footer() {
               aria-label="Palengkey on Instagram"
             >
               <Icon name="instagram" />
+            </a>
+            <a
+              href={LINKS.x}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Palengkey on X"
+            >
+              <Icon name="twitter-x" />
             </a>
             <a
               href={LINKS.tiktok}
