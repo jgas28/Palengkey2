@@ -302,6 +302,9 @@ class CartController extends Controller
             'paluto_dish_id' => 'required|exists:paluto_dishes,id,status,1',
             'quantity' => 'required|numeric|min:0.1|max:100',
             'customer_note' => 'nullable|string|max:500',
+            // Optional ingredients the customer unticked. Required ones are always bought.
+            'excluded_ingredient_ids' => 'nullable|array',
+            'excluded_ingredient_ids.*' => 'integer',
         ]);
 
         return DB::transaction(function () use ($request, $data) {
@@ -321,10 +324,12 @@ class CartController extends Controller
             }
 
             $quantity = round((float) $data['quantity'], 3);
+            $excludedIds = collect($data['excluded_ingredient_ids'] ?? [])->map(fn ($id) => (int) $id);
 
             return $this->addIngredientBundle(
                 $request,
-                ingredients: $dish->ingredients->reject(fn ($ingredient) => $ingredient->is_provided),
+                ingredients: $dish->ingredients->reject(fn ($ingredient) => $ingredient->is_provided
+                    || ($ingredient->is_optional && $excludedIds->contains($ingredient->id))),
                 marketId: $stall->market_id,
                 scale: $quantity / max(0.001, (float) $dish->base_quantity),
                 customerNote: $data['customer_note'] ?? null,

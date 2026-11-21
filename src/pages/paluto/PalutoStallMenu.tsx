@@ -9,6 +9,7 @@ import { useMarketClosure } from "@/features/home/useMarketClosure";
 import {
   computeCookingFee,
   estimateIngredientsCost,
+  untickedOptionalIds,
   hasUnavailableIngredient,
 } from "@/features/paluto/palutoPricing";
 import { formatBatch } from "@/features/recipes/ingredientFormat";
@@ -97,7 +98,12 @@ export default function PalutoStallMenu() {
                   const base = Number(dish.base_quantity);
                   const unavailable = hasUnavailableIngredient(dish);
                   const estimate =
-                    estimateIngredientsCost(dish, base) + computeCookingFee(dish, base);
+                    // Without optional ingredients: they start unticked.
+                    estimateIngredientsCost(
+                      dish,
+                      base,
+                      untickedOptionalIds(dish, new Set()),
+                    ) + computeCookingFee(dish, base);
                   return (
                     <article className="dish-card" key={dish.id}>
                       <div className="dish-icon">

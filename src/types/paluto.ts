@@ -72,4 +72,6 @@ export interface CartRecipeBundle {
 export interface AddPalutoDishToCartPayload {
   paluto_dish_id: number;
   quantity: number;
+  /** Optional ingredients the customer unticked. */
+  excluded_ingredient_ids?: number[];
 }

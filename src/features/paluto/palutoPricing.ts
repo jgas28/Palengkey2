@@ -9,11 +9,18 @@ export function computeCookingFee(dish: PalutoDish, quantity: number): number {
   return Math.round(fee * 100) / 100;
 }
 
-/** Lines the customer actually pays for: not supplied by the stall, and priced at the market
- * (optional ones without a price are skipped, same as the cart). */
-export function chargedIngredients(dish: PalutoDish): PalutoDishIngredient[] {
+/** Lines the customer actually pays for: not supplied by the stall, priced at the market
+ * (optional ones without a price are skipped, same as the cart), and not unticked
+ * (only optional ones can be). */
+export function chargedIngredients(
+  dish: PalutoDish,
+  excludedIds: ReadonlySet<number> = new Set(),
+): PalutoDishIngredient[] {
   return dish.ingredients.filter(
-    (ingredient) => !ingredient.is_provided && ingredient.unit_price !== null,
+    (ingredient) =>
+      !ingredient.is_provided &&
+      ingredient.unit_price !== null &&
+      !(ingredient.is_optional && excludedIds.has(ingredient.id)),
   );
 }
 
@@ -27,10 +34,26 @@ export function hasUnavailableIngredient(dish: PalutoDish): boolean {
   );
 }
 
-export function estimateIngredientsCost(dish: PalutoDish, quantity: number): number {
+/** Optional ingredients the customer hasn't ticked: these start unticked and are left out. */
+export function untickedOptionalIds(
+  dish: PalutoDish,
+  tickedIds: ReadonlySet<number>,
+): Set<number> {
+  return new Set(
+    dish.ingredients
+      .filter((ingredient) => ingredient.is_optional && !tickedIds.has(ingredient.id))
+      .map((ingredient) => ingredient.id),
+  );
+}
+
+export function estimateIngredientsCost(
+  dish: PalutoDish,
+  quantity: number,
+  excludedIds: ReadonlySet<number> = new Set(),
+): number {
   const baseQuantity = Number(dish.base_quantity);
   const scale = baseQuantity > 0 ? quantity / baseQuantity : 1;
-  const total = chargedIngredients(dish).reduce(
+  const total = chargedIngredients(dish, excludedIds).reduce(
     (sum, ingredient) =>
       sum + Number(ingredient.unit_price) * Number(ingredient.quantity) * scale,
     0,
