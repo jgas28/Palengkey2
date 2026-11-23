@@ -6,7 +6,7 @@ dist-ssr
 .env
 .env.production
 
-android
+# android/ is tracked; its own .gitignore keeps out build output and secrets.
 ios
 .DS_Store
 *.log
